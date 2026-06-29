@@ -12,6 +12,23 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   if (!tag) return NextResponse.json({ ok: false, error: "未找到标签" }, { status: 404 })
   if (tag.isDefault) return NextResponse.json({ ok: false, error: "默认标签不可删除" }, { status: 400 })
 
+  // 删除前，给关联该标签的心得补上默认标签
+  const defaultTag = await prisma.tag.findFirst({ where: { userId, isDefault: true } })
+  if (defaultTag && defaultTag.id !== id) {
+    const entries = await prisma.entry.findMany({
+      where: { userId, tags: { some: { id } }, NOT: { tags: { some: { id: defaultTag.id } } } },
+      select: { id: true },
+    })
+    await Promise.all(
+      entries.map(e =>
+        prisma.entry.update({
+          where: { id: e.id },
+          data: { tags: { connect: { id: defaultTag.id } } },
+        })
+      )
+    )
+  }
+
   await prisma.tag.delete({ where: { id } })
   return NextResponse.json({ ok: true })
 }
