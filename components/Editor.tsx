@@ -110,14 +110,14 @@ export default function Editor({ entryId, isNew }: EditorProps) {
     setCharCount((editor.textContent || "").replace(/\s/g, "").length)
   }
 
-  async function handleSave(isDraft = false) {
-    if (!title.trim() && !isDraft) { toast.error("标题不能为空"); return }
+  async function handleSave() {
+    if (!title.trim()) { toast.error("标题不能为空"); return }
     setSaving(true)
     try {
-      const body = { title: title.trim() || "无标题", content: editorRef.current?.innerHTML || "", mood, tagIds: selectedTags, isDraft }
+      const body = { title: title.trim(), content: editorRef.current?.innerHTML || "", mood, tagIds: selectedTags, isDraft: false }
       const res = await fetch(isNew ? "/api/entries" : `/api/entries/${entryId}`, { method: isNew ? "POST" : "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
       const data = await res.json()
-      if (data.ok) { toast.success(isDraft ? "草稿已保存" : "心得已保存"); router.push("/") } else toast.error(data.error || "保存失败")
+      if (data.ok) { toast.success("心得已保存"); router.push("/") } else toast.error(data.error || "保存失败")
     } catch { toast.error("网络异常") } finally { setSaving(false) }
   }
 
@@ -142,8 +142,7 @@ export default function Editor({ entryId, isNew }: EditorProps) {
           hasTags={selectedTags.length > 0}
           showTagPicker={showTagPicker}
           onBack={() => router.back()}
-          onSaveDraft={() => handleSave(true)}
-          onSave={() => handleSave(false)}
+          onSave={() => handleSave()}
           onToggleTagPicker={() => setShowTagPicker(!showTagPicker)}
           onToggleFocus={() => setFocusMode(true)}
           onExecCommand={handleExecCommand}
@@ -176,7 +175,7 @@ export default function Editor({ entryId, isNew }: EditorProps) {
           </div>
         )}
       </div>
-      {focusMode && (<div className="fixed bottom-0 left-0 right-0 flex justify-center gap-3 p-4 pb-8" style={{ background: "linear-gradient(transparent, rgba(26,26,46,0.95))" }}><button onClick={() => handleSave(true)} className="px-6 py-2 rounded-full text-sm text-white border" style={{ borderColor: "rgba(255,255,255,0.3)" }}>存草稿</button><button onClick={() => handleSave(false)} className="px-6 py-2 rounded-full text-sm font-medium text-white" style={{ background: "#8BC34A" }}>保存</button></div>)}
+      {focusMode && (<div className="fixed bottom-0 left-0 right-0 flex justify-center p-4 pb-8" style={{ background: "linear-gradient(transparent, rgba(26,26,46,0.95))" }}><button onClick={() => handleSave()} className="px-6 py-2 rounded-full text-sm font-medium text-white" style={{ background: "#8BC34A" }}>保存</button></div>)}
       <style>{`
         [contenteditable]:empty:before{content:attr(data-placeholder);color:#bbb;pointer-events:none}
         [contenteditable] ul{list-style:disc;padding-left:1.5em;margin:0.5em 0}
@@ -186,3 +185,4 @@ export default function Editor({ entryId, isNew }: EditorProps) {
     </div>
   )
 }
+
