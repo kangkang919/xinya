@@ -27,12 +27,18 @@ function beijingTodayStart(d: Date): Date {
   return beijingDayStart(y, m, day)
 }
 
+function getBeijingDayOfWeek(y: number, m: number, day: number): number {
+  // 用北京时间中午12点对应的 UTC 时刻取星期几，避免跨日边界误差
+  // 北京时间 12:00 = UTC 当日 04:00
+  return new Date(Date.UTC(y, m - 1, day, 4, 0, 0)).getUTCDay()
+}
+
 function beijingWeekStart(d: Date): Date {
-  const todayStart = beijingTodayStart(d)
-  // todayStart 是 UTC 16:00（对应北京时间 0:00），其 UTC 星期几和北京一致
-  const dayOfWeek = todayStart.getUTCDay()
+  const { y, m, d: day } = getBeijingDateParts(d)
+  const dayOfWeek = getBeijingDayOfWeek(y, m, day)
   // 周一为本周第一天：周日 -> 回退 6 天，周一 -> 0
   const daysFromMonday = (dayOfWeek + 6) % 7
+  const todayStart = beijingDayStart(y, m, day)
   return new Date(todayStart.getTime() - daysFromMonday * 86400000)
 }
 
@@ -70,9 +76,11 @@ export async function GET() {
     const curr = sortedDates[i]
     if (i === 0 && curr === todayStr) { cur = 1 }
     else if (i > 0) {
-      const pd = new Date(prev)
-      const cd = new Date(curr)
-      const diff = Math.round((pd.getTime() - cd.getTime()) / 86400000)
+      const [py, pm, pd] = prev.split(/[-/]/).map(Number)
+      const [cy, cm, cd] = curr.split(/[-/]/).map(Number)
+      const pMs = Date.UTC(py, pm - 1, pd)
+      const cMs = Date.UTC(cy, cm - 1, cd)
+      const diff = Math.round((pMs - cMs) / 86400000)
       if (diff === 1) { cur++; streak = Math.max(streak, cur) }
       else cur = 1
     }
