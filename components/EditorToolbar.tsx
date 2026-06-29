@@ -33,7 +33,7 @@ export default function EditorToolbar({
 
   return (
     <>
-      <div className="sticky top-0 z-20" style={{ background: "rgba(250,250,245,0.98)", backdropFilter: "blur(12px)", borderBottom: "1px solid #e0e0e0" }}>
+      <div className="fixed top-0 left-0 right-0 z-50" style={{ background: "rgba(250,250,245,0.98)", backdropFilter: "blur(12px)", borderBottom: "1px solid #e0e0e0" }}>
         <div className="flex items-center justify-between px-4 py-3 max-w-3xl mx-auto">
           <button onClick={onBack} className="p-2"><ArrowLeft size={22} color="#666" /></button>
           <span className="text-sm font-medium" style={{ color: "#333" }}>{isNew ? "心芽，记录内心的每一次萌发" : "续叶，重温这片心得"}</span>
