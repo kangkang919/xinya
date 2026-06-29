@@ -11,7 +11,6 @@ interface EditorToolbarProps {
   hasTags: boolean
   showTagPicker: boolean
   onBack: () => void
-  onSaveDraft: () => void
   onSave: () => void
   onToggleTagPicker: () => void
   onToggleFocus: () => void
@@ -21,7 +20,7 @@ interface EditorToolbarProps {
 
 export default function EditorToolbar({
   isNew, saving, charCount, hasTags, showTagPicker,
-  onBack, onSaveDraft, onSave, onToggleTagPicker, onToggleFocus, onExecCommand, onInsertList
+  onBack, onSave, onToggleTagPicker, onToggleFocus, onExecCommand, onInsertList
 }: EditorToolbarProps) {
   const [showColorPicker, setShowColorPicker] = useState(false)
   const [colorPickerPos, setColorPickerPos] = useState<{ top: number; left: number } | null>(null)
@@ -39,7 +38,6 @@ export default function EditorToolbar({
           <button onClick={onBack} className="p-2"><ArrowLeft size={22} color="#666" /></button>
           <span className="text-sm font-medium" style={{ color: "#333" }}>{isNew ? "心芽，记录内心的每一次萌发" : "续叶，重温这片心得"}</span>
           <div className="flex items-center gap-1">
-            <button onClick={onSaveDraft} disabled={saving} className="px-3 py-1.5 text-xs rounded-full border transition" style={{ borderColor: "#ccc", color: "#666" }}>存草稿</button>
             <button onClick={onSave} disabled={saving} className="btn-sketch px-4 py-1.5 text-xs font-medium text-white" style={{ background: saving ? "#aaa" : "#8BC34A" }}>{saving ? "保存中…" : "保存"}</button>
           </div>
         </div>
@@ -69,3 +67,4 @@ export default function EditorToolbar({
     </>
   )
 }
+
