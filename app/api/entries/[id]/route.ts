@@ -42,6 +42,12 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!title?.trim())
     return NextResponse.json({ ok: false, error: "标题不能为空" }, { status: 400 })
 
+  let finalTagIds: string[] = tagIds || []
+  if (finalTagIds.length === 0) {
+    const defaultTag = await prisma.tag.findFirst({ where: { userId, isDefault: true } })
+    if (defaultTag) finalTagIds = [defaultTag.id]
+  }
+
   const entry = await prisma.entry.update({
     where: { id, userId },
     data: {
@@ -49,9 +55,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       content,
       mood: mood || null,
       isDraft: isDraft ?? false,
-      tags: tagIds
-        ? { set: tagIds.map((tid: string) => ({ id: tid })) }
-        : undefined,
+      tags: { set: finalTagIds.map((tid: string) => ({ id: tid })) },
     },
     include: { tags: { select: { id: true, name: true } } },
   })
