@@ -43,7 +43,8 @@ function beijingWeekStart(d: Date): Date {
 }
 
 function beijingDateString(d: Date): string {
-  return d.toLocaleDateString("zh-CN", { timeZone: TIMEZONE })
+  const { y, m, d: day } = getBeijingDateParts(d)
+  return `${y}-${String(m).padStart(2, "0")}-${String(day).padStart(2, "0")}`
 }
 
 export async function GET() {
@@ -63,30 +64,44 @@ export async function GET() {
   ])
 
   // 计算连续天数（基于北京日期）
-  const sortedDates = [...new Set(allEntries.map(e => beijingDateString(new Date(e.recordTime))))]
-    .sort()
-    .reverse()
+  const recordDates = [...new Set(allEntries.map(e => beijingDateString(new Date(e.recordTime))))].sort().reverse()
+  const todayStr = beijingDateString(now)
+  const yesterdayStr = beijingDateString(new Date(now.getTime() - 86400000))
 
   let streak = 0
   let maxStreak = 0
-  let cur = 0
-  const todayStr = beijingDateString(now)
-  for (let i = 0; i < sortedDates.length; i++) {
-    const prev = sortedDates[i - 1]
-    const curr = sortedDates[i]
-    if (i === 0 && curr === todayStr) { cur = 1 }
-    else if (i > 0) {
-      const [py, pm, pd] = prev.split(/[-/]/).map(Number)
-      const [cy, cm, cd] = curr.split(/[-/]/).map(Number)
-      const pMs = Date.UTC(py, pm - 1, pd)
-      const cMs = Date.UTC(cy, cm - 1, cd)
-      const diff = Math.round((pMs - cMs) / 86400000)
-      if (diff === 1) { cur++; streak = Math.max(streak, cur) }
-      else cur = 1
+  let currentRun = 0
+  let prevKey = ""
+
+  for (let i = 0; i < recordDates.length; i++) {
+    const curr = recordDates[i]
+    if (i === 0) {
+      // 当前连续段必须从"今天"或"昨天"开始，才算有效
+      if (curr === todayStr || curr === yesterdayStr) {
+        currentRun = 1
+      }
+    } else {
+      const [py, pm, pd] = prevKey.split("-").map(Number)
+      const [cy, cm, cd] = curr.split("-").map(Number)
+      const prevMs = Date.UTC(py, pm - 1, pd)
+      const currMs = Date.UTC(cy, cm - 1, cd)
+      const diff = Math.round((prevMs - currMs) / 86400000)
+      if (diff === 1) {
+        currentRun++
+      } else {
+        // 历史段中断，计算最长连续
+        maxStreak = Math.max(maxStreak, currentRun)
+        currentRun = 1
+      }
     }
-    maxStreak = Math.max(maxStreak, cur)
+    maxStreak = Math.max(maxStreak, currentRun)
+    prevKey = curr
   }
-  streak = cur
+
+  // streak：最近一次有效连续段（必须包含今天或昨天）
+  streak = recordDates.length > 0 && (recordDates[0] === todayStr || recordDates[0] === yesterdayStr)
+    ? currentRun
+    : 0
 
   return NextResponse.json({
     ok: true,
@@ -99,3 +114,4 @@ export async function GET() {
     }
   })
 }
+
