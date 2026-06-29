@@ -1,10 +1,21 @@
-﻿import type { Metadata, Viewport } from "next"
+import type { Metadata, Viewport } from "next"
 import "./globals.css"
 import { Toaster } from "react-hot-toast"
 
 export const metadata: Metadata = {
   title: "心芽 · 记录内心的每一次萌发",
   description: "私有记录 + 可控分享，属于你的内心花园",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    title: "心芽",
+    statusBarStyle: "default",
+  },
+  icons: {
+    icon: "/icon.svg",
+    shortcut: "/icon.svg",
+    apple: "/icon.png",
+  },
 }
 
 export const viewport: Viewport = {
