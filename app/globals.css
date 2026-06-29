@@ -1,0 +1,78 @@
+﻿@import "tailwindcss";
+
+:root {
+  --color-primary: #8BC34A;
+  --color-primary-light: #AED581;
+  --color-bg: #FAFAF5;
+  --color-brown: #795548;
+  --color-blue: #42A5F5;
+  --color-text: #333333;
+  --color-text-soft: #666666;
+  --color-text-muted: #999999;
+  --color-border: #E8E8E3;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: "Microsoft YaHei", "微软雅黑", "PingFang SC", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ===== 嫩芽生长动画 ===== */
+@keyframes sproutGrow {
+  0%   { transform: scaleY(0) translateY(20px); opacity: 0; transform-origin: bottom; }
+  60%  { transform: scaleY(1.08) translateY(-2px); opacity: 1; transform-origin: bottom; }
+  100% { transform: scaleY(1) translateY(0); opacity: 1; transform-origin: bottom; }
+}
+
+/* ===== 轻柔弹跳 ===== */
+@keyframes bounceGentle {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-7px); }
+}
+
+/* ===== 收藏弹跳 ===== */
+@keyframes bookmarkPop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.4); }
+  70%  { transform: scale(0.88); }
+  100% { transform: scale(1); }
+}
+
+/* ===== 淡入上移 ===== */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== 卷轴展开 ===== */
+@keyframes scrollUnfurl {
+  from { max-height: 0; opacity: 0; }
+  to   { max-height: 600px; opacity: 1; }
+}
+
+/* ===== 叶片展开（枝叶页动效）===== */
+@keyframes leafSpread {
+  from { transform: scale(0.8) rotate(-5deg); opacity: 0; }
+  to   { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+.animate-sprout        { animation: sproutGrow 1.6s ease-out forwards; }
+.animate-bounce-gentle { animation: bounceGentle 2.2s ease-in-out infinite; }
+.animate-bookmark-pop  { animation: bookmarkPop 0.35s ease-out forwards; }
+.animate-fade-in       { animation: fadeIn 0.4s ease-out; }
+.animate-scroll-unfurl { animation: scrollUnfurl 0.6s ease-out; }
+.animate-leaf-spread   { animation: leafSpread 0.5s ease-out; }
+
+/* ===== 手绘风格边框 ===== */
+.btn-sketch   { border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px; }
+.input-sketch { border-radius: 5px 20px 5px 20px / 20px 5px 20px 5px; }
+.card-sketch  { border-radius: 8px 3px 8px 3px / 3px 8px 3px 8px; }
+.dialog-sketch { border-radius: 12px 4px 12px 4px / 4px 12px 4px 12px; }
+
+/* ===== 移动端底部安全区域 ===== */
+.pb-safe     { padding-bottom: env(safe-area-inset-bottom, 0px); }
+.bottom-safe { bottom: env(safe-area-inset-bottom, 0px); }

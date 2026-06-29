@@ -1,0 +1,131 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  passwordHash  String
+  isVerified    Boolean  @default(false)
+  theme         String   @default("spring")
+  onboardDone   Boolean  @default(false)
+  openTimes     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  entries        Entry[]
+  tags           Tag[]
+  shares         Share[]
+  insightReports InsightReport[]
+  aiInsights     AiInsight[]
+  growthLogs     GrowthLog[]
+  emailTokens    EmailToken[]
+}
+
+model Entry {
+  id          String    @id @default(cuid())
+  userId      String
+  title       String
+  content     String
+  mood        String?
+  recordTime  DateTime  @default(now())
+  isTop       Boolean   @default(false)
+  isFavorite  Boolean   @default(false)
+  isDraft     Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tags        Tag[]     @relation("EntryTags")
+
+  @@index([userId, recordTime(sort: Desc)])
+  @@index([userId, isTop])
+  @@index([userId, isFavorite])
+  @@index([userId, isDraft])
+}
+
+model Tag {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entries   Entry[]  @relation("EntryTags")
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+model Share {
+  id        String    @id @default(cuid())
+  userId    String
+  token     String    @unique @default(cuid())
+  expiresAt DateTime
+  scope     String    @default("all")
+  tagIds    String[]  @default([])
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AiInsight {
+  id           String   @id @default(cuid())
+  userId       String
+  content      String
+  triggerCount Int
+  isRead       Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+}
+
+model InsightReport {
+  id          String   @id @default(cuid())
+  userId      String
+  type        String
+  periodStart DateTime
+  periodEnd   DateTime
+  content     Json
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type, periodStart])
+  @@index([userId, type])
+}
+
+model GrowthLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  version   String
+  title     String
+  content   String
+  logDate   DateTime
+  createdAt DateTime @default(now())
+
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model EmailToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  type      String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+}
