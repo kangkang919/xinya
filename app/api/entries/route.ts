@@ -71,6 +71,12 @@ export async function POST(req: NextRequest) {
   if (!title?.trim())
     return NextResponse.json({ ok: false, error: "标题不能为空" }, { status: 400 })
 
+  let finalTagIds: string[] = tagIds || []
+  if (finalTagIds.length === 0) {
+    const defaultTag = await prisma.tag.findFirst({ where: { userId, isDefault: true } })
+    if (defaultTag) finalTagIds = [defaultTag.id]
+  }
+
   const entry = await prisma.entry.create({
     data: {
       userId,
@@ -78,8 +84,8 @@ export async function POST(req: NextRequest) {
       content: content || "",
       mood: mood || null,
       isDraft: isDraft || false,
-      tags: tagIds?.length
-        ? { connect: tagIds.map((id: string) => ({ id })) }
+      tags: finalTagIds.length
+        ? { connect: finalTagIds.map((id: string) => ({ id })) }
         : undefined,
     },
     include: { tags: { select: { id: true, name: true } } },
@@ -87,3 +93,4 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ ok: true, data: entry })
 }
+
