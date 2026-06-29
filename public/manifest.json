@@ -1,0 +1,24 @@
+{
+  "name": "心芽",
+  "short_name": "心芽",
+  "description": "记录内心的每一次萌发",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FAFAF5",
+  "theme_color": "#8BC34A",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
