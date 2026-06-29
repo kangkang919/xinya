@@ -178,12 +178,14 @@ export default function SproutPage() {
   return (
     <div className="p-4 max-w-lg mx-auto pb-24">
       {/* ===== 顶部标题栏 ===== */}
-      <div className="flex items-start justify-between mb-1">
+      <div className="flex items-center justify-between mb-1">
         <h1 className="text-xl font-bold" style={{ color: "#333" }}>
           <span style={{ color: '#8BC34A', display: 'inline-block', width: '1.4em', textAlign: 'center' }}>🌱</span>萌芽
         </h1>
+      </div>
+      <div className="flex items-start justify-between mb-5">
+        <p className="text-xs" style={{ color: '#bbb' }}>心之所向，芽之所生</p>
         <div className="flex items-center gap-2">
-        
           {/* 收藏筛选 */}
           <button onClick={() => { setFavOnly(!favOnly); setPage(1) }}
             className="p-2 rounded-full transition"
@@ -206,7 +208,6 @@ export default function SproutPage() {
           </button>
         </div>
       </div>
-      <p className="text-xs mb-5" style={{ color: '#bbb' }}>心之所向，芽之所生</p>
       {/* ===== 搜索栏 ===== */}
       {showSearch && (
         <form onSubmit={handleSearch} className="mb-4 animate-fade-in">
