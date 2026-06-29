@@ -15,6 +15,18 @@ interface TagItem {
   entryCount: number
 }
 
+interface ExportEntry {
+  id: string
+  title: string
+  content: string
+  tags: string[]
+  mood: string | null
+  recordTime: string
+  createdAt: string
+  isTop: boolean
+  isFavorite: boolean
+}
+
 const THEMES = [
   { key: 'spring', label: '春日萌芽', sub: '嫩绿生机', color: '#8BC34A', bg: '#F4FBF0' },
   { key: 'summer', label: '夏日繁茂', sub: '蔚蓝清凉', color: '#2196F3', bg: '#EEF6FE' },
@@ -42,6 +54,77 @@ function applyTheme(themeKey: string) {
   window.dispatchEvent(new Event('xinya-theme-change'))
 }
 
+function formatExportDate(iso: string): string {
+  return new Date(iso).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })
+}
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+}
+
+function toMarkdown(entries: ExportEntry[]): string {
+  const lines: string[] = [`# 心芽心得导出`, ``, `共 ${entries.length} 篇心得`, ``]
+  entries.forEach((e, i) => {
+    lines.push(`## ${i + 1}. ${e.title}${e.isFavorite ? ' ⭐' : ''}`)
+    lines.push(`- 标签：${e.tags.map(t => `#${t}`).join(' ') || '无'}`)
+    lines.push(`- 心情：${e.mood || '—'}`)
+    lines.push(`- 记录时间：${formatExportDate(e.recordTime)}`)
+    lines.push(`- 创建时间：${formatExportDate(e.createdAt)}`)
+    lines.push('')
+    lines.push(e.content || '（无内容）')
+    lines.push('')
+    lines.push('---')
+    lines.push('')
+  })
+  return lines.join('\n')
+}
+
+function toHtml(entries: ExportEntry[]): string {
+  const items = entries.map((e, i) => `
+    <article style="margin-bottom:32px;padding-bottom:24px;border-bottom:1px solid #eee;">
+      <h2 style="font-size:18px;color:#333;margin-bottom:12px;">${i + 1}. ${escapeHtml(e.title)}${e.isFavorite ? ' ⭐' : ''}</h2>
+      <div style="font-size:13px;color:#666;margin-bottom:12px;line-height:1.8;">
+        <div style="margin-bottom:4px;">标签：${e.tags.map(t => `<span style="display:inline-block;color:#5a8a2f;background:rgba(139,195,74,0.1);padding:2px 8px;border-radius:12px;margin-right:6px;">#${escapeHtml(t)}</span>`).join('') || '无'}</div>
+        <div style="margin-bottom:4px;">心情：${e.mood ? escapeHtml(e.mood) : '—'}</div>
+        <div style="margin-bottom:4px;">记录时间：${formatExportDate(e.recordTime)}</div>
+        <div>创建时间：${formatExportDate(e.createdAt)}</div>
+      </div>
+      <div style="font-size:14px;color:#333;line-height:1.8;">${e.content || '（无内容）'}</div>
+    </article>
+  `).join('')
+
+  return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>心芽心得导出</title>
+</head>
+<body style="max-width:720px;margin:40px auto;padding:0 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background:#fafafa;">
+  <h1 style="font-size:22px;color:#333;text-align:center;margin-bottom:8px;">心芽心得导出</h1>
+  <p style="text-align:center;color:#999;font-size:13px;margin-bottom:32px;">共 ${entries.length} 篇心得</p>
+  ${items}
+</body>
+</html>`
+}
+
+function downloadBlob(content: string, filename: string, type: string) {
+  const blob = new Blob([content], { type })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
+}
+
 export default function RootPage() {
   const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
@@ -49,6 +132,8 @@ export default function RootPage() {
   const [saving, setSaving] = useState(false)
   const [showChangelog, setShowChangelog] = useState(false)
   const [savedTip, setSavedTip] = useState(false)
+  const [exporting, setExporting] = useState<'md' | 'html' | null>(null)
+  const [exportTip, setExportTip] = useState(false)
 
   // 标签管理
   const [tags, setTags] = useState<TagItem[]>([])
@@ -145,6 +230,26 @@ export default function RootPage() {
   async function logout() {
     await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {})
     router.push('/login')
+  }
+
+  async function handleExport(format: 'md' | 'html') {
+    if (exporting) return
+    setExporting(format)
+    try {
+      const res = await fetch('/api/export')
+      const json = await res.json()
+      if (!json.ok) throw new Error('导出失败')
+      const entries: ExportEntry[] = json.data
+      const now = new Date().toISOString().slice(0, 10)
+      if (format === 'md') {
+        downloadBlob(toMarkdown(entries), `xinya-export-${now}.md`, 'text/markdown')
+      } else {
+        downloadBlob(toHtml(entries), `xinya-export-${now}.html`, 'text/html')
+      }
+      setExportTip(true)
+      setTimeout(() => setExportTip(false), 2000)
+    } catch (_) {}
+    setExporting(null)
   }
 
   return (
@@ -372,6 +477,44 @@ export default function RootPage() {
         </div>
       </div>
 
+      {/* 数据导出 */}
+      <div className="p-4 rounded-xl mb-4" style={{ background: '#fff', border: '1px solid #eee' }}>
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs" style={{ color: '#999' }}>导出心得</p>
+          {exportTip && (
+            <span className="text-xs" style={{ color: '#8BC34A' }}>✓ 已开始下载</span>
+          )}
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={() => handleExport('md')}
+            disabled={exporting !== null}
+            className="py-2.5 rounded-xl text-sm font-medium transition"
+            style={{
+              background: exporting === 'md' ? '#f0f0f0' : 'rgba(139,195,74,0.08)',
+              color: '#5a8a2f',
+              border: '1px solid rgba(139,195,74,0.3)',
+              opacity: exporting !== null ? 0.6 : 1,
+            }}
+          >
+            {exporting === 'md' ? '导出中...' : 'Markdown'}
+          </button>
+          <button
+            onClick={() => handleExport('html')}
+            disabled={exporting !== null}
+            className="py-2.5 rounded-xl text-sm font-medium transition"
+            style={{
+              background: exporting === 'html' ? '#f0f0f0' : 'rgba(139,195,74,0.08)',
+              color: '#5a8a2f',
+              border: '1px solid rgba(139,195,74,0.3)',
+              opacity: exporting !== null ? 0.6 : 1,
+            }}
+          >
+            {exporting === 'html' ? '导出中...' : 'HTML'}
+          </button>
+        </div>
+      </div>
+
       {/* 退出登录 */}
       <button
         className="w-full py-3 rounded-xl text-sm font-medium"
@@ -383,3 +526,4 @@ export default function RootPage() {
     </div>
   )
 }
+
