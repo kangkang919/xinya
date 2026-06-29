@@ -67,6 +67,22 @@ function escapeHtml(text: string): string {
     .replace(/'/g, '&#039;')
 }
 
+function htmlToPlainText(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<\/div>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;/g, "'")
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
 function toMarkdown(entries: ExportEntry[]): string {
   const lines: string[] = [`# 心芽心得导出`, ``, `共 ${entries.length} 篇心得`, ``]
   entries.forEach((e, i) => {
@@ -76,7 +92,7 @@ function toMarkdown(entries: ExportEntry[]): string {
     lines.push(`- 记录时间：${formatExportDate(e.recordTime)}`)
     lines.push(`- 创建时间：${formatExportDate(e.createdAt)}`)
     lines.push('')
-    lines.push(e.content || '（无内容）')
+    lines.push(htmlToPlainText(e.content) || '（无内容）')
     lines.push('')
     lines.push('---')
     lines.push('')
