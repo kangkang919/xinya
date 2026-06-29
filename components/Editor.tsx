@@ -133,7 +133,7 @@ export default function Editor({ entryId, isNew }: EditorProps) {
   }
 
   return (
-    <div className="min-h-screen pb-24" style={{ background: focusMode ? "#1a1a2e" : "#FAFAF5" }}>
+    <div className={`min-h-screen pb-24 ${!focusMode ? 'pt-[92px]' : ''}`} style={{ background: focusMode ? "#1a1a2e" : "#FAFAF5" }}>
       {!focusMode && (
         <EditorToolbar
           isNew={isNew}
