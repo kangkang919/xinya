@@ -98,7 +98,7 @@ export default function RingPage() {
   if (loading) {
     return (
       <div className="p-4 max-w-lg mx-auto pb-24">
-        <div className="flex items-start justify-between mb-1">
+        <div className="flex items-center justify-between mb-1">
           <h1 className="text-xl font-bold" style={{ color: '#333' }}>
             <span style={{ color: '#8BC34A', display: 'inline-block', width: '1.4em', textAlign: 'center' }}>🌀</span>年轮
           </h1>
@@ -115,16 +115,18 @@ export default function RingPage() {
   return (
     <div className="p-4 max-w-lg mx-auto pb-24">
       {/* 页面标题 */}
-      <div className="flex items-start justify-between mb-1">
+      <div className="flex items-center justify-between mb-1">
         <h1 className="text-xl font-bold" style={{ color: '#333' }}>
           <span style={{ color: '#8BC34A', display: 'inline-block', width: '1.4em', textAlign: 'center' }}>🌀</span>年轮
         </h1>
+      </div>
+      <div className="flex items-start justify-between mb-5">
+        <p className="text-xs" style={{ color: '#bbb' }}>岁月如轮，每一天都留下印记</p>
         <div className="text-right">
-          <p className="text-2xl font-bold" style={{ color: '#8BC34A' }}>{total}</p>
+          <p className="text-2xl font-bold leading-none" style={{ color: '#8BC34A' }}>{total}</p>
           <p className="text-xs" style={{ color: '#bbb' }}>篇心得</p>
         </div>
       </div>
-      <p className="text-xs mb-5" style={{ color: '#bbb' }}>岁月如轮，每一天都留下印记</p>
 
       {/* 热力图 */}
       <div
@@ -201,3 +203,4 @@ export default function RingPage() {
     </div>
   )
 }
+
