@@ -207,8 +207,7 @@ export default function RingPage() {
                             width: "14px",
                             height: "14px",
                             background: isToday ? "#8BC34A" : cellColor(day.count),
-                            border: isToday ? "1.5px solid #558B2F" : day.count === 0 ? "1px solid #e8e8e8" : "none",
-                            borderRadius: "2px",
+                            border: isToday ? "1.5px solid #558B2F" : day.count === 0 ? "1.5px solid #ccc" : "none",
                             cursor: day.count > 0 ? "pointer" : "default",
                           }}
                           onMouseEnter={(e) => {
