@@ -18,7 +18,7 @@ interface MonthStats {
 const WEEKDAY_LABELS = ["一", "二", "三", "四", "五", "六", "日"]
 
 function cellColor(count: number): string {
-  if (count === 0) return "transparent"
+  if (count === 0) return "#fff"
   if (count === 1) return "#C5E1A5"
   if (count === 2) return "#8BC34A"
   return "#558B2F"
@@ -207,7 +207,8 @@ export default function RingPage() {
                             width: "14px",
                             height: "14px",
                             background: isToday ? "#8BC34A" : cellColor(day.count),
-                            border: isToday ? "1.5px solid #558B2F" : "none",
+                            border: isToday ? "1.5px solid #558B2F" : day.count === 0 ? "1px solid #e8e8e8" : "none",
+                            borderRadius: "2px",
                             cursor: day.count > 0 ? "pointer" : "default",
                           }}
                           onMouseEnter={(e) => {
