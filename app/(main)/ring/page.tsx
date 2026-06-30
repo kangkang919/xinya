@@ -17,13 +17,6 @@ interface MonthStats {
 
 const WEEKDAY_LABELS = ["一", "二", "三", "四", "五", "六", "日"]
 
-function cellColor(count: number): string {
-  if (count === 0) return "#fff"
-  if (count === 1) return "#C5E1A5"
-  if (count === 2) return "#8BC34A"
-  return "#558B2F"
-}
-
 function getDaysInMonth(year: number, month: number): number {
   return new Date(Date.UTC(year, month, 0)).getUTCDate()
 }
@@ -34,31 +27,11 @@ function getFirstDayOfWeek(year: number, month: number): number {
   return (d + 6) % 7
 }
 
-// 构建月历网格：7行 x N列
-function buildMonthGrid(days: DayData[], year: number, month: number) {
-  const daysInMonth = getDaysInMonth(year, month)
-  const firstDow = getFirstDayOfWeek(year, month) // 0=Mon, 6=Sun
-  const totalCells = firstDow + daysInMonth
-  const weeks = Math.ceil(totalCells / 7)
-
-  // 创建 day 索引 map
-  const dayMap = new Map(days.map(d => [d.day, d]))
-
-  const grid: (DayData | null)[][] = []
-  for (let w = 0; w < weeks; w++) {
-    const col: (DayData | null)[] = []
-    for (let r = 0; r < 7; r++) {
-      const cellIndex = w * 7 + r
-      const dayNum = cellIndex - firstDow + 1
-      if (dayNum >= 1 && dayNum <= daysInMonth) {
-        col.push(dayMap.get(dayNum) || { day: dayNum, count: 0, isToday: false })
-      } else {
-        col.push(null)
-      }
-    }
-    grid.push(col)
-  }
-  return grid
+function cellLevel(count: number): string {
+  if (count === 0) return "empty"
+  if (count === 1) return "level-1"
+  if (count === 2) return "level-2"
+  return "level-3"
 }
 
 export default function RingPage() {
@@ -78,10 +51,11 @@ export default function RingPage() {
   const [month, setMonth] = useState(nowParts.m)
   const [stats, setStats] = useState<MonthStats | null>(null)
   const [loading, setLoading] = useState(true)
-  const [hoveredDay, setHoveredDay] = useState<{ day: number; count: number; x: number; y: number } | null>(null)
+  const [tooltip, setTooltip] = useState<{ text: string; x: number; y: number } | null>(null)
 
   useEffect(() => {
     setLoading(true)
+    setTooltip(null)
     fetch(`/api/monthly-stats?year=${year}&month=${month}`)
       .then(r => r.json())
       .then(data => {
@@ -103,6 +77,43 @@ export default function RingPage() {
 
   const isCurrentMonth = year === nowParts.y && month === nowParts.m
 
+  // 构建日历网格数据
+  const buildCalendarDays = (): { day: number; count: number; isToday: boolean; isCurrentMonth: boolean }[] => {
+    if (!stats) return []
+    const daysInMonth = getDaysInMonth(year, month)
+    const firstDow = getFirstDayOfWeek(year, month) // 0=Mon
+    const dayMap = new Map(stats.days.map(d => [d.day, d]))
+
+    const cells: { day: number; count: number; isToday: boolean; isCurrentMonth: boolean }[] = []
+
+    // 上月补位
+    const prevMonthDays = getDaysInMonth(year, month === 1 ? 12 : month - 1)
+    for (let i = firstDow - 1; i >= 0; i--) {
+      cells.push({ day: prevMonthDays - i, count: 0, isToday: false, isCurrentMonth: false })
+    }
+
+    // 当月日期
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dayData = dayMap.get(d)
+      cells.push({
+        day: d,
+        count: dayData?.count ?? 0,
+        isToday: dayData?.isToday ?? false,
+        isCurrentMonth: true,
+      })
+    }
+
+    // 下月补位（补齐到整周）
+    const remaining = 7 - (cells.length % 7)
+    if (remaining < 7) {
+      for (let d = 1; d <= remaining; d++) {
+        cells.push({ day: d, count: 0, isToday: false, isCurrentMonth: false })
+      }
+    }
+
+    return cells
+  }
+
   if (loading || !stats) {
     return (
       <div className="p-4 max-w-lg mx-auto pb-24">
@@ -120,194 +131,195 @@ export default function RingPage() {
     )
   }
 
-  const grid = buildMonthGrid(stats.days, year, month)
+  const calendarDays = buildCalendarDays()
   const hasRecords = stats.total > 0
 
   return (
     <div className="p-4 max-w-lg mx-auto pb-24">
       {/* 页面标题 */}
-      <div className="flex items-center justify-between mb-1">
-        <h1 className="text-xl font-bold" style={{ color: "#333" }}>
-          <span style={{ color: "#8BC34A", display: "inline-block", width: "1.4em", textAlign: "center" }}>🌀</span>年轮
-        </h1>
-      </div>
+      <h1 className="text-xl font-bold mb-1" style={{ color: "#333" }}>
+        <span style={{ color: "#8BC34A", display: "inline-block", width: "1.4em", textAlign: "center" }}>🌀</span>年轮
+      </h1>
       <p className="text-xs mb-5" style={{ color: "#bbb" }}>感受心得生长的节律</p>
 
       {/* 月份导航 */}
       <div className="flex items-center justify-between mb-4 px-1">
         <button
           onClick={goPrev}
-          className="w-8 h-8 flex items-center justify-center rounded-full"
-          style={{ color: "#8BC34A", background: "rgba(139,195,74,0.08)" }}
+          className="w-9 h-9 flex items-center justify-center rounded-full"
+          style={{ color: "#8BC34A", background: "rgba(139,195,74,0.1)", border: "none", fontSize: "20px", cursor: "pointer" }}
         >
           ‹
         </button>
-        <span className="text-sm font-medium" style={{ color: "#333" }}>
+        <span className="text-base font-semibold" style={{ color: "#333", display: "flex", alignItems: "center", gap: "8px" }}>
           {stats.label}
           {isCurrentMonth && (
-            <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded" style={{ background: "rgba(139,195,74,0.15)", color: "#8BC34A" }}>
+            <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(139,195,74,0.12)", color: "#8BC34A", fontWeight: 500 }}>
               今
             </span>
           )}
         </span>
         <button
           onClick={goNext}
-          className="w-8 h-8 flex items-center justify-center rounded-full"
-          style={{ color: "#8BC34A", background: "rgba(139,195,74,0.08)" }}
+          className="w-9 h-9 flex items-center justify-center rounded-full"
+          style={{ color: "#8BC34A", background: "rgba(139,195,74,0.1)", border: "none", fontSize: "20px", cursor: "pointer" }}
         >
           ›
         </button>
       </div>
 
-      {/* 热力图 */}
-      <div
-        className="p-4 rounded-xl mb-4 relative"
-        style={{ background: "#fff", border: "1px solid #eee" }}
-      >
+      {/* 日历卡片 */}
+      <div className="rounded-xl mb-4" style={{ background: "#fff", border: "1px solid #eee", padding: "16px 12px 12px" }}>
         {!hasRecords ? (
           <div className="text-center py-10">
-            <div className="text-3xl mb-2"></div>
+            <div className="text-3xl mb-2">🌱</div>
             <p className="text-sm" style={{ color: "#bbb" }}>这个月还没有种下任何心得</p>
           </div>
         ) : (
           <>
-            {/* 星期标签行 */}
-            <div className="flex mb-1" style={{ paddingLeft: "22px" }}>
-              {grid.map((_, wi) => (
-                <div key={wi} className="flex-1 text-center text-xs" style={{ color: "#bbb", fontSize: "10px" }}>
-                  {wi === 0 ? "" : ""}
+            {/* 星期标题 */}
+            <div className="grid mb-2" style={{ gridTemplateColumns: "repeat(7, 1fr)", gap: "4px" }}>
+              {WEEKDAY_LABELS.map((label, i) => (
+                <div key={i} className="text-center text-xs" style={{ color: "#bbb", fontWeight: 500, fontSize: "12px" }}>
+                  {label}
                 </div>
               ))}
             </div>
-        
-            {/* 热力格子区域 */}
-            <div className="flex">
-              {/* 星期行标签 */}
-              <div className="flex flex-col" style={{ width: "22px", flexShrink: 0 }}>
-                {WEEKDAY_LABELS.map((label, i) => (
-                  <div key={i} className="flex-1 flex items-center justify-end text-xs pr-1" style={{ color: "#bbb", fontSize: "10px" }}>
-                    {i % 2 === 0 ? label : ""}
+
+            {/* 日期网格 */}
+            <div className="grid" style={{ gridTemplateColumns: "repeat(7, 1fr)", gap: "4px" }}>
+              {calendarDays.map((cell, idx) => {
+                const level = cellLevel(cell.count)
+                const isToday = cell.isToday
+
+                let cellClass = "day-cell relative flex items-center justify-center rounded-md"
+                let cellStyle: React.CSSProperties = {
+                  aspectRatio: "1",
+                  cursor: "default",
+                  transition: "transform 0.15s",
+                }
+
+                if (!cell.isCurrentMonth) {
+                  // 非当月 - 灰色
+                  cellStyle.background = "#f8f8f8"
+                  cellStyle.color = "#ddd"
+                } else if (cell.count === 0) {
+                  // 当月无记录 - 白底灰框
+                  cellStyle.background = "#fff"
+                  cellStyle.border = "1.5px solid #ddd"
+                  cellStyle.color = "#999"
+                } else {
+                  // 当月有记录 - 颜色框
+                  cellStyle.cursor = "pointer"
+                  const colors: Record<string, string> = { "level-1": "#C5E1A5", "level-2": "#8BC34A", "level-3": "#558B2F" }
+                  cellStyle.background = colors[level] || "#8BC34A"
+                  cellStyle.color = "#fff"
+                  cellStyle.fontWeight = 600
+                }
+
+                if (isToday) {
+                  cellStyle.border = "2px solid #558B2F"
+                }
+
+                const handleClick = () => {
+                  if (!cell.isCurrentMonth) return
+                  if (cell.count === 0 && !isToday) return
+                  setTooltip({
+                    text: `${cell.day}日 · ${cell.count} 篇心得`,
+                    x: 0,
+                    y: 0,
+                  })
+                  // 2秒后自动消失
+                  setTimeout(() => setTooltip(null), 2000)
+                }
+
+                return (
+                  <div
+                    key={idx}
+                    className={cellClass}
+                    style={cellStyle}
+                    onClick={handleClick}
+                  >
+                    <span style={{ fontSize: "14px", lineHeight: 1, fontWeight: cell.isCurrentMonth && cell.count > 0 ? 600 : 400 }}>
+                      {cell.day}
+                    </span>
+                    {isToday && (
+                      <span
+                        className="absolute"
+                        style={{
+                          top: "-2px",
+                          right: "-2px",
+                          fontSize: "8px",
+                          color: "#558B2F",
+                          fontWeight: 700,
+                          background: "#fff",
+                          borderRadius: "50%",
+                          width: "14px",
+                          height: "14px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        今
+                      </span>
+                    )}
                   </div>
-                ))}
-              </div>
-        
-              {/* 格子区域 - 铺满剩余宽度 */}
-              <div className="flex flex-1 gap-[3px]">
-                {grid.map((week, wi) => (
-                  <div key={wi} className="flex-1 flex flex-col gap-[3px]">
-                    {week.map((day, di) => {
-                      if (!day) {
-                        return <div key={di} className="flex-1" style={{ aspectRatio: "1" }} />
-                      }
-                      const isToday = day.isToday
-                      return (
-                        <div
-                          key={di}
-                          className="flex-1 relative"
-                          style={{
-                            aspectRatio: "1",
-                            background: isToday ? "#8BC34A" : cellColor(day.count),
-                            border: isToday ? "1.5px solid #558B2F" : day.count === 0 ? "1.5px solid #ccc" : "none",
-                            cursor: day.count > 0 || isToday ? "pointer" : "default",
-                          }}
-                          onMouseEnter={(e) => {
-                            if (day.count > 0 || isToday) {
-                              const rect = e.currentTarget.getBoundingClientRect()
-                              setHoveredDay({
-                                day: day.day,
-                                count: day.count,
-                                x: rect.left + rect.width / 2,
-                                y: rect.top,
-                              })
-                            }
-                          }}
-                          onMouseLeave={() => setHoveredDay(null)}
-                        >
-                          {isToday && (
-                            <span
-                              className="absolute -top-4 left-1/2 -translate-x-1/2 text-center"
-                              style={{ fontSize: "8px", color: "#558B2F", fontWeight: "bold", whiteSpace: "nowrap" }}
-                            >
-                              今
-                            </span>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                ))}
-              </div>
+                )
+              })}
             </div>
 
             {/* 图例 */}
-            <div className="flex items-center justify-end gap-1 mt-3">
-              <span className="text-xs" style={{ color: "#bbb", fontSize: "10px" }}>少</span>
-              {["transparent", "#C5E1A5", "#8BC34A", "#558B2F"].map((c, i) => (
-                <div
-                  key={i}
-                  className="rounded-sm"
-                  style={{
-                    width: "12px",
-                    height: "12px",
-                    background: c,
-                    border: c === "transparent" ? "1px solid #eee" : "none",
-                  }}
-                />
-              ))}
-              <span className="text-xs" style={{ color: "#bbb", fontSize: "10px" }}>多</span>
+            <div className="flex items-center justify-end gap-1 mt-3" style={{ padding: "0 4px" }}>
+              <span style={{ fontSize: "11px", color: "#bbb" }}>少</span>
+              <div style={{ width: "14px", height: "14px", borderRadius: "3px", background: "#fff", border: "1.5px solid #ddd" }} />
+              <div style={{ width: "14px", height: "14px", borderRadius: "3px", background: "#C5E1A5" }} />
+              <div style={{ width: "14px", height: "14px", borderRadius: "3px", background: "#8BC34A" }} />
+              <div style={{ width: "14px", height: "14px", borderRadius: "3px", background: "#558B2F" }} />
+              <span style={{ fontSize: "11px", color: "#bbb" }}>多</span>
             </div>
           </>
         )}
-
-        {/* 悬浮气泡 */}
-        {hoveredDay && (
-          <div
-            className="fixed z-50 px-2 py-1 rounded text-xs pointer-events-none"
-            style={{
-              left: `${hoveredDay.x}px`,
-              top: `${hoveredDay.y - 28}px`,
-              transform: "translateX(-50%)",
-              background: "#333",
-              color: "#fff",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {stats.year}年{stats.month}月{hoveredDay.day}日 · {hoveredDay.count}篇
-          </div>
-        )}
       </div>
+
+      {/* 点击气泡 */}
+      {tooltip && (
+        <div
+          className="fixed z-50 px-3 py-1.5 rounded-lg text-sm pointer-events-none"
+          style={{
+            left: "50%",
+            top: "45%",
+            transform: "translate(-50%, -50%)",
+            background: "#333",
+            color: "#fff",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {tooltip.text}
+        </div>
+      )}
 
       {/* 月度统计 */}
       <div className="grid grid-cols-3 gap-3">
-        <div
-          className="p-3 rounded-xl text-center"
-          style={{ background: "rgba(139,195,74,0.08)" }}
-        >
-          <p className="text-xl font-bold" style={{ color: "#8BC34A" }}>{stats.total}</p>
-          <p className="text-xs" style={{ color: "#999" }}>本月篇数</p>
+        <div className="p-4 rounded-xl text-center" style={{ background: "rgba(139,195,74,0.08)" }}>
+          <p className="text-2xl font-bold" style={{ color: "#8BC34A" }}>{stats.total}</p>
+          <p className="text-xs mt-1" style={{ color: "#999" }}>本月篇数</p>
         </div>
-        <div
-          className="p-3 rounded-xl text-center"
-          style={{ background: "rgba(66,165,245,0.08)" }}
-        >
-          <p className="text-xl font-bold" style={{ color: "#42A5F5" }}>
+        <div className="p-4 rounded-xl text-center" style={{ background: "rgba(66,165,245,0.08)" }}>
+          <p className="text-2xl font-bold" style={{ color: "#42A5F5" }}>
             {stats.days.filter(d => d.count > 0).length}
           </p>
-          <p className="text-xs" style={{ color: "#999" }}>记录天数</p>
+          <p className="text-xs mt-1" style={{ color: "#999" }}>记录天数</p>
         </div>
-        <div
-          className="p-3 rounded-xl text-center"
-          style={{ background: "rgba(255,140,66,0.08)" }}
-        >
-          <p className="text-xl font-bold" style={{ color: "#FF8C42" }}>
+        <div className="p-4 rounded-xl text-center" style={{ background: "rgba(255,140,66,0.08)" }}>
+          <p className="text-2xl font-bold" style={{ color: "#FF8C42" }}>
             {stats.days.filter(d => d.count > 0).length > 0
               ? (stats.total / stats.days.filter(d => d.count > 0).length).toFixed(1)
               : "0"}
           </p>
-          <p className="text-xs" style={{ color: "#999" }}>日均篇数</p>
+          <p className="text-xs mt-1" style={{ color: "#999" }}>日均篇数</p>
         </div>
       </div>
     </div>
   )
 }
-
