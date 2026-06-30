@@ -166,49 +166,49 @@ export default function RingPage() {
       >
         {!hasRecords ? (
           <div className="text-center py-10">
-            <div className="text-3xl mb-2">🌱</div>
+            <div className="text-3xl mb-2"></div>
             <p className="text-sm" style={{ color: "#bbb" }}>这个月还没有种下任何心得</p>
           </div>
         ) : (
           <>
-            {/* 星期标签 */}
-            <div className="flex mb-1">
-              <div style={{ width: "20px" }} />
+            {/* 星期标签行 */}
+            <div className="flex mb-1" style={{ paddingLeft: "22px" }}>
               {grid.map((_, wi) => (
-                <div key={wi} style={{ width: "14px" }} />
+                <div key={wi} className="flex-1 text-center text-xs" style={{ color: "#bbb", fontSize: "10px" }}>
+                  {wi === 0 ? "" : ""}
+                </div>
               ))}
             </div>
-
-            {/* 热力格子 + 行标签 */}
+        
+            {/* 热力格子区域 */}
             <div className="flex">
               {/* 星期行标签 */}
-              <div className="flex flex-col mr-1" style={{ width: "20px" }}>
+              <div className="flex flex-col" style={{ width: "22px", flexShrink: 0 }}>
                 {WEEKDAY_LABELS.map((label, i) => (
-                  <div key={i} className="flex items-center justify-end text-xs" style={{ height: "14px", color: "#bbb", fontSize: "10px" }}>
+                  <div key={i} className="flex-1 flex items-center justify-end text-xs pr-1" style={{ color: "#bbb", fontSize: "10px" }}>
                     {i % 2 === 0 ? label : ""}
                   </div>
                 ))}
               </div>
-
-              {/* 格子区域 */}
-              <div className="flex gap-[3px]">
+        
+              {/* 格子区域 - 铺满剩余宽度 */}
+              <div className="flex flex-1 gap-[3px]">
                 {grid.map((week, wi) => (
-                  <div key={wi} className="flex flex-col gap-[3px]">
+                  <div key={wi} className="flex-1 flex flex-col gap-[3px]">
                     {week.map((day, di) => {
                       if (!day) {
-                        return <div key={di} style={{ width: "14px", height: "14px" }} />
+                        return <div key={di} className="flex-1" style={{ aspectRatio: "1" }} />
                       }
                       const isToday = day.isToday
                       return (
                         <div
                           key={di}
-                          className="rounded-sm relative"
+                          className="flex-1 relative"
                           style={{
-                            width: "14px",
-                            height: "14px",
+                            aspectRatio: "1",
                             background: isToday ? "#8BC34A" : cellColor(day.count),
                             border: isToday ? "1.5px solid #558B2F" : day.count === 0 ? "1.5px solid #ccc" : "none",
-                            cursor: day.count > 0 ? "pointer" : "default",
+                            cursor: day.count > 0 || isToday ? "pointer" : "default",
                           }}
                           onMouseEnter={(e) => {
                             if (day.count > 0 || isToday) {
