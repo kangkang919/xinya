@@ -170,24 +170,17 @@ export default function RingPage() {
 
       {/* 日历卡片 */}
       <div className="rounded-xl mb-4" style={{ background: "#fff", border: "1px solid #eee", padding: "16px 12px 12px" }}>
-        {!hasRecords ? (
-          <div className="text-center py-10">
-            <div className="text-3xl mb-2">🌱</div>
-            <p className="text-sm" style={{ color: "#bbb" }}>这个月还没有种下任何心得</p>
-          </div>
-        ) : (
-          <>
-            {/* 星期标题 */}
-            <div className="grid mb-2" style={{ gridTemplateColumns: "repeat(7, 1fr)", gap: "4px" }}>
-              {WEEKDAY_LABELS.map((label, i) => (
-                <div key={i} className="text-center text-xs" style={{ color: "#bbb", fontWeight: 500, fontSize: "12px" }}>
-                  {label}
-                </div>
-              ))}
+        {/* 星期标题 */}
+        <div className="grid mb-2" style={{ gridTemplateColumns: "repeat(7, 1fr)", gap: "4px" }}>
+          {WEEKDAY_LABELS.map((label, i) => (
+            <div key={i} className="text-center text-xs" style={{ color: "#bbb", fontWeight: 500, fontSize: "12px" }}>
+              {label}
             </div>
+          ))}
+        </div>
 
-            {/* 日期网格 */}
-            <div className="grid" style={{ gridTemplateColumns: "repeat(7, 1fr)", gap: "4px" }}>
+        {/* 日期网格 */}
+        <div className="grid" style={{ gridTemplateColumns: "repeat(7, 1fr)", gap: "4px" }}>
               {calendarDays.map((cell, idx) => {
                 const level = cellLevel(cell.count)
                 const isToday = cell.isToday
@@ -278,8 +271,6 @@ export default function RingPage() {
               <div style={{ width: "14px", height: "14px", borderRadius: "3px", background: "#558B2F" }} />
               <span style={{ fontSize: "11px", color: "#bbb" }}>多</span>
             </div>
-          </>
-        )}
       </div>
 
       {/* 点击气泡 */}
@@ -300,7 +291,7 @@ export default function RingPage() {
       )}
 
       {/* 月度统计 */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-3" style={{ minHeight: "80px" }}>
         <div className="p-4 rounded-xl text-center" style={{ background: "rgba(139,195,74,0.08)" }}>
           <p className="text-2xl font-bold" style={{ color: "#8BC34A" }}>{stats.total}</p>
           <p className="text-xs mt-1" style={{ color: "#999" }}>本月篇数</p>
