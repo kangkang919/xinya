@@ -32,6 +32,34 @@ export async function sendVerifyEmail(to: string, code: string) {
   })
 }
 
+// 发送 Magic Link 登录/注册邮件
+export async function sendMagicLinkEmail(to: string, magicUrl: string, isNewUser: boolean) {
+  const subject = isNewUser ? "心芽 — 欢迎加入，点击链接完成注册" : "心芽 · 登录链接"
+  const greeting = isNewUser ? "欢迎来到心芽！" : "你正在登录心芽"
+  const actionText = isNewUser ? "完成注册并登录" : "登录心芽"
+
+  await transporter.sendMail({
+    from: `"心芽" <${process.env.SMTP_USER}>`,
+    to,
+    subject,
+    html: `
+      <div style="max-width:480px;margin:0 auto;font-family:sans-serif;padding:32px;background:#FAFAF5;border-radius:12px;">
+        <h2 style="color:#8BC34A;margin-bottom:8px;">🌱 心芽</h2>
+        <p style="color:#333;font-size:15px;">${greeting}</p>
+        <p style="color:#666;font-size:14px;">点击下方按钮${actionText}（链接 15 分钟内有效）：</p>
+        <div style="text-align:center;margin:24px 0;">
+          <a href="${magicUrl}"
+            style="background:#8BC34A;color:#fff;padding:12px 32px;border-radius:24px;text-decoration:none;font-size:14px;font-weight:bold;">
+            ${actionText} 🌿
+          </a>
+        </div>
+        <p style="color:#999;font-size:12px;">若非本人操作，请忽略此邮件。</p>
+        <p style="color:#999;font-size:12px;margin-top:24px;">每一颗灵感的种子，都在此刻破土而出 🌿</p>
+      </div>
+    `,
+  })
+}
+
 // 发送重置密码邮件
 export async function sendResetEmail(to: string, resetUrl: string) {
   await transporter.sendMail({
