@@ -107,7 +107,7 @@ function LoginForm() {
             color: mode === "password" ? "#fff" : "#999",
           }}
         >
-          密码登录
+          测试账号登录
         </button>
       </div>
 
