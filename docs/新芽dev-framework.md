@@ -11,7 +11,7 @@
 | **产品名称** | 心芽 |
 | **产品定位** | 面向个人的私有化心得记录应用，支持四页面架构（萌芽/枝叶/年轮/根系） |
 | **核心能力** | 富文本记录 → 标签组织 → 数据统计 → 可控分享 → AI洞察 |
-| **技术栈** | Next.js 14 App Router + React + TypeScript + Tailwind CSS + Prisma + PostgreSQL + 硅基流动（AI） |
+| **技术栈** | Next.js 14 App Router + React + TypeScript + Tailwind CSS + Prisma + PostgreSQL + DeepSeek（AI） |
 | **前端方案** | 响应式网页（PC/手机统一），手绘自然风格，5套主题，PWA支持"添加到主屏幕" |
 | **代码规模预估** | 后端约 ? 行 / 前端约 ? 行（待补充） |
 | **开发周期预估** | ?（待补充） |
@@ -42,7 +42,7 @@ Phase 7: 产品交付     —— 部署、交付
 |------|---------|-----------|
 | 第 1 轮：模糊想法 → 初步方向 | 场景定位 | 个人日常心得体会记录；四页面隐喻（萌芽/枝叶/年轮/根系） |
 | 第 2 轮：初步方向 → 功能边界 | 功能细化 | 富文本无图、标签组织、时间轴、数据统计、分享、主题、AI洞察 |
-| 第 3 轮：功能边界 → 技术方案 | 技术选型 | Next.js 14 + Prisma + PostgreSQL；响应式网页；硅基流动 AI |
+| 第 3 轮：功能边界 → 技术方案 | 技术选型 | Next.js 14 + Prisma + PostgreSQL；响应式网页；DeepSeek AI |
 | 第 4 轮：技术方案 → 用户体验 | UI/UX | 嫩绿色主色调、手绘自然风格、底部四 Tab 导航、诗意化文案 |
 | 第 5 轮：用户体验 → 最终确认 | 全局确认 | 形成 v2.0 设计框架；后续变更包括：置顶不限1次、移除草稿、增加导出、PWA、Git 代码管理 |
 
@@ -52,7 +52,7 @@ Phase 7: 产品交付     —— 部署、交付
 - [x] 输入数据格式已确认：富文本、标签、心情、记录时间
 - [x] 核心功能列表已收敛：记录、标签、统计、分享、主题、AI洞察
 - [x] 自动化 vs 手动的边界已界定：AI洞察自动触发，其余手动
-- [x] 技术栈已选定：Next.js + Prisma + PostgreSQL + 硅基流动
+- [x] 技术栈已选定：Next.js + Prisma + PostgreSQL + DeepSeek
 - [x] UI 风格方向已确认：嫩绿自然、手绘风、诗意文案
 - [x] 部署方式已确认：阿里云 ECS + GitHub + PM2
 - [x] 最终确认清单已通过 v2.0 框架确认
@@ -131,8 +131,86 @@ Phase 7: 产品交付     —— 部署、交付
 | F5.3 | 今日所在格高亮显示「今」标签 | P0 |
 | F5.4 | 颜色档位：0篇=空白，1篇=浅绿，2篇=中绿，3篇+=深绿 | P0 |
 | F5.5 | 点击日期格子：仅悬浮展示当天心得数量，不做任何页面跳转 | P0 |
-| F5.6 | 空状态文案：当月无记录时显示「这个月还没有种下任何心得」 | P0 |
-| F5.7 | AI 洞察卡片：暂不实现，列入待办 | 待办 |
+| F5.6 | 当月无记录时仍显示完整日历网格（非当月灰色 + 当月白底灰框），不显示空状态文案 | P0 |
+| F5.7 | 统计卡片下方增加「累计篇数」，显示用户历史总心得数 | P0 |
+| F5.8 | 统计卡片下方增加「拾遗」设置入口（开关），心得 < 20 条时置灰提示 | P0 |
+| F5.9 | AI 洞察卡片：暂不实现，列入待办 | 待办 |
+
+#### F9: 拾遗（每日概念卡片）
+
+| 功能点 | 描述 | 优先级 |
+|---|---|---|
+| F9.1 | 设置入口：年轮页统计卡片下方，开关控制开启/关闭 | P0 |
+| F9.2 | 前提条件：累计心得 ≥ 20 条才可开启，不足时置灰并提示 | P0 |
+| F9.3 | 触发时机：开启后，每天首次打开萌芽页时弹出卡片 | P0 |
+| F9.4 | 卡片正面：显示概念名称 + 分类标签，点击翻转 | P0 |
+| F9.5 | 卡片背面：LLM 从原始心得提炼的要点总结（3-5行），含「开始答题」按钮 | P0 |
+| F9.6 | 选择题：1-2道，类型自动适配（概念辨析→单选 / 关系匹配→多选 / 对比→判断） | P0 |
+| F9.7 | 答题反馈：答对变绿 + 肯定文案；答错变红 + 正确答案高亮 + 解析（引用原文） | P0 |
+| F9.8 | 查看原文：答完后显示「查看原文」按钮，点击跳转到心得详情页，卡片自动收起 | P0 |
+| F9.9 | 答对动画：种子→发芽→生长→开花→结果，间隔拉长（×2） | P0 |
+| F9.10 | 答错处理：间隔重置为1天，换一道同知识点新角度的题 | P0 |
+| F9.11 | 跳过（X按钮）：当天不再弹出，次日恢复；间隔不变 | P0 |
+| F9.12 | 调度算法：答错优先 > 久未复习优先 > 标签轮转 > 新题优先；每天最多1张 | P0 |
+| F9.13 | 出题时机：心得保存/更新时异步调用 DeepSeek 生成2-3道题，缓存到数据库 | P0 |
+| F9.14 | 出题 Prompt：题干≤30字，4个选项有迷惑性但不歧义，解析引用原文重点 | P0 |
+
+#### F9 数据模型
+
+**新增表 `quiz_questions`（题目缓存）：**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | Int | 主键 |
+| entryId | Int | 关联心得ID |
+| question | String | 题干 |
+| type | String | single/multiple/truefalse |
+| options | Json | 4个选项 |
+| answer | Json | 正确答案索引 |
+| explanation | String | 解析（引用原文） |
+| angle | Int | 同一知识点的第几道题（1/2/3） |
+| createdAt | DateTime | 生成时间 |
+
+**新增表 `quiz_records`（答题记录 & 调度）：**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | Int | 主键 |
+| userId | Int | 用户ID |
+| questionId | Int | 题目ID |
+| entryId | Int | 心得ID |
+| correct | Boolean | 是否答对 |
+| answeredAt | DateTime | 答题时间 |
+| nextReviewAt | DateTime | 下次复习时间 |
+| streak | Int | 连续答对次数 |
+
+**新增表 `user_settings`（用户设置）：**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| userId | Int | 用户ID（唯一） |
+| reviewEnabled | Boolean | 是否开启拾遗 |
+| lastCardDate | String | 上次弹出日期 |
+| lastCardQuestionId | Int | 上次题目ID |
+
+#### F9 API 设计
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/review/today` | 获取今日卡片（含题目），内部执行调度算法 |
+| POST | `/api/review/answer` | 提交答案，返回对错+解析，更新调度 |
+| POST | `/api/review/skip` | 跳过今日卡片 |
+| PATCH | `/api/review/settings` | 开启/关闭拾遗功能 |
+| GET | `/api/review/settings` | 获取拾遗设置状态 + 心得数量 |
+
+#### F9 前端文件
+
+| 文件 | 说明 |
+|------|------|
+| `app/(main)/sprout/page.tsx` | 萌芽页，增加卡片弹出逻辑 |
+| `app/(main)/ring/page.tsx` | 年轮页，增加拾遗设置入口 + 累计篇数 |
+| `components/review-card.tsx` | 卡片组件（正面/翻转/答题/动画） |
+| `components/review-settings.tsx` | 设置弹窗组件 |
 
 #### F6: 根系页（设置、分享、导出）
 
@@ -179,7 +257,7 @@ Phase 7: 产品交付     —— 部署、交付
 │  Next.js API Routes (app/api/*)                   │
 │  ┌─────────┐ ┌──────────┐ ┌──────────────────┐   │
 │  │ Routes  │→│ Services │→│  外部服务调用      │   │
-│  │ (API)   │ │ (业务逻辑)│ │  (硅基流动 AI)    │   │
+│  │ (API)   │ │ (业务逻辑)│ │  (DeepSeek AI)    │   │
 │  └─────────┘ └────┬─────┘ └──────────────────┘   │
 │               ┌────▼─────┐                        │
 │               │  Prisma  │                        │
@@ -213,6 +291,11 @@ Phase 7: 产品交付     —— 部署、交付
 | DELETE | `/api/tags/[id]` | 删除标签 |
 | GET | `/api/today-summary` | 今日速览数据 |
 | GET | `/api/monthly-stats?year=&month=` | 自然月每日心得数量统计 |
+| GET | `/api/review/today` | 拾遗：获取今日卡片（含题目） |
+| POST | `/api/review/answer` | 拾遗：提交答案 |
+| POST | `/api/review/skip` | 拾遗：跳过今日卡片 |
+| PATCH | `/api/review/settings` | 拾遗：开启/关闭设置 |
+| GET | `/api/review/settings` | 拾遗：获取设置状态 + 心得数量 |
 | GET | `/api/export` | 导出数据 |
 | GET | `/api/insights` | AI 洞察（待实现） |
 | POST | `/api/shares` | 创建分享链接（待实现） |
@@ -230,6 +313,9 @@ Tag           -- 标签（userId, name, isDefault）
 EntryTag      -- 心得与标签多对多关系
 Share         -- 分享链接（待补充）
 Insight       -- AI 洞察（待补充）
+QuizQuestion  -- 拾遗题目缓存（entryId, question, type, options, answer, explanation, angle）
+QuizRecord    -- 拾遗答题记录（userId, questionId, entryId, correct, answeredAt, nextReviewAt, streak）
+UserSetting   -- 用户设置（userId, reviewEnabled, lastCardDate, lastCardQuestionId）
 ```
 
 #### 其他存储
@@ -323,7 +409,7 @@ public/       -- 静态资源（PWA 图标、manifest.json）
 
 | 场景 | 要求 |
 |---|---|
-| 外部 API 超时（硅基流动） | 重试 2 次，失败时提示用户 |
+| 外部 API 超时（DeepSeek） | 重试 2 次，失败时提示用户 |
 | 数据库连接失败 | 启动时报错，不静默忽略 |
 | 前端 API 错误 | Toast 提示，不 alert |
 
@@ -406,19 +492,21 @@ public/       -- 静态资源（PWA 图标、manifest.json）
 #### 页面 3: 年轮页
 
 **布局结构：**
-- 顶部：标题"年轮" + slogan
-- 中间：月份导航栏（← 上月 | 2026年6月 | 下月 →）+ 自然月热力图
+- 顶部：标题“年轮” + slogan
+- 中间：月份导航栏（‹ 上月 | 2026年7月 今 | 下月 ›）+ 传统日历网格
+- 日历网格：周一到周日横排标题，7列，显示具体日期号
+  - 非当月日期：浅灰底 #f8f8f8，灰色数字，不可点击
+  - 当月无记录：白底 + 灰色边框 #ddd，显示日期号
+  - 当月有记录：按篇数填色（1篇=#C5E1A5 / 2篇=#8BC34A / 3篇+=#558B2F），白色日期号
+  - 今日：绿色边框高亮 + 右上角「今」标签
+  - 点击有记录的格子：居中弹出「X日 · N 篇心得」，2秒自动消失
+- 统计卡片：本月篇数 / 记录天数 / 日均篇数（固定行高 minHeight: 80px）
+- 统计卡片下方：「累计篇数」显示历史总心得数
+- 统计卡片下方：「拾遗」设置入口（开关），心得 < 20 条时置灰提示
 - 底部：四 Tab 导航
 
-**热力图规范：**
-- 仅保留自然月 GitHub 风格热力图一种视图
-- 默认显示当月，左右箭头切换月份
-- 颜色档位：0篇=空白，1篇=浅绿（#C5E1A5），2篇=中绿（#8BC34A），3篇+=深绿（#558B2F）
-- 今日所在格高亮显示「今」标签
-- 点击日期格子：仅悬浮气泡展示当天心得数量（如"3篇"），不跳转
-
 **状态设计：**
-- 空状态（当月无记录）：显示「这个月还没有种下任何心得」
+- 无论当月是否有记录，均显示完整日历网格，不显示空状态文案
 
 #### 页面 4: 根系页
 
@@ -470,7 +558,7 @@ xinya/
 
 - 数据库：`DATABASE_URL`
 - 邮件 SMTP：`SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`
-- AI：`SILICONFLOW_API_KEY`, `SILICONFLOW_BASE_URL`
+- AI：`DEEPSEEK_API_KEY`
 - 部署：`PORT`（默认 3000）
 
 > 配置从 `.env` 读取，Next.js 自动加载。
@@ -587,8 +675,8 @@ GET    /api/today-summary
 Next.js (前端 + API Routes)
     ↓ Prisma
 PostgreSQL
-    ↓ （待实现）
-硅基流动 AI
+    ↓ （F9 拾遗）
+DeepSeek AI
 ```
 
 ### 6.2 API 合同（前后端联调契约）
@@ -623,7 +711,7 @@ PostgreSQL
 
 | 服务 | 模型/版本 | 运行方式 | 首次使用要求 | 离线策略 |
 |------|----------|---------|------------|---------|
-| 硅基流动 AI | 免费模型（待选定） | 云端 API | 需 API Key | AI 功能不可用 |
+| DeepSeek AI | deepseek-chat | 云端 API | 需 API Key | AI 功能不可用 |
 | SMTP 邮件 | QQ/163 | 云端 | 需邮箱授权码 | 验证码发送失败 |
 
 ### 6.5 端到端验证脚本（待补充）
@@ -676,8 +764,8 @@ SMTP_USER=your_email@qq.com
 SMTP_PASS=your_auth_code
 
 # AI
-SILICONFLOW_API_KEY=your_key
-SILICONFLOW_BASE_URL=https://api.siliconflow.cn/v1
+DEEPSEEK_API_KEY=your_key
+DEEPSEEK_BASE_URL=https://api.deepseek.com/v1
 
 # 部署
 PORT=3000
@@ -739,7 +827,11 @@ Step 7: pm2 start ecosystem.config.js
 | 2026-06-21 | 创建新芽 dev-framework v2.1 | 已确认 |
 | 2026-06-30 | 域名 shuxiangnote.top 上线，HTTPS + 反向代理配置完成 | 已验收 |
 | 2026-06-30 | PWA 图标去白边，绿色背景铺满全图 | 已验收 |
-| 2026-06-30 | 年轮页方案更新：仅自然月热力图，取消周/年视图，AI洞察列入待办 | 已确认 |
+| 2026-07-01 | 年轮页改为传统日历网格布局（周一到周日横排，显示日期号） | 已验收 |
+| 2026-07-01 | 年轮页去掉空状态文案，始终显示完整日历网格 | 已验收 |
+| 2026-07-01 | 统计卡片固定行高（minHeight: 80px） | 已验收 |
+| 2026-07-01 | AI 服务从硅基流动切换为 DeepSeek | 已确认 |
+| 2026-07-01 | 新增 F9 拾遗（每日概念卡片）功能设计 | 已确认 |
 
 ---
 
@@ -750,13 +842,15 @@ Step 7: pm2 start ecosystem.config.js
 | 模块 | 待补充内容 | 当前状态 |
 | :--- | :--- | :--- |
 | F4 枝叶页 | 点击标签气泡筛选心得：`/api/entries?tagId=xxx` 后端未处理 | 已发现，待修复 |
-| F5 年轮页 | 自然月 GitHub 风格热力图（F5.1~F5.6） | 待开发 |
-| F5 年轮页 | AI 洞察卡片（F5.7） | 待办 |
+| F5 年轮页 | 自然月传统日历网格（F5.1~F5.6） | 已验收 |
+| F5 年轮页 | 统计卡片下方「累计篇数」+「拾遗」设置入口（F5.7~F5.8） | 待开发 |
+| F5 年轮页 | AI 洞察卡片（F5.9） | 待办 |
 | F6 根系页 | 分享管理（创建链接、访客只读、有效期） | 待开发 |
 | F6 根系页 | 离线缓存设置 | 待开发 |
 | F7/F8 | 新用户播种引导三步流程 | 待开发 |
 | F1 | 心得模板（今日反思、读书笔记、工作复盘、灵感碎片） | 待开发 |
-| AI | 硅基流动模型选型、System Prompt、Insight 数据模型 | 待设计 |
+| F9 拾遗 | 每日概念卡片完整功能（F9.1~F9.14） | 待开发 |
+| AI | DeepSeek 模型选型、System Prompt、Insight 数据模型 | 待设计 |
 | Eval | 完整端到端验证脚本 | 待补充 |
 | 文档 | 代码规模预估、开发周期预估 | 待补充 |
 
