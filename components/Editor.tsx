@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation"
 import { EyeOff } from "lucide-react"
 import toast from "react-hot-toast"
 import EditorToolbar from "./EditorToolbar"
+import { useTheme } from "@/lib/useTheme"
 
 const MOODS = [
   { key: "happy", emoji: "😊", label: "开心", color: "#FFB74D" },
@@ -20,6 +21,7 @@ interface EditorProps {
 
 export default function Editor({ entryId, isNew }: EditorProps) {
   const router = useRouter()
+  const { isDark, titleColor, inputBg, inputBorder } = useTheme()
   const [title, setTitle] = useState("")
   const [mood, setMood] = useState<string | null>(null)
   const [selectedTags, setSelectedTags] = useState<string[]>([])
@@ -133,7 +135,7 @@ export default function Editor({ entryId, isNew }: EditorProps) {
   }
 
   return (
-    <div className={`min-h-screen pb-24 ${!focusMode ? 'pt-[92px]' : ''}`} style={{ background: focusMode ? "#1a1a2e" : "#FAFAF5" }}>
+    <div className={`min-h-screen pb-24 ${!focusMode ? 'pt-[92px]' : ''}`} style={{ background: focusMode ? "#1a1a2e" : (isDark ? "#1E1E1E" : "#FAFAF5") }}>
       {!focusMode && (
         <EditorToolbar
           isNew={isNew}
@@ -150,11 +152,11 @@ export default function Editor({ entryId, isNew }: EditorProps) {
         />
       )}
       <div className="max-w-3xl mx-auto">
-        <input className="w-full text-xl font-bold outline-none px-4 pt-6 pb-2" style={{ color: focusMode ? "#eee" : "#333", background: "transparent" }} placeholder="给这颗种子取个名字…" value={title} onChange={e => setTitle(e.target.value)} />
+        <input className="w-full text-xl font-bold outline-none px-4 pt-6 pb-2" style={{ color: focusMode ? "#eee" : titleColor, background: "transparent" }} placeholder="给这颗种子取个名字…" value={title} onChange={e => setTitle(e.target.value)} />
         {focusMode && <button onClick={() => setFocusMode(false)} className="fixed top-4 right-4 z-20 p-2 rounded-full opacity-50 hover:opacity-100" style={{ background: "rgba(255,255,255,0.1)" }}><EyeOff size={20} color="#aaa" /></button>}
-        <div ref={editorRef} contentEditable suppressContentEditableWarning onPaste={handlePaste} className="w-full outline-none text-sm leading-relaxed" style={{ padding: focusMode ? "40px 24px" : "16px", minHeight: focusMode ? "60vh" : "30vh", color: focusMode ? "#ddd" : "#333" }} onInput={handleInput} data-placeholder="在这里写下你的感悟、想法或日记…" />
+        <div ref={editorRef} contentEditable suppressContentEditableWarning onPaste={handlePaste} className="w-full outline-none text-sm leading-relaxed" style={{ padding: focusMode ? "40px 24px" : "16px", minHeight: focusMode ? "60vh" : "30vh", color: focusMode ? "#ddd" : (isDark ? "#E0E0E0" : "#333") }} onInput={handleInput} data-placeholder="在这里写下你的感悟、想法或日记…" />
         {!focusMode && (
-          <div className="px-4 py-3 border-t" style={{ borderColor: "#e0e0e0" }}>
+          <div className="px-4 py-3 border-t" style={{ borderColor: isDark ? "#444" : "#e0e0e0" }}>
             <p className="text-xs mb-2" style={{ color: "#999" }}>此刻的心情</p>
             <div className="flex gap-3">{MOODS.map(m => (
               <button key={m.key} onClick={() => setMood(mood === m.key ? null : m.key)} className="flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl transition" style={{ background: mood === m.key ? `${m.color}20` : "transparent", border: mood === m.key ? `2px solid ${m.color}` : "2px solid transparent" }}>
@@ -164,13 +166,13 @@ export default function Editor({ entryId, isNew }: EditorProps) {
           </div>
         )}
         {showTagPicker && !focusMode && (
-          <div className="px-4 py-3 border-t animate-fade-in" style={{ borderColor: "#e0e0e0" }}>
+          <div className="px-4 py-3 border-t animate-fade-in" style={{ borderColor: isDark ? "#444" : "#e0e0e0" }}>
             <div className="flex items-center gap-2 mb-2">
-              <input className="input-sketch flex-1 px-3 py-2 text-sm outline-none" style={{ border: "1.5px solid #ccc", background: "#fafaf5" }} placeholder="新建标签名" value={newTagName} onChange={e => setNewTagName(e.target.value)} onKeyDown={e => e.key === "Enter" && createTag()} />
+              <input className="input-sketch flex-1 px-3 py-2 text-sm outline-none" style={{ border: `1.5px solid ${inputBorder}`, background: inputBg, color: titleColor }} placeholder="新建标签名" value={newTagName} onChange={e => setNewTagName(e.target.value)} onKeyDown={e => e.key === "Enter" && createTag()} />
               <button onClick={createTag} className="px-3 py-2 text-sm rounded-full text-white" style={{ background: "#8BC34A" }}>添加</button>
             </div>
             <div className="flex flex-wrap gap-2">{allTags.map(tag => (
-              <button key={tag.id} onClick={() => toggleTag(tag.id)} className="px-3 py-1.5 rounded-full text-xs font-medium transition" style={{ background: selectedTags.includes(tag.id) ? "#8BC34A" : "#f0f0f0", color: selectedTags.includes(tag.id) ? "#fff" : "#666" }}>{tag.name}</button>
+              <button key={tag.id} onClick={() => toggleTag(tag.id)} className="px-3 py-1.5 rounded-full text-xs font-medium transition" style={{ background: selectedTags.includes(tag.id) ? "#8BC34A" : (isDark ? "#333" : "#f0f0f0"), color: selectedTags.includes(tag.id) ? "#fff" : (isDark ? "#aaa" : "#666") }}>{tag.name}</button>
             ))}</div>
           </div>
         )}
