@@ -3,37 +3,37 @@ import { prisma } from "@/lib/prisma"
 import { signToken, COOKIE_CONFIG } from "@/lib/auth"
 import { hashPassword } from "@/lib/auth"
 
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://shuxiangnote.top"
+
 export async function GET(req: NextRequest) {
   try {
     const token = req.nextUrl.searchParams.get("token")
     if (!token) {
-      return NextResponse.redirect(new URL("/login?error=链接无效", req.url))
+      return NextResponse.redirect(`${APP_URL}/login?error=閾炬帴鏃犳晥`)
     }
 
-    // 查找 token
+    // 鏌ユ壘 token
     const magicLink = await prisma.magicLink.findFirst({
       where: { token, used: false },
     })
 
     if (!magicLink) {
-      return NextResponse.redirect(new URL("/login?error=链接无效或已使用", req.url))
+      return NextResponse.redirect(`${APP_URL}/login?error=閾炬帴鏃犳晥鎴栧凡浣跨敤`)
     }
 
     if (new Date() > magicLink.expiresAt) {
       await prisma.magicLink.update({ where: { id: magicLink.id }, data: { used: true } })
-      return NextResponse.redirect(new URL("/login?error=链接已过期", req.url))
+      return NextResponse.redirect(`${APP_URL}/login?error=閾炬帴宸茶繃鏈焋)
     }
 
-    // 标记已使用
+    // 鏍囪宸蹭娇鐢?
     await prisma.magicLink.update({ where: { id: magicLink.id }, data: { used: true } })
 
     const email = magicLink.email
     let user = await prisma.user.findUnique({ where: { email } })
 
-    // 新用户：自动创建账号
+    // 鏂扮敤鎴凤細鑷姩鍒涘缓璐﹀彿
     if (!user) {
-      // 邀请码账号有预置密码，新用户通过 Magic Link 注册也需要密码
-      // 生成一个随机密码（用户后续可修改）
       const randomPwd = Math.random().toString(36).slice(2, 10)
       const passwordHash = await hashPassword(randomPwd)
 
@@ -41,29 +41,29 @@ export async function GET(req: NextRequest) {
         data: { email, passwordHash, isVerified: true },
       })
 
-      // 自动创建默认标签
+      // 鑷姩鍒涘缓榛樿鏍囩
       await prisma.tag.create({
-        data: { userId: user.id, name: "随笔", isDefault: true },
+        data: { userId: user.id, name: "闅忕瑪", isDefault: true },
       })
     }
 
-    // 如果是老用户但未验证，自动验证
+    // 濡傛灉鏄€佺敤鎴蜂絾鏈獙璇侊紝鑷姩楠岃瘉
     if (!user.isVerified) {
       await prisma.user.update({ where: { id: user.id }, data: { isVerified: true } })
     }
 
-    // 登录：设置 JWT cookie
+    // 鐧诲綍锛氳缃?JWT cookie
     const jwtToken = signToken(user.id)
     await prisma.user.update({ where: { id: user.id }, data: { openTimes: { increment: 1 } } })
 
     const response = NextResponse.redirect(
-      new URL(user.onboardDone ? "/" : "/onboard", req.url)
+      `${APP_URL}${user.onboardDone ? "/" : "/onboard"}`
     )
     response.cookies.set(COOKIE_CONFIG.name, jwtToken, COOKIE_CONFIG.options)
 
     return response
   } catch (e) {
     console.error("[magic-link/verify]", e)
-    return NextResponse.redirect(new URL("/login?error=验证失败", req.url))
+    return NextResponse.redirect(`${APP_URL}/login?error=楠岃瘉澶辫触`)
   }
 }
