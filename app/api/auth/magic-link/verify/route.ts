@@ -9,30 +9,30 @@ export async function GET(req: NextRequest) {
   try {
     const token = req.nextUrl.searchParams.get("token")
     if (!token) {
-      return NextResponse.redirect(`${APP_URL}/login?error=閾炬帴鏃犳晥`)
+      return NextResponse.redirect(`${APP_URL}/login?error=链接无效`)
     }
 
-    // 鏌ユ壘 token
+    // 查找 token
     const magicLink = await prisma.magicLink.findFirst({
       where: { token, used: false },
     })
 
     if (!magicLink) {
-      return NextResponse.redirect(`${APP_URL}/login?error=閾炬帴鏃犳晥鎴栧凡浣跨敤`)
+      return NextResponse.redirect(`${APP_URL}/login?error=链接无效或已使用`)
     }
 
     if (new Date() > magicLink.expiresAt) {
       await prisma.magicLink.update({ where: { id: magicLink.id }, data: { used: true } })
-      return NextResponse.redirect(`${APP_URL}/login?error=閾炬帴宸茶繃鏈焋)
+      return NextResponse.redirect(`${APP_URL}/login?error=链接已过期`)
     }
 
-    // 鏍囪宸蹭娇鐢?
+    // 标记已使用
     await prisma.magicLink.update({ where: { id: magicLink.id }, data: { used: true } })
 
     const email = magicLink.email
     let user = await prisma.user.findUnique({ where: { email } })
 
-    // 鏂扮敤鎴凤細鑷姩鍒涘缓璐﹀彿
+    // 新用户：自动创建账号
     if (!user) {
       const randomPwd = Math.random().toString(36).slice(2, 10)
       const passwordHash = await hashPassword(randomPwd)
@@ -41,18 +41,18 @@ export async function GET(req: NextRequest) {
         data: { email, passwordHash, isVerified: true },
       })
 
-      // 鑷姩鍒涘缓榛樿鏍囩
+      // 自动创建默认标签
       await prisma.tag.create({
-        data: { userId: user.id, name: "闅忕瑪", isDefault: true },
+        data: { userId: user.id, name: "随笔", isDefault: true },
       })
     }
 
-    // 濡傛灉鏄€佺敤鎴蜂絾鏈獙璇侊紝鑷姩楠岃瘉
+    // 如果是老用户但未验证，自动验证
     if (!user.isVerified) {
       await prisma.user.update({ where: { id: user.id }, data: { isVerified: true } })
     }
 
-    // 鐧诲綍锛氳缃?JWT cookie
+    // 登录：设置 JWT cookie
     const jwtToken = signToken(user.id)
     await prisma.user.update({ where: { id: user.id }, data: { openTimes: { increment: 1 } } })
 
@@ -64,6 +64,6 @@ export async function GET(req: NextRequest) {
     return response
   } catch (e) {
     console.error("[magic-link/verify]", e)
-    return NextResponse.redirect(`${APP_URL}/login?error=楠岃瘉澶辫触`)
+    return NextResponse.redirect(`${APP_URL}/login?error=验证失败`)
   }
 }
