@@ -1,6 +1,7 @@
-"use client"
+﻿"use client"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { useTheme } from "@/lib/useTheme"
 
 interface Tag {
   id: string
@@ -47,6 +48,7 @@ function formatDate(iso: string) {
 
 export default function LeafPage() {
   const router = useRouter()
+  const { isDark, cardBg, cardBorder, titleColor, dimColor, inputBg, inputBorder } = useTheme()
   const [tags, setTags] = useState<Tag[]>([])
   const [search, setSearch] = useState('')
   const [selectedTag, setSelectedTag] = useState<Tag | null>(null)
@@ -92,11 +94,11 @@ export default function LeafPage() {
     <div className="p-4 max-w-lg mx-auto pb-24">
       {/* 页面标题 */}
       <div className="flex items-center justify-between mb-1">
-        <h1 className="text-xl font-bold" style={{ color: '#333' }}>
+        <h1 className="text-xl font-bold" style={{ color: titleColor }}>
           <span style={{ color: '#8BC34A', display: 'inline-block', width: '1.4em', textAlign: 'center' }}>🍃</span>枝叶
         </h1>
       </div>
-      <p className="text-xs mb-5" style={{ color: '#bbb' }}>思绪的脉络，在此生枝蔓叶</p>
+      <p className="text-xs mb-5" style={{ color: dimColor }}>思绪的脉络，在此生枝蔓叶</p>
 
       {/* 搜索框 */}
       <div className="relative mb-6">
@@ -111,7 +113,7 @@ export default function LeafPage() {
         </svg>
         <input
           className="w-full pl-10 pr-4 py-2.5 rounded-full outline-none text-sm"
-          style={{ border: '1.5px solid #e0e0e0', background: '#fff' }}
+          style={{ border: `1.5px solid ${inputBorder}`, background: inputBg, color: titleColor }}
           placeholder="搜索标签…"
           value={search}
           onChange={e => setSearch(e.target.value)}
@@ -175,10 +177,10 @@ export default function LeafPage() {
                   key={entry.id}
                   onClick={() => router.push(`/entry/${entry.id}/view`)}
                   className="p-4 rounded-xl cursor-pointer transition-all active:scale-[0.98]"
-                  style={{ background: '#fff', border: '1px solid #eee' }}
+                  style={{ background: cardBg, border: `1px solid ${cardBorder}` }}
                 >
                   {entry.title ? (
-                    <h3 className="text-sm font-medium mb-1 line-clamp-1" style={{ color: '#333' }}>
+                    <h3 className="text-sm font-medium mb-1 line-clamp-1" style={{ color: titleColor }}>
                       {entry.title}
                     </h3>
                   ) : null}
@@ -207,3 +209,4 @@ export default function LeafPage() {
     </div>
   )
 }
+
