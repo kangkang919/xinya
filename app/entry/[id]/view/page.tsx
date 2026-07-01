@@ -1,6 +1,7 @@
 "use client"
 import { useEffect, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
+import { useTheme } from "@/lib/useTheme"
 
 interface Tag { id: string; name: string }
 interface Entry {
@@ -28,6 +29,12 @@ export default function ViewEntryPage() {
   const router = useRouter()
   const params = useParams()
   const id = params.id as string
+  const { isDark, cardBg, titleColor } = useTheme()
+
+  const bgColor = isDark ? "#1E1E1E" : "#FAFAF5"
+  const navBg = isDark ? "rgba(30,30,30,0.95)" : "rgba(250,250,245,0.95)"
+  const navBorder = isDark ? "#333" : "#e8e8e0"
+  const contentColor = isDark ? "#E0E0E0" : "#333"
 
   const [entry, setEntry] = useState<Entry | null>(null)
   const [loading, setLoading] = useState(true)
@@ -47,7 +54,7 @@ export default function ViewEntryPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: '#FAFAF5' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: bgColor }}>
         <div className="text-center">
           <div className="text-3xl mb-2">🌱</div>
           <p className="text-sm" style={{ color: '#bbb' }}>正在萌发中…</p>
@@ -58,7 +65,7 @@ export default function ViewEntryPage() {
 
   if (error || !entry) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: '#FAFAF5' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: bgColor }}>
         <div className="text-center p-8">
           <div className="text-3xl mb-2">🍂</div>
           <p className="text-sm mb-4" style={{ color: '#bbb' }}>这篇心得不见了</p>
@@ -75,13 +82,13 @@ export default function ViewEntryPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: '#FAFAF5' }}>
+    <div className="min-h-screen flex flex-col" style={{ background: bgColor }}>
       {/* 顶部导航栏 */}
       <div
         className="sticky top-0 z-10 flex items-center justify-between px-4 py-3"
         style={{
-          background: 'rgba(250,250,245,0.95)',
-          borderBottom: '1px solid #e8e8e0',
+          background: navBg,
+          borderBottom: `1px solid ${navBorder}`,
           backdropFilter: 'blur(12px)',
         }}
       >
@@ -130,7 +137,7 @@ export default function ViewEntryPage() {
 
         {/* 标题 */}
         {entry.title && (
-          <h2 className="text-base font-semibold mb-2 leading-snug" style={{ color: '#222' }}>
+          <h2 className="text-base font-semibold mb-2 leading-snug" style={{ color: titleColor }}>
             {entry.title}
           </h2>
         )}
@@ -143,8 +150,8 @@ export default function ViewEntryPage() {
         {/* 正文 */}
         <div
           className="text-sm leading-relaxed view-content"
-          style={{ color: '#333', wordBreak: 'break-word' }}
-          dangerouslySetInnerHTML={{ __html: entry.content || '<p style="color:#bbb">空空如也…</p>' }}
+          style={{ color: contentColor, wordBreak: 'break-word' }}
+          dangerouslySetInnerHTML={{ __html: entry.content || `<p style="color:${isDark ? '#666' : '#bbb'}">空空如也…</p>` }}
         />
       </div>
 
@@ -152,8 +159,8 @@ export default function ViewEntryPage() {
       <div
         className="sticky bottom-0 px-4 py-3 flex items-center justify-between"
         style={{
-          background: 'rgba(250,250,245,0.95)',
-          borderTop: '1px solid #e8e8e0',
+          background: navBg,
+          borderTop: `1px solid ${navBorder}`,
           backdropFilter: 'blur(12px)',
         }}
       >
