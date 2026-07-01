@@ -15,6 +15,7 @@ interface EntryCardProps {
   recordTime: string
   isTop: boolean
   isFavorite: boolean
+  isDark?: boolean
   onToggleFavorite: (id: string) => void
   onTogglePin: (id: string) => void
   onDelete: (id: string, title: string) => void
@@ -29,9 +30,14 @@ const MOODS: Record<string, { icon: typeof Smile; color: string; label: string }
 }
 
 export function EntryCard({ id, title, contentPreview, tags, mood, recordTime,
-  isTop, isFavorite, onToggleFavorite, onTogglePin, onDelete }: EntryCardProps) {
+  isTop, isFavorite, isDark = false, onToggleFavorite, onTogglePin, onDelete }: EntryCardProps) {
   const router = useRouter()
   const [menuOpen, setMenuOpen] = useState(false)
+
+  const cardBg = isDark ? "#2A2A2A" : "#fff"
+  const cardBorder = isTop ? "#8BC34A" : (isDark ? "#444" : "#e0e0e0")
+  const titleColor = isDark ? "#E0E0E0" : "#333"
+  const textColor = isDark ? "#aaa" : "#666"
 
   const date = new Date(recordTime)
   const dateStr = `${date.getMonth() + 1}月${date.getDate()}日`
@@ -57,8 +63,8 @@ export function EntryCard({ id, title, contentPreview, tags, mood, recordTime,
 
   return (
     <div
-      className="card-sketch bg-white p-4 shadow-sm relative transition-all hover:shadow-md cursor-pointer"
-      style={{ border: isTop ? "2px solid #8BC34A" : "1.5px solid #e0e0e0" }}
+      className="card-sketch p-4 shadow-sm relative transition-all hover:shadow-md cursor-pointer"
+      style={{ background: cardBg, border: isTop ? "2px solid #8BC34A" : `1.5px solid ${cardBorder}` }}
       onClick={() => router.push(`/entry/${id}/view`)}
     >
       {/* 置顶标记 */}
@@ -83,11 +89,12 @@ export function EntryCard({ id, title, contentPreview, tags, mood, recordTime,
           <MoreVertical size={16} color="#999" />
         </button>
         {menuOpen && (
-          <div className="absolute right-0 top-7 bg-white border rounded-lg shadow-lg py-1 min-w-[100px] z-10"
-            style={{ borderColor: "#e0e0e0" }}
+          <div className="absolute right-0 top-7 border rounded-lg shadow-lg py-1 min-w-[100px] z-10"
+            style={{ background: cardBg, borderColor: cardBorder }}
             onClick={e => e.stopPropagation()}>
             <button onClick={() => { onTogglePin(id); setMenuOpen(false) }}
-              className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">
+              className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+              style={{ color: titleColor }}>
               {isTop ? "取消置顶" : "置顶"}
             </button>
             <button onClick={() => { onDelete(id, title); setMenuOpen(false) }}
@@ -99,12 +106,12 @@ export function EntryCard({ id, title, contentPreview, tags, mood, recordTime,
       </div>
 
       {/* 标题 */}
-      <h3 className="font-bold text-base mb-1 pr-12" style={{ color: "#333", marginTop: isTop ? 16 : 0 }}>
+      <h3 className="font-bold text-base mb-1 pr-12" style={{ color: titleColor, marginTop: isTop ? 16 : 0 }}>
         {title}
       </h3>
 
       {/* 内容预览 */}
-      <p className="text-sm leading-relaxed mb-3 line-clamp-2" style={{ color: "#666" }}>
+      <p className="text-sm leading-relaxed mb-3 line-clamp-2" style={{ color: textColor }}>
         {contentPreview || "（空白心得）"}
       </p>
 
