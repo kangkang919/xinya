@@ -25,11 +25,13 @@ async function main() {
   for (const acc of accounts) {
     const existing = await prisma.user.findUnique({ where: { email: acc.email } })
     if (existing) {
-      console.log(`[skip] ${acc.email} already exists`)
+      const passwordHash = await bcrypt.hash(acc.password, 12)
+      await prisma.user.update({ where: { id: existing.id }, data: { passwordHash } })
+      console.log(`[updated] ${acc.email} password re-hashed`)
       continue
     }
 
-    const passwordHash = await bcrypt.hash(acc.password, 10)
+    const passwordHash = await bcrypt.hash(acc.password, 12)
     const user = await prisma.user.create({
       data: {
         email: acc.email,
@@ -46,7 +48,7 @@ async function main() {
     console.log(`[ok] ${acc.email} created (id: ${user.id})`)
   }
 
-  console.log("\nDone! All guest accounts created.")
+  console.log("\nDone!")
   await prisma.$disconnect()
 }
 
