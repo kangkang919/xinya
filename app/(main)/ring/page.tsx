@@ -1,5 +1,6 @@
-"use client"
+﻿"use client"
 import { useEffect, useState } from "react"
+import { useTheme } from "@/lib/useTheme"
 
 interface DayData {
   day: number
@@ -35,6 +36,7 @@ function cellLevel(count: number): string {
 }
 
 export default function RingPage() {
+  const { isDark, cardBg, cardBorder, titleColor, dimColor } = useTheme()
   const now = new Date()
   const nowParts = (() => {
     const parts = new Intl.DateTimeFormat("en-US", {
@@ -118,11 +120,11 @@ export default function RingPage() {
     return (
       <div className="p-4 max-w-lg mx-auto pb-24">
         <div className="flex items-center justify-between mb-1">
-          <h1 className="text-xl font-bold" style={{ color: "#333" }}>
+          <h1 className="text-xl font-bold" style={{ color: titleColor }}>
             <span style={{ color: "#8BC34A", display: "inline-block", width: "1.4em", textAlign: "center" }}>🌀</span>年轮
           </h1>
         </div>
-        <p className="text-xs mb-5" style={{ color: "#bbb" }}>感受心得生长的节律</p>
+        <p className="text-xs mb-5" style={{ color: dimColor }}>感受心得生长的节律</p>
         <div className="text-center py-16">
           <div className="text-3xl mb-2">🌱</div>
           <p className="text-sm" style={{ color: "#bbb" }}>加载中…</p>
@@ -137,10 +139,10 @@ export default function RingPage() {
   return (
     <div className="p-4 max-w-lg mx-auto pb-24">
       {/* 页面标题 */}
-      <h1 className="text-xl font-bold mb-1" style={{ color: "#333" }}>
+      <h1 className="text-xl font-bold mb-1" style={{ color: titleColor }}>
         <span style={{ color: "#8BC34A", display: "inline-block", width: "1.4em", textAlign: "center" }}>🌀</span>年轮
       </h1>
-      <p className="text-xs mb-5" style={{ color: "#bbb" }}>感受心得生长的节律</p>
+      <p className="text-xs mb-5" style={{ color: dimColor }}>感受心得生长的节律</p>
 
       {/* 月份导航 */}
       <div className="flex items-center justify-between mb-4 px-1">
@@ -151,7 +153,7 @@ export default function RingPage() {
         >
           ‹
         </button>
-        <span className="text-base font-semibold" style={{ color: "#333", display: "flex", alignItems: "center", gap: "8px" }}>
+        <span className="text-base font-semibold" style={{ color: titleColor, display: "flex", alignItems: "center", gap: "8px" }}>
           {stats.label}
           {isCurrentMonth && (
             <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(139,195,74,0.12)", color: "#8BC34A", fontWeight: 500 }}>
@@ -169,7 +171,7 @@ export default function RingPage() {
       </div>
 
       {/* 日历卡片 */}
-      <div className="rounded-xl mb-4" style={{ background: "#fff", border: "1px solid #eee", padding: "16px 12px 12px" }}>
+      <div className="rounded-xl mb-4" style={{ background: cardBg, border: `1px solid ${cardBorder}`, padding: "16px 12px 12px" }}>
         {/* 星期标题 */}
         <div className="grid mb-2" style={{ gridTemplateColumns: "repeat(7, 1fr)", gap: "4px" }}>
           {WEEKDAY_LABELS.map((label, i) => (
@@ -194,13 +196,13 @@ export default function RingPage() {
 
                 if (!cell.isCurrentMonth) {
                   // 非当月 - 灰色
-                  cellStyle.background = "#f8f8f8"
-                  cellStyle.color = "#ddd"
+                  cellStyle.background = isDark ? "#252525" : "#f8f8f8"
+                  cellStyle.color = isDark ? "#444" : "#ddd"
                 } else if (cell.count === 0) {
-                  // 当月无记录 - 白底灰框
-                  cellStyle.background = "#fff"
-                  cellStyle.border = "1.5px solid #ddd"
-                  cellStyle.color = "#999"
+                  // 当月无记录
+                  cellStyle.background = isDark ? "#333" : "#fff"
+                  cellStyle.border = `1.5px solid ${isDark ? "#555" : "#ddd"}`
+                  cellStyle.color = isDark ? "#666" : "#999"
                 } else {
                   // 当月有记录 - 颜色框
                   cellStyle.cursor = "pointer"
@@ -245,7 +247,7 @@ export default function RingPage() {
                           fontSize: "8px",
                           color: "#558B2F",
                           fontWeight: 700,
-                          background: "#fff",
+                          background: isDark ? "#2A2A2A" : "#fff",
                           borderRadius: "50%",
                           width: "14px",
                           height: "14px",
@@ -265,7 +267,7 @@ export default function RingPage() {
             {/* 图例 */}
             <div className="flex items-center justify-end gap-1 mt-3" style={{ padding: "0 4px" }}>
               <span style={{ fontSize: "11px", color: "#bbb" }}>少</span>
-              <div style={{ width: "14px", height: "14px", borderRadius: "3px", background: "#fff", border: "1.5px solid #ddd" }} />
+              <div style={{ width: "14px", height: "14px", borderRadius: "3px", background: isDark ? "#333" : "#fff", border: `1.5px solid ${isDark ? "#555" : "#ddd"}` }} />
               <div style={{ width: "14px", height: "14px", borderRadius: "3px", background: "#C5E1A5" }} />
               <div style={{ width: "14px", height: "14px", borderRadius: "3px", background: "#8BC34A" }} />
               <div style={{ width: "14px", height: "14px", borderRadius: "3px", background: "#558B2F" }} />
