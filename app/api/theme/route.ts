@@ -7,7 +7,7 @@ export async function PATCH(req: NextRequest) {
   if (!userId) return NextResponse.json({ ok: false }, { status: 401 })
 
   const { theme } = await req.json()
-  if (!["spring", "summer", "autumn", "winter"].includes(theme))
+  if (!["spring", "summer", "autumn", "winter", "night"].includes(theme))
     return NextResponse.json({ ok: false, error: "无效主题" }, { status: 400 })
 
   await prisma.user.update({ where: { id: userId }, data: { theme } })
