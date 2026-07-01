@@ -1,9 +1,9 @@
 "use client"
-import { useState } from "react"
+import { useState, Suspense } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 
-export default function LoginPage() {
+function LoginForm() {
   const searchParams = useSearchParams()
   const urlError = searchParams.get("error")
 
@@ -26,7 +26,7 @@ export default function LoginPage() {
       if (!data.ok) return setError(data.error || "发送失败")
       setSent(true)
     } catch (err: any) {
-      setError("网络出了点问题，请稍后再试 ️")
+      setError("网络出了点问题，请稍后再试")
     } finally {
       setLoading(false)
     }
@@ -35,7 +35,7 @@ export default function LoginPage() {
   if (sent) {
     return (
       <div className="card-sketch bg-white p-8 shadow-md text-center" style={{ border: "2px solid #e0e0e0" }}>
-        <div className="text-4xl mb-4"></div>
+        <div className="text-4xl mb-4">📧</div>
         <h2 className="text-xl font-bold mb-3" style={{ color: "#333" }}>登录链接已发送</h2>
         <p className="text-sm mb-2" style={{ color: "#666" }}>请前往 <strong>{email}</strong> 查收邮件</p>
         <p className="text-xs mb-6" style={{ color: "#999" }}>点击邮件中的链接即可自动登录（15分钟内有效）</p>
@@ -85,5 +85,13 @@ export default function LoginPage() {
         <Link href="/register" className="font-medium ml-1" style={{ color: "#8BC34A" }}>播下第一颗种子</Link>
       </p>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   )
 }
