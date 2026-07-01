@@ -25,6 +25,17 @@ const THEMES = [
 
 const CHANGELOGS = [
   {
+    version: 'v0.1.1',
+    date: '2026年6月',
+    prose: '如一株幼苗，在阳光与雨露中悄然舒展。这一次，我们为你带来了更丰富的登录方式、更沉浸的视觉体验，以及更多成长的痕迹。',
+    items: [
+      'Magic Link 邮箱链接登录，无需记忆密码',
+      '15 个测试账号，一键体验完整功能',
+      '暗夜主题上线，深邃中感受静谧',
+      '新用户引导优化，每一步都可跳过',
+    ],
+  },
+  {
     version: 'v0.1.0',
     date: '2026年6月',
     prose: '心芽，于此扎根。如一粒种子，在静默中积蓄力量，等待一场属于自己的花期。每一行文字，皆是内心萌动的印记。',
@@ -57,6 +68,7 @@ export default function RootPage() {
   const [editingName, setEditingName] = useState('')
   const [deletingTagId, setDeletingTagId] = useState<string | null>(null)
   const [tagActionLoading, setTagActionLoading] = useState(false)
+  const [showTags, setShowTags] = useState(false)
 
   useEffect(() => {
     const saved = localStorage.getItem('xinya-theme') || 'autumn'
@@ -210,11 +222,23 @@ export default function RootPage() {
 
       {/* 标签管理 */}
       <div className="p-4 rounded-xl mb-4" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
-        <p className="text-xs mb-3" style={{ color: subColor }}>标签管理</p>
-        {tags.length === 0 ? (
-          <p className="text-xs text-center py-3" style={{ color: dimColor }}>还没有标签，播种心得时创建吧</p>
-        ) : (
-          <div className="space-y-2">
+        <button
+          className="w-full flex items-center justify-between"
+          onClick={() => setShowTags(!showTags)}
+        >
+          <p className="text-xs" style={{ color: subColor }}>标签管理</p>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+            fill="none" stroke={subColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+            style={{ transform: showTags ? 'rotate(180deg)' : 'rotate(0deg)', transition: '0.3s' }}>
+            <path d="m6 9 6 6 6-6" />
+          </svg>
+        </button>
+        {showTags && (
+          <div className="mt-3">
+            {tags.length === 0 ? (
+              <p className="text-xs text-center py-3" style={{ color: dimColor }}>还没有标签，播种心得时创建吧</p>
+            ) : (
+              <div className="space-y-2">
             {tags.map(tag => (
               <div key={tag.id}>
                 {/* 正常行 */}
@@ -320,6 +344,8 @@ export default function RootPage() {
                 )}
               </div>
             ))}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -337,7 +363,7 @@ export default function RootPage() {
               <path d="M12 16v-4" />
               <path d="M12 8h.01" />
             </svg>
-            <span className="text-sm" style={{ color: isDark ? '#aaa' : '#666' }}>版本 v0.1.0</span>
+            <span className="text-sm" style={{ color: isDark ? '#aaa' : '#666' }}>版本更新</span>
           </div>
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
             fill="none" stroke={subColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
