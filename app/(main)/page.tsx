@@ -1,8 +1,9 @@
-"use client"
+﻿"use client"
 import { useState, useEffect, useCallback } from "react"
 import { Search, Bookmark, Filter, ChevronDown, Sprout as SproutIcon, X } from "lucide-react"
 import { EntryCard } from "@/components/EntryCard"
 import { DeleteDialog } from "@/components/DeleteDialog"
+import { useTheme } from "@/lib/useTheme"
 import toast from "react-hot-toast"
 
 interface Entry {
@@ -35,6 +36,7 @@ const TIME_SHORTCUTS = [
 ]
 
 export default function SproutPage() {
+  const { isDark, cardBg, cardBorder, titleColor, dimColor, inputBg, inputBorder } = useTheme()
   const [summary, setSummary] = useState<Summary | null>(null)
   const [entries, setEntries] = useState<Entry[]>([])
   const [total, setTotal] = useState(0)
@@ -179,12 +181,12 @@ export default function SproutPage() {
     <div className="p-4 max-w-lg mx-auto pb-24">
       {/* ===== 顶部标题栏 ===== */}
       <div className="flex items-center justify-between mb-1">
-        <h1 className="text-xl font-bold" style={{ color: "#333" }}>
+        <h1 className="text-xl font-bold" style={{ color: titleColor }}>
           <span style={{ color: '#8BC34A', display: 'inline-block', width: '1.4em', textAlign: 'center' }}>🌱</span>萌芽
         </h1>
       </div>
       <div className="flex items-start justify-between mb-5">
-        <p className="text-xs" style={{ color: '#bbb' }}>心之所向，芽之所生</p>
+        <p className="text-xs" style={{ color: dimColor }}>心之所向，芽之所生</p>
         <div className="flex items-center gap-2">
           {/* 收藏筛选 */}
           <button onClick={() => { setFavOnly(!favOnly); setPage(1) }}
@@ -215,7 +217,7 @@ export default function SproutPage() {
             <input
               autoFocus
               className="input-sketch flex-1 px-4 py-2.5 text-sm outline-none"
-              style={{ border: "1.5px solid #8BC34A", background: "#fafaf5" }}
+              style={{ border: "1.5px solid #8BC34A", background: inputBg, color: titleColor }}
               placeholder="搜索心得标题或内容…"
               value={search}
               onChange={e => setSearch(e.target.value)}
@@ -237,9 +239,9 @@ export default function SproutPage() {
                 onClick={() => { setTimeFrom(s.from()); setTimeTo(s.to()); setPage(1); setShowFilter(false) }}
                 className="px-3 py-1.5 rounded-full text-xs font-medium border transition"
                 style={{
-                  borderColor: timeFrom === s.from() ? "#8BC34A" : "#e0e0e0",
-                  background: timeFrom === s.from() ? "#e8f5e9" : "#fff",
-                  color: timeFrom === s.from() ? "#8BC34A" : "#666",
+                  borderColor: timeFrom === s.from() ? "#8BC34A" : inputBorder,
+                  background: timeFrom === s.from() ? "#e8f5e9" : (isDark ? "#333" : "#fff"),
+                  color: timeFrom === s.from() ? "#8BC34A" : (isDark ? "#aaa" : "#666"),
                 }}>
                 {s.label}
               </button>
@@ -260,7 +262,7 @@ export default function SproutPage() {
       {/* ===== 今日速览 ===== */}
       {summary && (
         <div className="mb-4 card-sketch overflow-hidden"
-          style={{ background: summaryExpanded ? "#e8f5e9" : "transparent", border: "1.5px solid #c8e6c9" }}>
+          style={{ background: summaryExpanded ? (isDark ? "#1e3a1e" : "#e8f5e9") : "transparent", border: `1.5px solid ${isDark ? "#2d5a2d" : "#c8e6c9"}` }}>
           {summary.todayCount > 0 ? (
             // 已折叠为一行小字
             <button onClick={() => setSummaryExpanded(!summaryExpanded)}
@@ -330,10 +332,10 @@ export default function SproutPage() {
       ) : entries.length === 0 ? (
         <div className="text-center py-16">
           <div className="text-5xl mb-4">🌱</div>
-          <h3 className="text-base font-bold mb-2" style={{ color: "#333" }}>
+          <h3 className="text-base font-bold mb-2" style={{ color: titleColor }}>
             {hasActiveFilter || search ? "没有找到匹配的叶子" : "这里还是一片空旷的土壤"}
           </h3>
-          <p className="text-sm" style={{ color: "#999" }}>
+          <p className="text-sm" style={{ color: isDark ? "#888" : "#999" }}>
             {hasActiveFilter || search ? "换个关键词试试？" : "点击底部的 + 按钮，播下第一颗种子吧"}
           </p>
         </div>
@@ -341,6 +343,7 @@ export default function SproutPage() {
         <div className="space-y-3">
           {entries.map(entry => (
             <EntryCard key={entry.id} {...entry}
+              isDark={isDark}
               onToggleFavorite={handleToggleFavorite}
               onTogglePin={handleTogglePin}
               onDelete={(id, title) => setDeleteTarget({ id, title })}
