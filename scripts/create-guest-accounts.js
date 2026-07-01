@@ -40,7 +40,7 @@ async function main() {
     })
 
     await prisma.tag.create({
-      data: { userId: user.id, name: "闅忕瑪", isDefault: true },
+      data: { userId: user.id, name: "随笔", isDefault: true },
     })
 
     console.log(`[ok] ${acc.email} created (id: ${user.id})`)
