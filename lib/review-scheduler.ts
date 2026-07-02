@@ -78,7 +78,7 @@ export async function getTodayCard(userId: string): Promise<TodayCard | null> {
   const unreviewedRecord = await prisma.quizRecord.findFirst({
     where: {
       userId,
-      answeredAt: null,
+      answeredAt: { isSet: false },
     },
     orderBy: { nextReviewAt: "asc" },
     include: {
