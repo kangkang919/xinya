@@ -35,11 +35,27 @@ export async function POST(req: Request) {
         console.log("[Backfill] Processing:", entry.id, entry.title)
 
         // 尝试 DeepSeek 生成
-        let questions = await generateQuestions(entry.title, entry.content, 1)
+        const result = await generateQuestions(entry.title, entry.content, 1)
+        let questions = result.questions
+
+        // 保存 AI 生成的要点
+        if (result.keyPoints) {
+          await prisma.entry.update({
+            where: { id: entry.id },
+            data: { keyPoints: result.keyPoints },
+          })
+        }
 
         if (questions.length === 0) {
           // 降级到模板
-          questions = generateTemplateQuestions(entry.title, entry.content)
+          const templateResult = generateTemplateQuestions(entry.title, entry.content)
+          questions = templateResult.questions
+          if (templateResult.keyPoints) {
+            await prisma.entry.update({
+              where: { id: entry.id },
+              data: { keyPoints: templateResult.keyPoints },
+            })
+          }
         }
 
         // 缓存题目
