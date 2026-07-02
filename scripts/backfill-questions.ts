@@ -9,19 +9,35 @@ const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY
 const DEEPSEEK_API_URL = process.env.DEEPSEEK_BASE_URL + "/chat/completions"
 
 async function generateQuestions(title: string, content: string) {
-  const prompt = `你是学习顾问。请根据以下心得内容，生成2道选择题帮助复习。
+  const prompt = `请根据以下心得内容，生成复习用的题目和要点总结。
 
 心得标题：${title}
-心得内容：${content}
+心得内容：${content.substring(0, 1000)}
 
 要求：
-- 生成2道题，类型从 single/multiple/truefalse 中选择
-- 题干简洁，不超过30字
-- 每题4个选项，有迷惑性但不歧义
-- 解析引用原文重点
+1. 题干≤30字，简洁明了
+2. 题型自动适配：概念辨析→单选，关系匹配→多选，对比→判断
+3. 选项数量：单选/多选4个选项，判断题只有2个选项（正确/错误）
+4. 答案用选项索引表示（单选[0]，多选[0,2]，判断[0]为对[1]为错）
+5. 解析引用原文重点
+6. 同时生成要点总结（keyPoints）：请你以老师的角色，对这篇心得的核心内容做1-2段总结叙述，不要发散，不要用1、2、3、4、5这样的列举，字数控制在200字以内
 
-严格按以下JSON格式返回，不要其他内容：
-[{"question":"题干","type":"single","options":["A","B","C","D"],"answer":[0],"explanation":"解析"}]`
+请返回JSON格式：
+{
+  "keyPoints": "3-5行要点总结...",
+  "questions": [
+    {
+      "question": "题干",
+      "type": "single/multiple/truefalse",
+      "options": ["选项A", "选项B", "选项C", "选项D"],
+      "answer": [0],
+      "explanation": "解析..."
+    }
+  ]
+}
+注意：判断题的options只有2个元素，如["正确", "错误"]
+
+只返回JSON，不要其他内容。`
 
   try {
     const controller = new AbortController()
@@ -42,19 +58,23 @@ async function generateQuestions(title: string, content: string) {
     })
     clearTimeout(timeoutId)
 
-    if (!res.ok) return []
+    if (!res.ok) return { keyPoints: "", questions: [] }
     const data = await res.json()
     const text = data.choices?.[0]?.message?.content || ""
-    const match = text.match(/\[[\s\S]*\]/)
-    if (!match) return []
-    return JSON.parse(match[0])
+    const match = text.match(/\{[\s\S]*\}/)
+    if (!match) return { keyPoints: "", questions: [] }
+    const result = JSON.parse(match[0])
+    return {
+      keyPoints: result.keyPoints || "",
+      questions: result.questions || [],
+    }
   } catch {
-    return []
+    return { keyPoints: "", questions: [] }
   }
 }
 
 function generateTemplateQuestions(title: string, content: string) {
-  return [
+  const questions = [
     {
       question: "这篇心得的核心主题是什么？",
       type: "single",
@@ -63,13 +83,18 @@ function generateTemplateQuestions(title: string, content: string) {
       explanation: `这篇心得的标题是「${title}」，核心内容围绕此主题展开。`,
     },
     {
-      question: "这篇心得的内容篇幅属于？",
+      question: `这篇心得的内容篇幅属于？`,
       type: "truefalse",
       options: ["较长（详细阐述）", "较短（简要记录）"],
       answer: [content.length > 200 ? 0 : 1],
       explanation: `这篇心得共有${content.length}字，属于${content.length > 200 ? "详细阐述" : "简要记录"}类型。`,
     },
   ]
+
+  const plainText = content.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim()
+  const keyPoints = plainText.length > 200 ? plainText.substring(0, 200) + "…" : plainText
+
+  return { keyPoints, questions }
 }
 
 async function main() {
