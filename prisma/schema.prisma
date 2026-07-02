@@ -27,6 +27,7 @@ model User {
   emailTokens    EmailToken[]
   settings       UserSetting?
   quizRecords    QuizRecord[]
+  reviewCallLogs ReviewCallLog[]
 }
 
 model Entry {
@@ -187,4 +188,19 @@ model UserSetting {
   lastQuestionId  String?
 
   user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ReviewCallLog {
+  id          String   @id @default(cuid())
+  userId      String
+  entryId     String?
+  step        String   // "pre-generate" | "cache-hit" | "online-retry" | "template-fallback"
+  success     Boolean
+  questionCount Int    @default(0)
+  errorMsg    String?
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }
