@@ -132,6 +132,17 @@ export default function ReviewCard({ card, onClose, onSkip }: ReviewCardProps) {
           ) : !submitted ? (
             // 答题区
             <div>
+              <div className="flex items-center gap-2 mb-2">
+                <span
+                  className="text-xs px-2 py-0.5 rounded"
+                  style={{
+                    background: card.type === 'multiple' ? 'rgba(255,152,0,0.15)' : 'rgba(139,195,74,0.15)',
+                    color: card.type === 'multiple' ? '#FF9800' : '#8BC34A',
+                  }}
+                >
+                  {card.type === 'multiple' ? '多选' : card.type === 'truefalse' ? '判断' : '单选'}
+                </span>
+              </div>
               <h3 className="text-base font-bold mb-4" style={{ color: titleColor }}>
                 {card.question}
               </h3>
