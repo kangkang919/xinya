@@ -1,0 +1,168 @@
+import { prisma } from "./prisma"
+
+interface TodayCard {
+  entryId: string
+  entryTitle: string
+  conceptName: string
+  keyPoints: string
+  questionId: string
+  question: string
+  type: string
+  options: string[]
+  answer: number[]
+  explanation: string
+}
+
+export async function getTodayCard(userId: string): Promise<TodayCard | null> {
+  const today = new Date().toISOString().split("T")[0]
+
+  // 检查用户是否开启拾遗
+  const setting = await prisma.userSetting.findUnique({ where: { userId } })
+  if (!setting?.reviewEnabled) return null
+
+  // 检查今天是否已弹过卡片
+  if (setting.lastCardDate === today) return null
+
+  // 查找待复习题目（nextReviewAt <= now，按答错优先 > 久未复习优先）
+  const now = new Date()
+  const dueQuestion = await prisma.quizRecord.findFirst({
+    where: {
+      userId,
+      nextReviewAt: { lte: now },
+    },
+    orderBy: [
+      { correct: "asc" }, // 答错的优先（false < true）
+      { nextReviewAt: "asc" }, // 久未复习的优先
+    ],
+    include: {
+      question: {
+        include: {
+          entry: true,
+        },
+      },
+    },
+  })
+
+  if (dueQuestion) {
+    return formatCard(dueQuestion)
+  }
+
+  // 若无待复习题，查找尚未出题的心得
+  const entriesWithoutQuestions = await prisma.entry.findMany({
+    where: {
+      userId,
+      quizQuestions: { none: {} },
+    },
+    take: 5,
+  })
+
+  if (entriesWithoutQuestions.length > 0) {
+    // 返回第一个无题目的心得（后续会触发出题）
+    const entry = entriesWithoutQuestions[0]
+    return {
+      entryId: entry.id,
+      entryTitle: entry.title,
+      conceptName: entry.title,
+      keyPoints: "",
+      questionId: "",
+      question: "",
+      type: "single",
+      options: [],
+      answer: [0],
+      explanation: "",
+    }
+  }
+
+  // 所有心得都有题目了，查找最久未复习的
+  const oldestRecord = await prisma.quizRecord.findFirst({
+    where: { userId },
+    orderBy: { nextReviewAt: "asc" },
+    include: {
+      question: {
+        include: {
+          entry: true,
+        },
+      },
+    },
+  })
+
+  if (oldestRecord) {
+    return formatCard(oldestRecord)
+  }
+
+  return null
+}
+
+function formatCard(record: any): TodayCard {
+  return {
+    entryId: record.entryId,
+    entryTitle: record.question.entry.title,
+    conceptName: record.question.entry.title,
+    keyPoints: "",
+    questionId: record.questionId,
+    question: record.question.question,
+    type: record.question.type,
+    options: record.question.options,
+    answer: record.question.answer,
+    explanation: record.question.explanation,
+  }
+}
+
+export async function submitAnswer(
+  userId: string,
+  questionId: string,
+  userAnswer: number[]
+): Promise<{ correct: boolean; explanation: string; nextReviewDays: number } | null> {
+  const record = await prisma.quizRecord.findFirst({
+    where: { userId, questionId },
+    include: { question: true },
+  })
+
+  if (!record) return null
+
+  const question = record.question
+  const isCorrect =
+    question.answer.length === userAnswer.length &&
+    question.answer.every((a: number) => userAnswer.includes(a))
+
+  // 计算下次复习时间
+  let nextReviewDays: number
+  let newStreak: number
+
+  if (isCorrect) {
+    newStreak = record.streak + 1
+    nextReviewDays = Math.pow(2, newStreak) // 1→2→4→8...
+  } else {
+    newStreak = 0
+    nextReviewDays = 1 // 答错重置为1天
+  }
+
+  const nextReviewAt = new Date()
+  nextReviewAt.setDate(nextReviewAt.getDate() + nextReviewDays)
+
+  // 更新答题记录
+  await prisma.quizRecord.update({
+    where: { id: record.id },
+    data: {
+      correct: isCorrect,
+      answeredAt: new Date(),
+      nextReviewAt,
+      streak: newStreak,
+    },
+  })
+
+  return {
+    correct: isCorrect,
+    explanation: question.explanation,
+    nextReviewDays,
+  }
+}
+
+export async function skipToday(userId: string): Promise<void> {
+  const today = new Date().toISOString().split("T")[0]
+  await prisma.userSetting.upsert({
+    where: { userId },
+    update: { lastCardDate: today },
+    create: { userId, lastCardDate: today },
+  })
+}
