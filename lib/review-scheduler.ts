@@ -144,11 +144,13 @@ export async function getTodayCard(userId: string): Promise<TodayCard | null> {
 
 function formatCard(record: any): TodayCard {
   const entry = record.question.entry
-  // 使用 AI 生成的要点，如果没有则取内容前 100 字
+  // 使用 AI 生成的要点，如果没有则取内容前 100 字（内容为空时用标题）
   let keyPoints = entry.keyPoints
   if (!keyPoints) {
     const plainText = entry.content.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim()
-    keyPoints = plainText.length > 100 ? plainText.substring(0, 100) + "…" : plainText
+    keyPoints = plainText
+      ? (plainText.length > 100 ? plainText.substring(0, 100) + "…" : plainText)
+      : entry.title
   }
   return {
     entryId: record.entryId,
