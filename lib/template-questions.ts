@@ -35,12 +35,28 @@ export function generateTemplateQuestions(entryTitle: string, entryContent: stri
     explanation: `这篇心得共有${contentLength}字，属于${contentLength > 200 ? "详细阐述" : "简要记录"}类型。`,
   })
 
-  // 模板要点：取内容前 100 字
+  // 模板要点：生成老师风格的总结
   const plainText = entryContent.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim()
-  // 内容为空时用标题，否则取前 100 字
-  const keyPoints = plainText
-    ? (plainText.length > 100 ? plainText.substring(0, 100) + "…" : plainText)
-    : entryTitle
+  
+  let keyPoints: string
+  if (!plainText) {
+    // 内容为空时用标题
+    keyPoints = entryTitle
+  } else {
+    // 取第一句话作为核心，加上引导语
+    const firstSentence = plainText.split(/[。！？]/)[0].trim()
+    const title = entryTitle.length > 20 ? entryTitle.substring(0, 20) + "..." : entryTitle
+    
+    if (firstSentence && firstSentence.length > 10) {
+      // 有完整句子：用"本文讲解..."的格式
+      const summary = firstSentence.length > 80 ? firstSentence.substring(0, 80) + "..." : firstSentence
+      keyPoints = `本文讲解「${title}」：${summary}`
+    } else {
+      // 句子太短：直接用标题 + 内容前 80 字
+      const content = plainText.length > 80 ? plainText.substring(0, 80) + "..." : plainText
+      keyPoints = `「${title}」${content}`
+    }
+  }
 
   return { keyPoints, questions }
 }
