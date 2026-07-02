@@ -37,7 +37,10 @@ export function generateTemplateQuestions(entryTitle: string, entryContent: stri
 
   // 模板要点：取内容前 100 字
   const plainText = entryContent.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim()
-  const keyPoints = plainText.length > 100 ? plainText.substring(0, 100) + "…" : plainText
+  // 内容为空时用标题，否则取前 100 字
+  const keyPoints = plainText
+    ? (plainText.length > 100 ? plainText.substring(0, 100) + "…" : plainText)
+    : entryTitle
 
   return { keyPoints, questions }
 }
