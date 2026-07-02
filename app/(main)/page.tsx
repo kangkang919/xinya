@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react"
 import { Search, Bookmark, Filter, ChevronDown, Sprout as SproutIcon, X } from "lucide-react"
 import { EntryCard } from "@/components/EntryCard"
 import { DeleteDialog } from "@/components/DeleteDialog"
+import ReviewCard from "@/components/review-card"
 import { useTheme } from "@/lib/useTheme"
 import toast from "react-hot-toast"
 
@@ -59,6 +60,10 @@ export default function SproutPage() {
   // 今日速览折叠状态
   const [summaryExpanded, setSummaryExpanded] = useState(true)
 
+  // 拾遗卡片
+  const [reviewCard, setReviewCard] = useState<any>(null)
+  const [reviewLoading, setReviewLoading] = useState(true)
+
   // 加载速览数据
   useEffect(() => {
     fetch("/api/today-summary")
@@ -70,6 +75,19 @@ export default function SproutPage() {
           if (d.data.todayCount > 0) setSummaryExpanded(false)
         }
       })
+  }, [])
+
+  // 加载拾遗卡片
+  useEffect(() => {
+    fetch('/api/review/today')
+      .then(r => r.json())
+      .then(data => {
+        if (data.ok && data.data) {
+          setReviewCard(data.data)
+        }
+      })
+      .catch(() => {})
+      .finally(() => setReviewLoading(false))
   }, [])
 
   // 加载心得列表
@@ -369,6 +387,18 @@ export default function SproutPage() {
         onCancel={() => setDeleteTarget(null)}
         loading={deleting}
       />
+
+      {/* ===== 拾遗卡片 ===== */}
+      {reviewCard && (
+        <ReviewCard
+          card={reviewCard}
+          onClose={() => setReviewCard(null)}
+          onSkip={async () => {
+            await fetch('/api/review/skip', { method: 'POST' })
+            setReviewCard(null)
+          }}
+        />
+      )}
     </div>
   )
 }
