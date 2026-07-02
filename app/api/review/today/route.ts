@@ -13,45 +13,52 @@ export async function GET(req: NextRequest) {
 
     let card = await getTodayCard(userId)
 
-    // 若返回的是无题目的心得，触发出题
+    // 若返回的是无题目的心得，尝试出题（超时则跳过）
     if (card && !card.questionId) {
       const entry = await prisma.entry.findUnique({ where: { id: card.entryId } })
       if (entry) {
-        const questions = await generateQuestions(entry.title, entry.content)
+        try {
+          const questions = await generateQuestions(entry.title, entry.content)
 
-        // 缓存题目
-        for (let i = 0; i < questions.length; i++) {
-          const q = questions[i]
-          const question = await prisma.quizQuestion.create({
-            data: {
-              entryId: entry.id,
-              question: q.question,
-              type: q.type,
-              options: q.options,
-              answer: q.answer,
-              explanation: q.explanation,
-              angle: i + 1,
-            },
-          })
+          if (questions.length > 0) {
+            // 缓存题目
+            for (let i = 0; i < questions.length; i++) {
+              const q = questions[i]
+              const question = await prisma.quizQuestion.create({
+                data: {
+                  entryId: entry.id,
+                  question: q.question,
+                  type: q.type,
+                  options: q.options,
+                  answer: q.answer,
+                  explanation: q.explanation,
+                  angle: i + 1,
+                },
+              })
 
-          // 创建答题记录
-          const nextReviewAt = new Date()
-          nextReviewAt.setDate(nextReviewAt.getDate() + 1)
+              // 创建答题记录
+              const nextReviewAt = new Date()
+              nextReviewAt.setDate(nextReviewAt.getDate() + 1)
 
-          await prisma.quizRecord.create({
-            data: {
-              userId,
-              questionId: question.id,
-              entryId: entry.id,
-              correct: false,
-              nextReviewAt,
-              streak: 0,
-            },
-          })
+              await prisma.quizRecord.create({
+                data: {
+                  userId,
+                  questionId: question.id,
+                  entryId: entry.id,
+                  correct: false,
+                  nextReviewAt,
+                  streak: 0,
+                },
+              })
+            }
+
+            // 重新获取卡片（现在有题目了）
+            card = await getTodayCard(userId)
+          }
+        } catch (e) {
+          console.error("[ReviewToday] Question generation failed:", e)
+          // 出题失败，返回无题目的卡片（用户可跳过）
         }
-
-        // 重新获取卡片（现在有题目了）
-        card = await getTodayCard(userId)
       }
     }
 
