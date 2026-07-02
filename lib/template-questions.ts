@@ -8,7 +8,7 @@ interface TemplateQuestion {
   explanation: string
 }
 
-export function generateTemplateQuestions(entryTitle: string, entryContent: string): TemplateQuestion[] {
+export function generateTemplateQuestions(entryTitle: string, entryContent: string): { keyPoints: string; questions: TemplateQuestion[] } {
   const questions: TemplateQuestion[] = []
 
   // 题目1：核心观点（单选）
@@ -35,5 +35,9 @@ export function generateTemplateQuestions(entryTitle: string, entryContent: stri
     explanation: `这篇心得共有${contentLength}字，属于${contentLength > 200 ? "详细阐述" : "简要记录"}类型。`,
   })
 
-  return questions
+  // 模板要点：取内容前200字
+  const plainText = entryContent.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim()
+  const keyPoints = plainText.length > 200 ? plainText.substring(0, 200) + "…" : plainText
+
+  return { keyPoints, questions }
 }
