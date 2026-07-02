@@ -169,7 +169,7 @@ model QuizRecord {
   questionId    String
   entryId       String
   correct       Boolean
-  answeredAt    DateTime @default(now())
+  answeredAt    DateTime?
   nextReviewAt  DateTime
   streak        Int      @default(0)
 
