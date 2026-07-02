@@ -9,12 +9,17 @@ interface GeneratedQuestion {
   explanation: string
 }
 
+interface GeneratedResult {
+  keyPoints: string
+  questions: GeneratedQuestion[]
+}
+
 export async function generateQuestions(
   entryTitle: string,
   entryContent: string,
   maxRetries = 1
-): Promise<GeneratedQuestion[]> {
-  const prompt = `请根据以下心得内容，生成2道选择题用于复习巩固。
+): Promise<GeneratedResult> {
+  const prompt = `请根据以下心得内容，生成复习用的题目和要点总结。
 
 心得标题：${entryTitle}
 心得内容：${entryContent.substring(0, 1000)}
@@ -25,17 +30,21 @@ export async function generateQuestions(
 3. 选项数量：单选/多选4个选项，判断题只有2个选项（正确/错误）
 4. 答案用选项索引表示（单选[0]，多选[0,2]，判断[0]为对[1]为错）
 5. 解析引用原文重点
+6. 同时生成3-5行的要点总结（keyPoints），提炼核心概念和关键信息
 
-请返回JSON数组格式：
-[
-  {
-    "question": "题干",
-    "type": "single/multiple/truefalse",
-    "options": ["选项A", "选项B", "选项C", "选项D"],
-    "answer": [0],
-    "explanation": "解析..."
-  }
-]
+请返回JSON格式：
+{
+  "keyPoints": "3-5行要点总结...",
+  "questions": [
+    {
+      "question": "题干",
+      "type": "single/multiple/truefalse",
+      "options": ["选项A", "选项B", "选项C", "选项D"],
+      "answer": [0],
+      "explanation": "解析..."
+    }
+  ]
+}
 注意：判断题的options只有2个元素，如["正确", "错误"]
 
 只返回JSON，不要其他内容。`
@@ -74,21 +83,26 @@ export async function generateQuestions(
       const content = data.choices?.[0]?.message?.content || ""
 
       // 提取JSON
-      const jsonMatch = content.match(/\[[\s\S]*\]/)
+      const jsonMatch = content.match(/\{[\s\S]*\}/)
       if (!jsonMatch) {
         console.error(`[DeepSeek] No JSON found (attempt ${attempt + 1})`)
         lastError = new Error("No JSON in response")
         continue
       }
 
-      const questions = JSON.parse(jsonMatch[0])
-      return questions.map((q: any) => ({
+      const result = JSON.parse(jsonMatch[0])
+      const questions = (result.questions || []).map((q: any) => ({
         question: q.question?.substring(0, 30) || "",
         type: ["single", "multiple", "truefalse"].includes(q.type) ? q.type : "single",
         options: Array.isArray(q.options) ? q.options.slice(0, 4) : [],
         answer: Array.isArray(q.answer) ? q.answer : [0],
         explanation: q.explanation || "",
       }))
+
+      return {
+        keyPoints: result.keyPoints || "",
+        questions,
+      }
     } catch (e) {
       console.error(`[DeepSeek] Error (attempt ${attempt + 1}):`, e)
       lastError = e as Error
@@ -96,5 +110,5 @@ export async function generateQuestions(
   }
 
   console.error("[DeepSeek] All retries failed:", lastError)
-  return []
+  return { keyPoints: "", questions: [] }
 }
