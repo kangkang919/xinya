@@ -35,6 +35,7 @@ model Entry {
   userId      String
   title       String
   content     String
+  keyPoints   String?
   mood        String?
   recordTime  DateTime  @default(now())
   isTop       Boolean   @default(false)
