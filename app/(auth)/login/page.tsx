@@ -116,7 +116,7 @@ function LoginForm() {
           <div>
             <label className="text-sm mb-1 block" style={{ color: "#795548" }}>邮箱</label>
             <input
-              className="w-full px-4 py-3 text-sm outline-none"
+              className="input-sketch w-full px-4 py-3 text-sm outline-none"
               style={{ border: "1.5px solid #ccc", background: "#fafaf5" }}
               type="email"
               placeholder="输入你的邮箱"
@@ -129,10 +129,10 @@ function LoginForm() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 font-bold text-white text-sm rounded-lg"
+            className="btn-sketch w-full py-3 font-bold text-white text-sm transition-opacity"
             style={{ background: loading ? "#aaa" : "#8BC34A" }}
           >
-            {loading ? "链接正在发送…" : "发送登录链接 🌿"}
+            {loading ? "链接正在发送…" : "发送登录链接 "}
           </button>
         </form>
       ) : (
@@ -140,7 +140,7 @@ function LoginForm() {
           <div>
             <label className="text-sm mb-1 block" style={{ color: "#795548" }}>邮箱</label>
             <input
-              className="w-full px-4 py-3 text-sm outline-none"
+              className="input-sketch w-full px-4 py-3 text-sm outline-none"
               style={{ border: "1.5px solid #ccc", background: "#fafaf5" }}
               type="email"
               placeholder="输入你的邮箱"
@@ -152,7 +152,7 @@ function LoginForm() {
           <div>
             <label className="text-sm mb-1 block" style={{ color: "#795548" }}>密码</label>
             <input
-              className="w-full px-4 py-3 text-sm outline-none"
+              className="input-sketch w-full px-4 py-3 text-sm outline-none"
               style={{ border: "1.5px solid #ccc", background: "#fafaf5" }}
               type="password"
               placeholder="输入密码"
@@ -165,7 +165,7 @@ function LoginForm() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 font-bold text-white text-sm rounded-lg"
+            className="btn-sketch w-full py-3 font-bold text-white text-sm transition-opacity"
             style={{ background: loading ? "#aaa" : "#8BC34A" }}
           >
             {loading ? "花园门正在开启…" : "登录 🌿"}
