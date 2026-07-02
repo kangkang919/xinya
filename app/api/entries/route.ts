@@ -1,6 +1,8 @@
-import { NextRequest, NextResponse } from "next/server"
+﻿import { NextRequest, NextResponse } from "next/server"
 import { getCurrentUserId } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { generateQuestions } from "@/lib/deepseek"
+import { logReviewCall } from "@/lib/review-scheduler"
 
 // GET /api/entries?search=&favorite=&tagId=&from=&to=&page=1&limit=20
 export async function GET(req: NextRequest) {
@@ -91,6 +93,57 @@ export async function POST(req: NextRequest) {
     include: { tags: { select: { id: true, name: true } } },
   })
 
+  // 异步预生成题目（不阻塞响应）
+  if (!isDraft && content) {
+    preGenerateQuestions(userId, entry.id, title.trim(), content).catch(e =>
+      console.error("[PreGenerate] Error:", e)
+    )
+  }
+
   return NextResponse.json({ ok: true, data: entry })
+}
+
+// 异步预生成题目
+async function preGenerateQuestions(
+  userId: string,
+  entryId: string,
+  title: string,
+  content: string
+) {
+  const questions = await generateQuestions(title, content, 1)
+
+  if (questions.length > 0) {
+    for (let i = 0; i < questions.length; i++) {
+      const q = questions[i]
+      await prisma.quizQuestion.create({
+        data: {
+          entryId,
+          question: q.question,
+          type: q.type,
+          options: q.options,
+          answer: q.answer,
+          explanation: q.explanation,
+          angle: i + 1,
+        },
+      })
+
+      const nextReviewAt = new Date()
+      nextReviewAt.setDate(nextReviewAt.getDate() + 1)
+
+      await prisma.quizRecord.create({
+        data: {
+          userId,
+          questionId: (await prisma.quizQuestion.findFirst({ where: { entryId, angle: i + 1 } }))!.id,
+          entryId,
+          correct: false,
+          nextReviewAt,
+          streak: 0,
+        },
+      })
+    }
+    await logReviewCall(userId, entryId, "pre-generate", true, questions.length)
+  } else {
+    await logReviewCall(userId, entryId, "pre-generate", false, 0, "DeepSeek returned empty")
+  }
 }
 
