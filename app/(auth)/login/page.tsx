@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 import { useState, Suspense } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
@@ -77,7 +77,7 @@ function LoginForm() {
         </button>
         <p className="text-center text-sm mt-6" style={{ color: "#999" }}>
           还没有账号？
-          <Link href="/register" className="font-medium ml-1" style={{ color: "#8BC34A" }}>播下第一颗种子</Link>
+          <Link href="/register" className="font-bold ml-1" style={{ color: "#8BC34A" }}>点我开启注册</Link>
         </p>
       </div>
     )
@@ -107,7 +107,7 @@ function LoginForm() {
             color: mode === "password" ? "#fff" : "#999",
           }}
         >
-          测试账号登录
+          使用密码登陆
         </button>
       </div>
 
@@ -175,7 +175,7 @@ function LoginForm() {
 
       <p className="text-center text-sm mt-5" style={{ color: "#999" }}>
         还没有账号？
-        <Link href="/register" className="font-medium ml-1" style={{ color: "#8BC34A" }}>播下第一颗种子</Link>
+        <Link href="/register" className="font-bold ml-1" style={{ color: "#8BC34A" }}>点我开启注册</Link>
       </p>
     </div>
   )
