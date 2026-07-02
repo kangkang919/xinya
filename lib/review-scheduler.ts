@@ -74,18 +74,40 @@ export async function getTodayCard(userId: string): Promise<TodayCard | null> {
     return formatCard(dueQuestion)
   }
 
-  // 若无待复习题，查找尚未出题的心得
+  // 若无待复习题，优先查找已有题目但未答题的记录
+  const unreviewedRecord = await prisma.quizRecord.findFirst({
+    where: {
+      userId,
+      answeredAt: null,
+    },
+    orderBy: { nextReviewAt: "asc" },
+    include: {
+      question: {
+        include: {
+          entry: true,
+        },
+      },
+    },
+  })
+
+  if (unreviewedRecord) {
+    console.log("[Scheduler] Found unreviewed record, entryId:", unreviewedRecord.entryId)
+    return formatCard(unreviewedRecord)
+  }
+
+  // 最后才查找尚未出题的心得（需要在线生成题目）
   const entriesWithoutQuestions = await prisma.entry.findMany({
     where: {
       userId,
       quizQuestions: { none: {} },
     },
+    orderBy: { createdAt: "desc" }, // 优先最新的心得
     take: 5,
   })
 
   if (entriesWithoutQuestions.length > 0) {
-    // 返回第一个无题目的心得（后续会触发出题）
     const entry = entriesWithoutQuestions[0]
+    console.log("[Scheduler] No questions found, returning entry for generation:", entry.id)
     return {
       entryId: entry.id,
       entryTitle: entry.title,
