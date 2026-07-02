@@ -47,7 +47,10 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "未登录" }, { status: 401 })
     }
 
+    console.log("[ReviewToday] Start, userId:", userId)
+
     let card = await getTodayCard(userId)
+    console.log("[ReviewToday] getTodayCard result:", card ? { entryId: card.entryId, questionId: card.questionId } : null)
 
     // 若返回的是无题目的心得，按组合方案出题
     if (card && !card.questionId) {
