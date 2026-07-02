@@ -9,7 +9,11 @@ interface GeneratedQuestion {
   explanation: string
 }
 
-export async function generateQuestions(entryTitle: string, entryContent: string): Promise<GeneratedQuestion[]> {
+export async function generateQuestions(
+  entryTitle: string,
+  entryContent: string,
+  maxRetries = 1
+): Promise<GeneratedQuestion[]> {
   const prompt = `请根据以下心得内容，生成2道选择题用于复习巩固。
 
 心得标题：${entryTitle}
@@ -35,52 +39,61 @@ export async function generateQuestions(entryTitle: string, entryContent: string
 
 只返回JSON，不要其他内容。`
 
-  try {
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 15000) // 15秒超时
+  let lastError: Error | null = null
 
-    const res = await fetch(DEEPSEEK_API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${DEEPSEEK_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "deepseek-chat",
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.7,
-        max_tokens: 1000,
-      }),
-      signal: controller.signal,
-    })
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 30000) // 30秒超时
 
-    clearTimeout(timeoutId)
+      const res = await fetch(DEEPSEEK_API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${DEEPSEEK_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: "deepseek-chat",
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.7,
+          max_tokens: 1000,
+        }),
+        signal: controller.signal,
+      })
 
-    if (!res.ok) {
-      console.error("[DeepSeek] API error:", res.status)
-      return []
+      clearTimeout(timeoutId)
+
+      if (!res.ok) {
+        console.error(`[DeepSeek] API error (attempt ${attempt + 1}):`, res.status)
+        lastError = new Error(`API error: ${res.status}`)
+        continue
+      }
+
+      const data = await res.json()
+      const content = data.choices?.[0]?.message?.content || ""
+
+      // 提取JSON
+      const jsonMatch = content.match(/\[[\s\S]*\]/)
+      if (!jsonMatch) {
+        console.error(`[DeepSeek] No JSON found (attempt ${attempt + 1})`)
+        lastError = new Error("No JSON in response")
+        continue
+      }
+
+      const questions = JSON.parse(jsonMatch[0])
+      return questions.map((q: any) => ({
+        question: q.question?.substring(0, 30) || "",
+        type: ["single", "multiple", "truefalse"].includes(q.type) ? q.type : "single",
+        options: Array.isArray(q.options) ? q.options.slice(0, 4) : [],
+        answer: Array.isArray(q.answer) ? q.answer : [0],
+        explanation: q.explanation || "",
+      }))
+    } catch (e) {
+      console.error(`[DeepSeek] Error (attempt ${attempt + 1}):`, e)
+      lastError = e as Error
     }
-
-    const data = await res.json()
-    const content = data.choices?.[0]?.message?.content || ""
-
-    // 提取JSON
-    const jsonMatch = content.match(/\[[\s\S]*\]/)
-    if (!jsonMatch) {
-      console.error("[DeepSeek] No JSON found in response")
-      return []
-    }
-
-    const questions = JSON.parse(jsonMatch[0])
-    return questions.map((q: any) => ({
-      question: q.question?.substring(0, 30) || "",
-      type: ["single", "multiple", "truefalse"].includes(q.type) ? q.type : "single",
-      options: Array.isArray(q.options) ? q.options.slice(0, 4) : [],
-      answer: Array.isArray(q.answer) ? q.answer : [0],
-      explanation: q.explanation || "",
-    }))
-  } catch (e) {
-    console.error("[DeepSeek] Error:", e)
-    return []
   }
+
+  console.error("[DeepSeek] All retries failed:", lastError)
+  return []
 }
