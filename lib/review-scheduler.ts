@@ -143,11 +143,14 @@ export async function getTodayCard(userId: string): Promise<TodayCard | null> {
 }
 
 function formatCard(record: any): TodayCard {
+  const entry = record.question.entry
+  // 取内容前200字作为要点
+  const keyPoints = entry.content.length > 200 ? entry.content.substring(0, 200) + "…" : entry.content
   return {
     entryId: record.entryId,
-    entryTitle: record.question.entry.title,
-    conceptName: record.question.entry.title,
-    keyPoints: "",
+    entryTitle: entry.title,
+    conceptName: entry.title,
+    keyPoints,
     questionId: record.questionId,
     question: record.question.question,
     type: record.question.type,
