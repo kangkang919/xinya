@@ -35,9 +35,9 @@ export function generateTemplateQuestions(entryTitle: string, entryContent: stri
     explanation: `这篇心得共有${contentLength}字，属于${contentLength > 200 ? "详细阐述" : "简要记录"}类型。`,
   })
 
-  // 模板要点：取内容前200字
+  // 模板要点：取内容前 100 字
   const plainText = entryContent.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim()
-  const keyPoints = plainText.length > 200 ? plainText.substring(0, 200) + "…" : plainText
+  const keyPoints = plainText.length > 100 ? plainText.substring(0, 100) + "…" : plainText
 
   return { keyPoints, questions }
 }
