@@ -94,7 +94,9 @@ export async function POST(req: NextRequest) {
   })
 
   // 异步预生成题目（不阻塞响应）
+  console.log("[Entries] Creating entry, isDraft:", isDraft, "content length:", content?.length)
   if (!isDraft && content) {
+    console.log("[Entries] Triggering pre-generation for entry:", entry.id)
     preGenerateQuestions(userId, entry.id, title.trim(), content).catch(e =>
       console.error("[PreGenerate] Error:", e)
     )
@@ -110,7 +112,9 @@ async function preGenerateQuestions(
   title: string,
   content: string
 ) {
+  console.log("[PreGenerate] Starting, entryId:", entryId, "title:", title)
   const questions = await generateQuestions(title, content, 1)
+  console.log("[PreGenerate] generateQuestions returned:", questions.length, "questions")
 
   if (questions.length > 0) {
     for (let i = 0; i < questions.length; i++) {
