@@ -143,6 +143,7 @@ export default function Editor({ entryId, isNew }: EditorProps) {
           charCount={charCount}
           hasTags={selectedTags.length > 0}
           showTagPicker={showTagPicker}
+          isDark={isDark}
           onBack={() => router.back()}
           onSave={() => handleSave()}
           onToggleTagPicker={() => setShowTagPicker(!showTagPicker)}
