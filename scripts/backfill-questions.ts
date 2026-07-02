@@ -92,7 +92,10 @@ function generateTemplateQuestions(title: string, content: string) {
   ]
 
   const plainText = content.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim()
-  const keyPoints = plainText.length > 200 ? plainText.substring(0, 200) + "…" : plainText
+  // 内容为空时用标题，否则取前 100 字
+  const keyPoints = plainText
+    ? (plainText.length > 100 ? plainText.substring(0, 100) + "…" : plainText)
+    : title
 
   return { keyPoints, questions }
 }
