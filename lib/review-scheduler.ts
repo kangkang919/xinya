@@ -121,9 +121,10 @@ export async function submitAnswer(
   if (!record) return null
 
   const question = record.question
+  const correctAnswer = question.answer as number[]
   const isCorrect =
-    question.answer.length === userAnswer.length &&
-    question.answer.every((a: number) => userAnswer.includes(a))
+    correctAnswer.length === userAnswer.length &&
+    correctAnswer.every((a: number) => userAnswer.includes(a))
 
   // 计算下次复习时间
   let nextReviewDays: number
