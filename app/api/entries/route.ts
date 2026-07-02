@@ -113,8 +113,17 @@ async function preGenerateQuestions(
   content: string
 ) {
   console.log("[PreGenerate] Starting, entryId:", entryId, "title:", title)
-  const questions = await generateQuestions(title, content, 1)
+  const result = await generateQuestions(title, content, 1)
+  const questions = result.questions
   console.log("[PreGenerate] generateQuestions returned:", questions.length, "questions")
+
+  // 保存 AI 生成的要点
+  if (result.keyPoints) {
+    await prisma.entry.update({
+      where: { id: entryId },
+      data: { keyPoints: result.keyPoints },
+    })
+  }
 
   if (questions.length > 0) {
     for (let i = 0; i < questions.length; i++) {
