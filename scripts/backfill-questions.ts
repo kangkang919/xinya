@@ -98,16 +98,29 @@ function generateTemplateQuestions(title: string, content: string) {
 }
 
 async function main() {
-  console.log("[Backfill] 查找没有题目的心得...")
+  console.log("[Backfill] 查找没有题目或没有要点的心得...")
 
-  const entries = await prisma.entry.findMany({
+  // 查找没有题目的心得
+  const entriesWithoutQuestions = await prisma.entry.findMany({
     where: { quizQuestions: { none: {} } },
   })
 
+  // 查找有题目但没有要点的心得
+  const entriesWithoutKeyPoints = await prisma.entry.findMany({
+    where: {
+      quizQuestions: { some: {} },
+      keyPoints: null,
+    },
+  })
+
+  const entries = [...entriesWithoutQuestions, ...entriesWithoutKeyPoints]
+
   console.log(`[Backfill] 找到 ${entries.length} 篇需要补生成的心得`)
+  console.log(`  - 没有题目：${entriesWithoutQuestions.length} 篇`)
+  console.log(`  - 没有要点：${entriesWithoutKeyPoints.length} 篇`)
 
   if (entries.length === 0) {
-    console.log("[Backfill] 所有心得已有题目，无需补生成")
+    console.log("[Backfill] 所有心得已有题目和要点，无需补生成")
     await prisma.$disconnect()
     return
   }
@@ -118,64 +131,98 @@ async function main() {
   for (const entry of entries) {
     console.log(`\n[Backfill] 处理: ${entry.title}`)
     try {
-      const result = await generateQuestions(entry.title, entry.content)
-      let questions = result.questions
-      let source = "deepseek"
+      // 检查是否已有题目
+      const existingQuestions = await prisma.quizQuestion.count({
+        where: { entryId: entry.id },
+      })
 
-      // 保存 AI 生成的要点
-      if (result.keyPoints) {
-        await prisma.entry.update({
-          where: { id: entry.id },
-          data: { keyPoints: result.keyPoints },
-        })
-      }
+      if (existingQuestions === 0) {
+        // 没有题目，需要生成题目和要点
+        console.log("  生成题目和要点...")
+        const result = await generateQuestions(entry.title, entry.content)
+        let questions = result.questions
+        let source = "deepseek"
 
-      if (questions.length === 0) {
-        console.log("  DeepSeek 失败，使用模板降级")
-        const templateResult = generateTemplateQuestions(entry.title, entry.content)
-        questions = templateResult.questions
-        source = "template"
-
-        // 保存模板要点
-        if (templateResult.keyPoints) {
+        // 保存 AI 生成的要点
+        if (result.keyPoints) {
           await prisma.entry.update({
             where: { id: entry.id },
-            data: { keyPoints: templateResult.keyPoints },
+            data: { keyPoints: result.keyPoints },
           })
         }
+
+        if (questions.length === 0) {
+          console.log("  DeepSeek 失败，使用模板降级")
+          const templateResult = generateTemplateQuestions(entry.title, entry.content)
+          questions = templateResult.questions
+          source = "template"
+
+          // 保存模板要点
+          if (templateResult.keyPoints) {
+            await prisma.entry.update({
+              where: { id: entry.id },
+              data: { keyPoints: templateResult.keyPoints },
+            })
+          }
+        }
+
+        // 创建题目和答题记录
+        for (let i = 0; i < questions.length; i++) {
+          const q = questions[i]
+          const question = await prisma.quizQuestion.create({
+            data: {
+              entryId: entry.id,
+              question: q.question,
+              type: q.type,
+              options: q.options,
+              answer: q.answer,
+              explanation: q.explanation,
+              angle: i + 1,
+            },
+          })
+
+          const nextReviewAt = new Date()
+          nextReviewAt.setDate(nextReviewAt.getDate() + 1)
+
+          await prisma.quizRecord.create({
+            data: {
+              userId: entry.userId,
+              questionId: question.id,
+              entryId: entry.id,
+              correct: false,
+              nextReviewAt,
+              streak: 0,
+            },
+          })
+        }
+
+        success++
+        console.log(`  ✅ ${source} 生成 ${questions.length} 道题`)
+      } else {
+        // 已有题目，只生成要点
+        console.log("  仅生成要点...")
+        const result = await generateQuestions(entry.title, entry.content)
+
+        if (result.keyPoints) {
+          await prisma.entry.update({
+            where: { id: entry.id },
+            data: { keyPoints: result.keyPoints },
+          })
+          success++
+          console.log(`  ✅ AI 生成要点成功`)
+        } else {
+          // 降级到模板要点
+          const templateResult = generateTemplateQuestions(entry.title, entry.content)
+          if (templateResult.keyPoints) {
+            await prisma.entry.update({
+              where: { id: entry.id },
+              data: { keyPoints: templateResult.keyPoints },
+            })
+            success++
+            console.log(`  ✅ 模板生成要点成功`)
+          }
+        }
       }
-
-      for (let i = 0; i < questions.length; i++) {
-        const q = questions[i]
-        const question = await prisma.quizQuestion.create({
-          data: {
-            entryId: entry.id,
-            question: q.question,
-            type: q.type,
-            options: q.options,
-            answer: q.answer,
-            explanation: q.explanation,
-            angle: i + 1,
-          },
-        })
-
-        const nextReviewAt = new Date()
-        nextReviewAt.setDate(nextReviewAt.getDate() + 1)
-
-        await prisma.quizRecord.create({
-          data: {
-            userId: entry.userId,
-            questionId: question.id,
-            entryId: entry.id,
-            correct: false,
-            nextReviewAt,
-            streak: 0,
-          },
-        })
-      }
-
-      success++
-      console.log(`  ✅ ${source} 生成 ${questions.length} 道题`)
     } catch (e) {
       failed++
       console.log(`  ❌ 失败: ${e}`)
