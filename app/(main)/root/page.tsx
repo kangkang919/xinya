@@ -78,6 +78,11 @@ export default function RootPage() {
   const [passwordTip, setPasswordTip] = useState('')
   const [passwordError, setPasswordError] = useState('')
 
+  // 拾遗设置
+  const [entryCount, setEntryCount] = useState(0)
+  const [reviewEnabled, setReviewEnabled] = useState(false)
+  const [reviewLoading, setReviewLoading] = useState(false)
+
   useEffect(() => {
     const saved = localStorage.getItem('xinya-theme') || 'autumn'
     setCurrentTheme(saved)
@@ -97,6 +102,17 @@ export default function RootPage() {
       .catch(() => {})
 
     fetchTags()
+
+    // 获取拾遗设置
+    fetch('/api/review/settings')
+      .then(r => r.json())
+      .then(data => {
+        if (data.ok) {
+          setEntryCount(data.data.entryCount)
+          setReviewEnabled(data.data.reviewEnabled)
+        }
+      })
+      .catch(() => {})
   }, [])
 
   function fetchTags() {
@@ -204,6 +220,23 @@ export default function RootPage() {
       setPasswordError('网络问题，请稍后再试')
     }
     setPasswordLoading(false)
+  }
+
+  async function toggleReview() {
+    if (entryCount < 20) return
+    setReviewLoading(true)
+    try {
+      const res = await fetch('/api/review/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reviewEnabled: !reviewEnabled }),
+      })
+      const data = await res.json()
+      if (data.ok) {
+        setReviewEnabled(!reviewEnabled)
+      }
+    } catch (_) {}
+    setReviewLoading(false)
   }
 
   const isDark = currentTheme === 'night'
@@ -442,6 +475,30 @@ export default function RootPage() {
             )}
           </div>
         )}
+      </div>
+
+      {/* 拾遗设置 */}
+      <div className="p-4 rounded-xl mb-4" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium" style={{ color: titleColor }}>拾遗</p>
+            <p className="text-xs mt-1" style={{ color: dimColor }}>
+              {entryCount < 20 ? `写满${20 - entryCount}篇心得，解锁AI回顾` : 'AI每日回顾，错题智能加强'}
+            </p>
+          </div>
+          <button
+            onClick={toggleReview}
+            disabled={reviewLoading || entryCount < 20}
+            className="px-4 py-1.5 rounded-full text-xs font-medium transition"
+            style={{
+              background: reviewEnabled ? '#8BC34A' : (isDark ? '#333' : '#f0f0f0'),
+              color: reviewEnabled ? '#fff' : (entryCount < 20 ? '#999' : (isDark ? '#aaa' : '#666')),
+              opacity: entryCount < 20 ? 0.5 : 1,
+            }}
+          >
+            {reviewEnabled ? '已开启' : '开启'}
+          </button>
+        </div>
       </div>
 
       {/* 版本 & 开打次数 */}
