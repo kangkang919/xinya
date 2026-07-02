@@ -1,0 +1,80 @@
+const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || "sk-747dae9d288d46a5baad2cd14638e69f"
+const DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
+
+interface GeneratedQuestion {
+  question: string
+  type: "single" | "multiple" | "truefalse"
+  options: string[]
+  answer: number[]
+  explanation: string
+}
+
+export async function generateQuestions(entryTitle: string, entryContent: string): Promise<GeneratedQuestion[]> {
+  const prompt = `请根据以下心得内容，生成2道选择题用于复习巩固。
+
+心得标题：${entryTitle}
+心得内容：${entryContent.substring(0, 1000)}
+
+要求：
+1. 题干≤30字，简洁明了
+2. 题型自动适配：概念辨析→单选，关系匹配→多选，对比→判断
+3. 每题4个选项，有迷惑性但不歧义
+4. 答案用选项索引表示（单选[0]，多选[0,2]，判断[0]为对[1]为错）
+5. 解析引用原文重点
+
+请返回JSON数组格式：
+[
+  {
+    "question": "题干",
+    "type": "single/multiple/truefalse",
+    "options": ["选项A", "选项B", "选项C", "选项D"],
+    "answer": [0],
+    "explanation": "解析..."
+  }
+]
+
+只返回JSON，不要其他内容。`
+
+  try {
+    const res = await fetch(DEEPSEEK_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${DEEPSEEK_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: "deepseek-chat",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.7,
+        max_tokens: 1000,
+      }),
+    })
+
+    if (!res.ok) {
+      console.error("[DeepSeek] API error:", res.status)
+      return []
+    }
+
+    const data = await res.json()
+    const content = data.choices?.[0]?.message?.content || ""
+
+    // 提取JSON
+    const jsonMatch = content.match(/\[[\s\S]*\]/)
+    if (!jsonMatch) {
+      console.error("[DeepSeek] No JSON found in response")
+      return []
+    }
+
+    const questions = JSON.parse(jsonMatch[0])
+    return questions.map((q: any) => ({
+      question: q.question?.substring(0, 30) || "",
+      type: ["single", "multiple", "truefalse"].includes(q.type) ? q.type : "single",
+      options: Array.isArray(q.options) ? q.options.slice(0, 4) : [],
+      answer: Array.isArray(q.answer) ? q.answer : [0],
+      explanation: q.explanation || "",
+    }))
+  } catch (e) {
+    console.error("[DeepSeek] Error:", e)
+    return []
+  }
+}
