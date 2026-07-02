@@ -144,9 +144,12 @@ export async function getTodayCard(userId: string): Promise<TodayCard | null> {
 
 function formatCard(record: any): TodayCard {
   const entry = record.question.entry
-  // 去除 HTML 标签，取纯文本前200字作为要点
-  const plainText = entry.content.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim()
-  const keyPoints = plainText.length > 200 ? plainText.substring(0, 200) + "…" : plainText
+  // 使用 AI 生成的要点，如果没有则取内容前200字
+  let keyPoints = entry.keyPoints
+  if (!keyPoints) {
+    const plainText = entry.content.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim()
+    keyPoints = plainText.length > 200 ? plainText.substring(0, 200) + "…" : plainText
+  }
   return {
     entryId: record.entryId,
     entryTitle: entry.title,
