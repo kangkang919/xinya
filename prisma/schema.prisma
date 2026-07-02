@@ -1,4 +1,4 @@
-generator client {
+﻿generator client {
   provider = "prisma-client-js"
 }
 
@@ -25,6 +25,8 @@ model User {
   aiInsights     AiInsight[]
   growthLogs     GrowthLog[]
   emailTokens    EmailToken[]
+  settings       UserSetting?
+  quizRecords    QuizRecord[]
 }
 
 model Entry {
@@ -42,6 +44,7 @@ model Entry {
 
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   tags        Tag[]     @relation("EntryTags")
+  quizQuestions QuizQuestion[]
 
   @@index([userId, recordTime(sort: Desc)])
   @@index([userId, isTop])
@@ -140,4 +143,48 @@ model MagicLink {
 
   @@index([token])
   @@index([email])
+}
+
+model QuizQuestion {
+  id          String   @id @default(cuid())
+  entryId     String
+  question    String
+  type        String
+  options     Json
+  answer      Json
+  explanation String
+  angle       Int      @default(1)
+  createdAt   DateTime @default(now())
+
+  entry       Entry    @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  records     QuizRecord[]
+
+  @@index([entryId])
+}
+
+model QuizRecord {
+  id            String   @id @default(cuid())
+  userId        String
+  questionId    String
+  entryId       String
+  correct       Boolean
+  answeredAt    DateTime @default(now())
+  nextReviewAt  DateTime
+  streak        Int      @default(0)
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question      QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([userId, nextReviewAt])
+  @@index([userId, questionId])
+}
+
+model UserSetting {
+  id              String  @id @default(cuid())
+  userId          String  @unique
+  reviewEnabled   Boolean @default(false)
+  lastCardDate    String?
+  lastQuestionId  String?
+
+  user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
