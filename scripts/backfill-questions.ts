@@ -93,13 +93,31 @@ async function main() {
   for (const entry of entries) {
     console.log(`\n[Backfill] 处理: ${entry.title}`)
     try {
-      let questions = await generateQuestions(entry.title, entry.content)
+      const result = await generateQuestions(entry.title, entry.content)
+      let questions = result.questions
       let source = "deepseek"
+
+      // 保存 AI 生成的要点
+      if (result.keyPoints) {
+        await prisma.entry.update({
+          where: { id: entry.id },
+          data: { keyPoints: result.keyPoints },
+        })
+      }
 
       if (questions.length === 0) {
         console.log("  DeepSeek 失败，使用模板降级")
-        questions = generateTemplateQuestions(entry.title, entry.content)
+        const templateResult = generateTemplateQuestions(entry.title, entry.content)
+        questions = templateResult.questions
         source = "template"
+
+        // 保存模板要点
+        if (templateResult.keyPoints) {
+          await prisma.entry.update({
+            where: { id: entry.id },
+            data: { keyPoints: templateResult.keyPoints },
+          })
+        }
       }
 
       for (let i = 0; i < questions.length; i++) {
