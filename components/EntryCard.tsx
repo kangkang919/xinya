@@ -119,7 +119,7 @@ export function EntryCard({ id, title, contentPreview, tags, mood, recordTime,
       <div className="flex items-center gap-2 flex-wrap">
         {tags.map(t => (
           <span key={t.id} className="text-xs px-2 py-0.5 rounded-full"
-            style={{ background: "#e8f5e9", color: "#8BC34A" }}>
+            style={{ background: isDark ? "#3a3a3a" : "#f0f0f0", color: "#5a8a2f" }}>
             {t.name}
           </span>
         ))}
