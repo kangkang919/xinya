@@ -1,5 +1,32 @@
 import { prisma } from "./prisma"
 
+// 记录调用日志（保留最近30条）
+export async function logReviewCall(
+  userId: string,
+  entryId: string | null,
+  step: string,
+  success: boolean,
+  questionCount: number,
+  errorMsg?: string
+) {
+  await prisma.reviewCallLog.create({
+    data: { userId, entryId, step, success, questionCount, errorMsg },
+  })
+
+  // 清理30条之前的旧日志
+  const oldLogs = await prisma.reviewCallLog.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+    skip: 30,
+    select: { id: true },
+  })
+  if (oldLogs.length > 0) {
+    await prisma.reviewCallLog.deleteMany({
+      where: { id: { in: oldLogs.map(l => l.id) } },
+    })
+  }
+}
+
 interface TodayCard {
   entryId: string
   entryTitle: string
