@@ -70,6 +70,14 @@ export default function RootPage() {
   const [tagActionLoading, setTagActionLoading] = useState(false)
   const [showTags, setShowTags] = useState(false)
 
+  // 密码设置
+  const [showPasswordForm, setShowPasswordForm] = useState(false)
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [passwordLoading, setPasswordLoading] = useState(false)
+  const [passwordTip, setPasswordTip] = useState('')
+  const [passwordError, setPasswordError] = useState('')
+
   useEffect(() => {
     const saved = localStorage.getItem('xinya-theme') || 'autumn'
     setCurrentTheme(saved)
@@ -160,6 +168,44 @@ export default function RootPage() {
     router.push('/login')
   }
 
+  async function handleSetPassword() {
+    setPasswordError('')
+    setPasswordTip('')
+
+    if (!newPassword || newPassword.length < 6) {
+      setPasswordError('密码至少6位')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('两次输入的密码不一致')
+      return
+    }
+
+    setPasswordLoading(true)
+    try {
+      const res = await fetch('/api/auth/set-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: newPassword }),
+      })
+      const data = await res.json()
+      if (!data.ok) {
+        setPasswordError(data.error || '设置失败')
+        return
+      }
+      setPasswordTip('密码设置成功')
+      setNewPassword('')
+      setConfirmPassword('')
+      setTimeout(() => {
+        setPasswordTip('')
+        setShowPasswordForm(false)
+      }, 2000)
+    } catch (_) {
+      setPasswordError('网络问题，请稍后再试')
+    }
+    setPasswordLoading(false)
+  }
+
   const isDark = currentTheme === 'night'
   const cardBg = isDark ? '#2A2A2A' : '#fff'
   const cardBorder = isDark ? '#444' : '#eee'
@@ -179,10 +225,58 @@ export default function RootPage() {
 
       {/* 账号 */}
       <div className="p-4 rounded-xl mb-4" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
-        <p className="text-xs mb-2" style={{ color: subColor }}>账号</p>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs" style={{ color: subColor }}>账号</p>
+          <button
+            onClick={() => { setShowPasswordForm(!showPasswordForm); setPasswordError(''); setPasswordTip('') }}
+            className="text-xs"
+            style={{ color: '#8BC34A' }}
+          >
+            {showPasswordForm ? '收起' : '设置密码'}
+          </button>
+        </div>
         <p className="text-sm font-medium" style={{ color: titleColor }}>
           {user?.email ?? '—'}
         </p>
+
+        {showPasswordForm && (
+          <div className="mt-3 pt-3" style={{ borderTop: `1px solid ${isDark ? '#444' : '#f0f0f0'}` }}>
+            {passwordTip && (
+              <p className="text-xs mb-2" style={{ color: '#8BC34A' }}>{passwordTip}</p>
+            )}
+            {passwordError && (
+              <p className="text-xs mb-2" style={{ color: '#e57373' }}>{passwordError}</p>
+            )}
+            <input
+              type="password"
+              placeholder="输入新密码（至少6位）"
+              value={newPassword}
+              onChange={e => setNewPassword(e.target.value)}
+              className="input-sketch w-full px-3 py-2 text-sm outline-none mb-2"
+              style={{ border: `1.5px solid ${isDark ? '#555' : '#ccc'}`, background: isDark ? '#333' : '#fafaf5', color: titleColor }}
+            />
+            <input
+              type="password"
+              placeholder="再次输入密码"
+              value={confirmPassword}
+              onChange={e => setConfirmPassword(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSetPassword()}
+              className="input-sketch w-full px-3 py-2 text-sm outline-none mb-2"
+              style={{ border: `1.5px solid ${isDark ? '#555' : '#ccc'}`, background: isDark ? '#333' : '#fafaf5', color: titleColor }}
+            />
+            <button
+              onClick={handleSetPassword}
+              disabled={passwordLoading}
+              className="btn-sketch w-full py-2 text-sm font-medium text-white transition-opacity"
+              style={{ background: passwordLoading ? '#aaa' : '#8BC34A' }}
+            >
+              {passwordLoading ? '设置中…' : '确认设置'}
+            </button>
+            <p className="text-xs mt-2" style={{ color: dimColor }}>
+              设置后可使用「使用密码登陆」，忘记密码可通过邮箱链接登录后重新设置
+            </p>
+          </div>
+        )}
       </div>
 
       {/* 主题风格 */}
