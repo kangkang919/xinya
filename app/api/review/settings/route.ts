@@ -39,9 +39,17 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "累计心得需达到20条才可开启" }, { status: 400 })
     }
 
+    // 获取当前设置，判断是否从关闭变为开启
+    const currentSetting = await prisma.userSetting.findUnique({ where: { userId } })
+    const wasOff = !currentSetting?.reviewEnabled
+    const isTurningOn = reviewEnabled && wasOff
+
+    // 如果从关闭变为开启，重置 lastCardDate
     await prisma.userSetting.upsert({
       where: { userId },
-      update: { reviewEnabled },
+      update: isTurningOn
+        ? { reviewEnabled, lastCardDate: null }
+        : { reviewEnabled },
       create: { userId, reviewEnabled },
     })
 
