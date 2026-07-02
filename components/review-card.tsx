@@ -136,7 +136,7 @@ export default function ReviewCard({ card, onClose, onSkip }: ReviewCardProps) {
                 {card.question}
               </h3>
               <div className="space-y-2 mb-6">
-                {card.options.map((opt, idx) => {
+                {card.options.filter(opt => opt && opt.trim()).map((opt, idx) => {
                   const isSelected = selectedAnswer.includes(idx)
                   return (
                     <button
