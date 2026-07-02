@@ -55,8 +55,6 @@ export default function RingPage() {
   const [loading, setLoading] = useState(true)
   const [tooltip, setTooltip] = useState<{ text: string; x: number; y: number } | null>(null)
   const [entryCount, setEntryCount] = useState(0)
-  const [reviewEnabled, setReviewEnabled] = useState(false)
-  const [reviewLoading, setReviewLoading] = useState(false)
 
   useEffect(() => {
     setLoading(true)
@@ -69,13 +67,12 @@ export default function RingPage() {
       .catch(() => {})
       .finally(() => setLoading(false))
 
-    // 获取拾遗设置和累计篇数
+    // 获取累计篇数
     fetch('/api/review/settings')
       .then(r => r.json())
       .then(data => {
         if (data.ok) {
           setEntryCount(data.data.entryCount)
-          setReviewEnabled(data.data.reviewEnabled)
         }
       })
       .catch(() => {})
@@ -145,23 +142,6 @@ export default function RingPage() {
         </div>
       </div>
     )
-  }
-
-  async function toggleReview() {
-    if (entryCount < 20) return
-    setReviewLoading(true)
-    try {
-      const res = await fetch('/api/review/settings', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reviewEnabled: !reviewEnabled }),
-      })
-      const data = await res.json()
-      if (data.ok) {
-        setReviewEnabled(!reviewEnabled)
-      }
-    } catch (_) {}
-    setReviewLoading(false)
   }
 
   const calendarDays = buildCalendarDays()
@@ -346,34 +326,10 @@ export default function RingPage() {
       </div>
 
       {/* 累计篇数 */}
-      <div className="p-4 rounded-xl mb-3" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
+      <div className="p-4 rounded-xl" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
         <div className="flex items-center justify-between">
           <span className="text-sm" style={{ color: isDark ? '#aaa' : '#666' }}>累计篇数</span>
           <span className="text-lg font-bold" style={{ color: titleColor }}>{entryCount}</span>
-        </div>
-      </div>
-
-      {/* 拾遗设置 */}
-      <div className="p-4 rounded-xl" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium" style={{ color: titleColor }}>拾遗</p>
-            <p className="text-xs mt-1" style={{ color: dimColor }}>
-              {entryCount < 20 ? `累计 ${20 - entryCount} 篇心得后可开启` : '每日回顾，温故知新'}
-            </p>
-          </div>
-          <button
-            onClick={toggleReview}
-            disabled={reviewLoading || entryCount < 20}
-            className="px-4 py-1.5 rounded-full text-xs font-medium transition"
-            style={{
-              background: reviewEnabled ? '#8BC34A' : (isDark ? '#333' : '#f0f0f0'),
-              color: reviewEnabled ? '#fff' : (entryCount < 20 ? '#999' : (isDark ? '#aaa' : '#666')),
-              opacity: entryCount < 20 ? 0.5 : 1,
-            }}
-          >
-            {reviewEnabled ? '已开启' : '开启'}
-          </button>
         </div>
       </div>
     </div>
