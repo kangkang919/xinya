@@ -1,4 +1,4 @@
-﻿"use client"
+﻿﻿"use client"
 import { useState } from "react"
 import Link from "next/link"
 
@@ -44,7 +44,7 @@ export default function RegisterPage() {
         </button>
         <p className="text-center text-sm mt-6" style={{ color: "#999" }}>
           已有账号？
-          <Link href="/login" className="font-medium ml-1" style={{ color: "#8BC34A" }}>回到登录</Link>
+          <Link href="/login" className="font-bold ml-1" style={{ color: "#8BC34A" }}>点我回到登录</Link>
         </p>
       </div>
     )
@@ -84,8 +84,8 @@ export default function RegisterPage() {
 
       <p className="text-center text-sm mt-5" style={{ color: "#999" }}>
         已有账号？
-        <Link href="/login" className="font-medium ml-1" style={{ color: "#8BC34A" }}>
-          回到登录
+        <Link href="/login" className="font-bold ml-1" style={{ color: "#8BC34A" }}>
+          点我回到登录
         </Link>
       </p>
     </div>
