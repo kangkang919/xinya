@@ -92,10 +92,22 @@ function generateTemplateQuestions(title: string, content: string) {
   ]
 
   const plainText = content.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim()
-  // 内容为空时用标题，否则取前 100 字
-  const keyPoints = plainText
-    ? (plainText.length > 100 ? plainText.substring(0, 100) + "…" : plainText)
-    : title
+  
+  let keyPoints: string
+  if (!plainText) {
+    keyPoints = title
+  } else {
+    const firstSentence = plainText.split(/[。！？]/)[0].trim()
+    const shortTitle = title.length > 20 ? title.substring(0, 20) + "..." : title
+    
+    if (firstSentence && firstSentence.length > 10) {
+      const summary = firstSentence.length > 80 ? firstSentence.substring(0, 80) + "..." : firstSentence
+      keyPoints = `本文讲解「${shortTitle}」：${summary}`
+    } else {
+      const contentText = plainText.length > 80 ? plainText.substring(0, 80) + "..." : plainText
+      keyPoints = `「${shortTitle}」${contentText}`
+    }
+  }
 
   return { keyPoints, questions }
 }
