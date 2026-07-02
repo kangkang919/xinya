@@ -202,6 +202,7 @@ async function main() {
         // 已有题目，只生成要点
         console.log("  仅生成要点...")
         const result = await generateQuestions(entry.title, entry.content)
+        console.log("  DeepSeek 返回 keyPoints:", result.keyPoints ? `"${result.keyPoints.substring(0, 50)}..."` : "(空)")
 
         if (result.keyPoints) {
           await prisma.entry.update({
@@ -212,7 +213,9 @@ async function main() {
           console.log(`  ✅ AI 生成要点成功`)
         } else {
           // 降级到模板要点
+          console.log("  DeepSeek 要点为空，使用模板降级")
           const templateResult = generateTemplateQuestions(entry.title, entry.content)
+          console.log("  模板 keyPoints:", templateResult.keyPoints ? `"${templateResult.keyPoints.substring(0, 50)}..."` : "(空)")
           if (templateResult.keyPoints) {
             await prisma.entry.update({
               where: { id: entry.id },
@@ -220,6 +223,8 @@ async function main() {
             })
             success++
             console.log(`  ✅ 模板生成要点成功`)
+          } else {
+            console.log("  ⚠️ 模板要点也为空")
           }
         }
       }
