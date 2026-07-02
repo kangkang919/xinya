@@ -36,6 +36,9 @@ export async function generateQuestions(entryTitle: string, entryContent: string
 只返回JSON，不要其他内容。`
 
   try {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 15000) // 15秒超时
+
     const res = await fetch(DEEPSEEK_API_URL, {
       method: "POST",
       headers: {
@@ -48,7 +51,10 @@ export async function generateQuestions(entryTitle: string, entryContent: string
         temperature: 0.7,
         max_tokens: 1000,
       }),
+      signal: controller.signal,
     })
+
+    clearTimeout(timeoutId)
 
     if (!res.ok) {
       console.error("[DeepSeek] API error:", res.status)
