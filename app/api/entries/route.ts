@@ -128,7 +128,7 @@ async function preGenerateQuestions(
   if (questions.length > 0) {
     for (let i = 0; i < questions.length; i++) {
       const q = questions[i]
-      await prisma.quizQuestion.create({
+      const question = await prisma.quizQuestion.create({
         data: {
           entryId,
           question: q.question,
@@ -146,7 +146,7 @@ async function preGenerateQuestions(
       await prisma.quizRecord.create({
         data: {
           userId,
-          questionId: (await prisma.quizQuestion.findFirst({ where: { entryId, angle: i + 1 } }))!.id,
+          questionId: question.id,
           entryId,
           correct: false,
           nextReviewAt,
