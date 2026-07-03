@@ -1,4 +1,5 @@
 import { prisma } from "./prisma"
+import { generateKeyPoints } from "./template-questions"
 
 // 记录调用日志（保留最近30条）
 export async function logReviewCall(
@@ -145,23 +146,7 @@ export async function getTodayCard(userId: string): Promise<TodayCard | null> {
 function formatCard(record: any): TodayCard {
   const entry = record.question.entry
   // 使用 AI 生成的要点，如果没有则用模板生成
-  let keyPoints = entry.keyPoints
-  if (!keyPoints) {
-    const plainText = entry.content.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim()
-    if (!plainText) {
-      keyPoints = entry.title
-    } else {
-      const firstSentence = plainText.split(/[。！？]/)[0].trim()
-      const shortTitle = entry.title.length > 20 ? entry.title.substring(0, 20) + "..." : entry.title
-      if (firstSentence && firstSentence.length > 10) {
-        const summary = firstSentence.length > 80 ? firstSentence.substring(0, 80) + "..." : firstSentence
-        keyPoints = `本文讲解「${shortTitle}」：${summary}`
-      } else {
-        const contentText = plainText.length > 80 ? plainText.substring(0, 80) + "..." : plainText
-        keyPoints = `「${shortTitle}」${contentText}`
-      }
-    }
-  }
+  const keyPoints = entry.keyPoints || generateKeyPoints(entry.title, entry.content)
   return {
     entryId: record.entryId,
     entryTitle: entry.title,
