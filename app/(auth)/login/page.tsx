@@ -84,7 +84,19 @@ function LoginForm() {
   }
 
   return (
-    <div className="card-sketch bg-white p-8 shadow-md" style={{ border: "2px solid #e0e0e0" }}>
+    <div>
+      {/* 小程序介绍 */}
+      <div className="text-center mb-6 px-4">
+        <p className="text-sm leading-relaxed" style={{ color: "#666" }}>
+          这里是你的知识花园——记录学习心得，AI 每天为你浇灌复习。
+          <br />
+          每一颗心芽，都是成长的开始；每一次回顾，都在让根系更深。
+          <br />
+          愿你的积累，终成一片森林。
+        </p>
+      </div>
+
+      <div className="card-sketch bg-white p-8 shadow-md" style={{ border: "2px solid #e0e0e0" }}>
       <h2 className="text-xl font-bold mb-4 text-center" style={{ color: "#333" }}>回到你的花园</h2>
 
       {/* 模式切换 */}
@@ -177,6 +189,7 @@ function LoginForm() {
         还没有账号？
         <Link href="/register" className="font-bold ml-1" style={{ color: "#8BC34A" }}>点我开启注册</Link>
       </p>
+    </div>
     </div>
   )
 }
