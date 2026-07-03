@@ -1,10 +1,10 @@
-﻿"use client"
+"use client"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 
 const STEPS = [
   {
-    emoji: "🌱",
+    emoji: "",
     title: "欢迎来到心芽",
     desc: "这里是只属于你的内心花园，记录每一次心灵的萌发。",
     hint: "每一颗小小的心得，都是一粒种子。",
@@ -18,7 +18,7 @@ const STEPS = [
   {
     emoji: "🌳",
     title: "见证自己的成长",
-    desc: "年轮页会展示你的记录热力图，AI 会在你写下第5条时，送来一份专属洞察。",
+    desc: "年轮页会展示你的记录热力图，写满20篇心得后，AI每日为你送上专属回顾。",
     hint: "坚持记录，看看自己长成了什么样。",
   },
 ]
@@ -64,7 +64,7 @@ export default function OnboardPage() {
         <p className="text-xs italic" style={{ color: "#8BC34A" }}>{cur.hint}</p>
       </div>
 
-      {/* 步骤点 */}
+      {/* 进度点 */}
       <div className="flex gap-2 my-6">
         {STEPS.map((_, i) => (
           <div key={i} className="rounded-full transition-all"
