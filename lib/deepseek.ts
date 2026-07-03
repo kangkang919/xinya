@@ -1,4 +1,4 @@
-const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || "sk-747dae9d288d46a5baad2cd14638e69f"
+const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY
 const DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
 
 interface GeneratedQuestion {
@@ -30,11 +30,11 @@ export async function generateQuestions(
 3. 选项数量：单选/多选4个选项，判断题只有2个选项（正确/错误）
 4. 答案用选项索引表示（单选[0]，多选[0,2]，判断[0]为对[1]为错）
 5. 解析引用原文重点
-6. 同时生成要点总结（keyPoints）：请你以老师的角色，对这篇心得的核心内容做 1-2 句总结叙述，不要发散，不要用 1、2、3、4、5 这样的列举，字数控制在 100 字以内
+6. 同时生成要点总结（keyPoints）：请你以老师的角色，对这篇心得的核心内容做 1-2 句总结叙述，不要发散，不要用 1、2、3、4、5 这样的列举，总字数（含标点）控制在 100 字以内
 
-请返回JSON格式：
+请返回 JSON 格式：
 {
-  "keyPoints": "3-5行要点总结...",
+  "keyPoints": "1-2 句要点总结，100 字以内",
   "questions": [
     {
       "question": "题干",
