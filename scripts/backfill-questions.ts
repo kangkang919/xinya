@@ -20,11 +20,11 @@ async function generateQuestions(title: string, content: string) {
 3. 选项数量：单选/多选4个选项，判断题只有2个选项（正确/错误）
 4. 答案用选项索引表示（单选[0]，多选[0,2]，判断[0]为对[1]为错）
 5. 解析引用原文重点
-6. 同时生成要点总结（keyPoints）：请你以老师的角色，对这篇心得的核心内容做1-2段总结叙述，不要发散，不要用1、2、3、4、5这样的列举，字数控制在200字以内
+6. 同时生成要点总结（keyPoints）：请你以老师的角色，对这篇心得的核心内容做 1-2 句总结叙述，不要发散，不要用 1、2、3、4、5 这样的列举，总字数（含标点）控制在 100 字以内
 
-请返回JSON格式：
+请返回 JSON 格式：
 {
-  "keyPoints": "3-5行要点总结...",
+  "keyPoints": "1-2 句要点总结，100 字以内",
   "questions": [
     {
       "question": "题干",
@@ -73,6 +73,26 @@ async function generateQuestions(title: string, content: string) {
   }
 }
 
+function generateKeyPoints(title: string, content: string): string {
+  const plainText = content.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim()
+
+  if (!plainText) {
+    return title
+  }
+
+  const firstSentence = plainText.split(/[。！？]/)[0].trim()
+  const shortTitle = title.length > 15 ? title.substring(0, 15) + "…" : title
+
+  let result: string
+  if (firstSentence && firstSentence.length > 10) {
+    result = `本文讲解「${shortTitle}」：${firstSentence}`
+  } else {
+    result = `「${shortTitle}」${plainText}`
+  }
+
+  return result.length > 100 ? result.substring(0, 99) + "…" : result
+}
+
 function generateTemplateQuestions(title: string, content: string) {
   const questions = [
     {
@@ -91,23 +111,7 @@ function generateTemplateQuestions(title: string, content: string) {
     },
   ]
 
-  const plainText = content.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim()
-  
-  let keyPoints: string
-  if (!plainText) {
-    keyPoints = title
-  } else {
-    const firstSentence = plainText.split(/[。！？]/)[0].trim()
-    const shortTitle = title.length > 20 ? title.substring(0, 20) + "..." : title
-    
-    if (firstSentence && firstSentence.length > 10) {
-      const summary = firstSentence.length > 80 ? firstSentence.substring(0, 80) + "..." : firstSentence
-      keyPoints = `本文讲解「${shortTitle}」：${summary}`
-    } else {
-      const contentText = plainText.length > 80 ? plainText.substring(0, 80) + "..." : plainText
-      keyPoints = `「${shortTitle}」${contentText}`
-    }
-  }
+  const keyPoints = generateKeyPoints(title, content)
 
   return { keyPoints, questions }
 }
