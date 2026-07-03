@@ -87,12 +87,12 @@ function LoginForm() {
     <div>
       {/* 小程序介绍 */}
       <div className="text-center mb-6 px-4">
-        <p className="text-sm leading-relaxed" style={{ color: "#666" }}>
-          这里是你的知识花园——记录学习心得，AI 每天为你浇灌复习。
+        <p className="text-sm leading-loose" style={{ color: "#666", maxWidth: "320px", margin: "0 auto" }}>
+          筑知识庭园，录学思心得
           <br />
-          每一颗心芽，都是成长的开始；每一次回顾，都在让根系更深。
+          AI化甘霖，润育每颗心芽
           <br />
-          愿你的积累，终成一片森林。
+          愿点滴沉淀，终蔚然成林
         </p>
       </div>
 
@@ -119,7 +119,7 @@ function LoginForm() {
             color: mode === "password" ? "#fff" : "#999",
           }}
         >
-          使用密码登陆
+          使用密码登录
         </button>
       </div>
 
