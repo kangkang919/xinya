@@ -20,7 +20,7 @@ const THEMES = [
   { key: 'summer', label: '夏日繁茂', sub: '蔚蓝清凉', color: '#2196F3', bg: '#EEF6FE' },
   { key: 'autumn', label: '秋日暖阳', sub: '暖橙丰收', color: '#FF8C42', bg: '#FAFAF5' },
   { key: 'winter', label: '冬日静谧', sub: '银灰沉静', color: '#90A4AE', bg: '#F5F5F7' },
-  { key: 'night', label: '暗夜', sub: '深邃静谧', color: '#6B8F3C', bg: '#1E1E1E' },
+  { key: 'night', label: '墨色幽微', sub: '深邃静谧', color: '#6B8F3C', bg: '#1E1E1E' },
 ]
 
 const CHANGELOGS = [
@@ -306,7 +306,7 @@ export default function RootPage() {
               {passwordLoading ? '设置中…' : '确认设置'}
             </button>
             <p className="text-xs mt-2" style={{ color: dimColor }}>
-              设置后可使用「使用密码登陆」，忘记密码可通过邮箱链接登录后重新设置
+              设置后可使用「密码登录」，忘记密码可通过邮箱链接登录后重新设置
             </p>
           </div>
         )}
@@ -483,7 +483,7 @@ export default function RootPage() {
           <div>
             <p className="text-sm font-medium" style={{ color: titleColor }}>拾遗</p>
             <p className="text-xs mt-1" style={{ color: dimColor }}>
-              {entryCount < 20 ? `写满${20 - entryCount}篇心得，解锁AI回顾` : 'AI每日回顾，错题智能加强'}
+              {entryCount < 20 ? `积${20 - entryCount}篇学思，唤AI循循温故（AI知识回顾）` : '沐每日甘霖，令薄弱处生根（AI知识回顾）'}
             </p>
           </div>
           <button
