@@ -8,6 +8,30 @@ interface TemplateQuestion {
   explanation: string
 }
 
+// 从内容生成要点总结（100 字以内）
+export function generateKeyPoints(title: string, content: string): string {
+  const plainText = content.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim()
+
+  if (!plainText) {
+    return title
+  }
+
+  const firstSentence = plainText.split(/[。！？]/)[0].trim()
+  const shortTitle = title.length > 15 ? title.substring(0, 15) + "…" : title
+
+  let result: string
+  if (firstSentence && firstSentence.length > 10) {
+    // 有完整句子：用"本文讲解..."的格式
+    result = `本文讲解「${shortTitle}」：${firstSentence}`
+  } else {
+    // 句子太短：直接用标题 + 内容
+    result = `「${shortTitle}」${plainText}`
+  }
+
+  // 确保总字数不超过 100 字
+  return result.length > 100 ? result.substring(0, 99) + "…" : result
+}
+
 export function generateTemplateQuestions(entryTitle: string, entryContent: string): { keyPoints: string; questions: TemplateQuestion[] } {
   const questions: TemplateQuestion[] = []
 
@@ -26,7 +50,7 @@ export function generateTemplateQuestions(entryTitle: string, entryContent: stri
   })
 
   // 题目2：内容理解（判断）
-  const contentLength = entryContent.length
+  const contentLength = entryContent.replace(/<[^>]*>/g, "").length
   questions.push({
     question: `这篇心得的内容篇幅属于？`,
     type: "truefalse",
@@ -35,28 +59,7 @@ export function generateTemplateQuestions(entryTitle: string, entryContent: stri
     explanation: `这篇心得共有${contentLength}字，属于${contentLength > 200 ? "详细阐述" : "简要记录"}类型。`,
   })
 
-  // 模板要点：生成老师风格的总结
-  const plainText = entryContent.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim()
-  
-  let keyPoints: string
-  if (!plainText) {
-    // 内容为空时用标题
-    keyPoints = entryTitle
-  } else {
-    // 取第一句话作为核心，加上引导语
-    const firstSentence = plainText.split(/[。！？]/)[0].trim()
-    const title = entryTitle.length > 20 ? entryTitle.substring(0, 20) + "..." : entryTitle
-    
-    if (firstSentence && firstSentence.length > 10) {
-      // 有完整句子：用"本文讲解..."的格式
-      const summary = firstSentence.length > 80 ? firstSentence.substring(0, 80) + "..." : firstSentence
-      keyPoints = `本文讲解「${title}」：${summary}`
-    } else {
-      // 句子太短：直接用标题 + 内容前 80 字
-      const content = plainText.length > 80 ? plainText.substring(0, 80) + "..." : plainText
-      keyPoints = `「${title}」${content}`
-    }
-  }
+  const keyPoints = generateKeyPoints(entryTitle, entryContent)
 
   return { keyPoints, questions }
 }
