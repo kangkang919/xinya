@@ -251,7 +251,7 @@ export default function RootPage() {
       {/* 页面标题 */}
       <div className="flex items-center justify-between mb-1">
         <h1 className="text-xl font-bold" style={{ color: titleColor }}>
-          <span style={{ color: '#8BC34A', display: 'inline-block', width: '1.4em', textAlign: 'center' }}></span>根系
+          <span style={{ color: '#8BC34A', display: 'inline-block', width: '1.4em', textAlign: 'center' }}>🌿</span>根系
         </h1>
       </div>
       <p className="text-xs mb-5" style={{ color: dimColor }}>此处是你的根，安静而深厚</p>
