@@ -56,6 +56,8 @@ function LoginForm() {
       // 恢复服务端主题到 localStorage（无条件写入，带默认值兜底）
       const theme = data.data?.theme || 'autumn'
       localStorage.setItem('xinya-theme', theme)
+      // 标记需要主题刷新（强制切换生效）
+      sessionStorage.setItem('xinya-theme-refresh', '1')
       window.location.href = data.data?.onboardDone ? "/" : "/onboard"
     } catch (err: any) {
       setError("网络出了点问题，请稍后再试")
