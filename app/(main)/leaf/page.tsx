@@ -1,6 +1,7 @@
-"use client"
+﻿"use client"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { useTheme } from "@/lib/useTheme"
 
 interface Tag {
   id: string
@@ -45,8 +46,24 @@ function formatDate(iso: string) {
   return `${month}月${day}日`
 }
 
+// 暗色模式辅助函数
+function adjustAlpha(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return `rgba(${r},${g},${b},${alpha})`
+}
+
+function lightenColor(hex: string): string {
+  const r = Math.min(255, parseInt(hex.slice(1, 3), 16) + 60)
+  const g = Math.min(255, parseInt(hex.slice(3, 5), 16) + 60)
+  const b = Math.min(255, parseInt(hex.slice(5, 7), 16) + 60)
+  return `rgb(${r},${g},${b})`
+}
+
 export default function LeafPage() {
   const router = useRouter()
+  const { isDark, cardBg, cardBorder, titleColor, dimColor, inputBg, inputBorder } = useTheme()
   const [tags, setTags] = useState<Tag[]>([])
   const [search, setSearch] = useState('')
   const [selectedTag, setSelectedTag] = useState<Tag | null>(null)
@@ -92,11 +109,11 @@ export default function LeafPage() {
     <div className="p-4 max-w-lg mx-auto pb-24">
       {/* 页面标题 */}
       <div className="flex items-center justify-between mb-1">
-        <h1 className="text-xl font-bold" style={{ color: '#333' }}>
+        <h1 className="text-xl font-bold" style={{ color: titleColor }}>
           <span style={{ color: '#8BC34A', display: 'inline-block', width: '1.4em', textAlign: 'center' }}>🍃</span>枝叶
         </h1>
       </div>
-      <p className="text-xs mb-5" style={{ color: '#bbb' }}>思绪的脉络，在此生枝蔓叶</p>
+      <p className="text-xs mb-5" style={{ color: dimColor }}>思绪的脉络，在此生枝蔓叶</p>
 
       {/* 搜索框 */}
       <div className="relative mb-6">
@@ -111,7 +128,7 @@ export default function LeafPage() {
         </svg>
         <input
           className="w-full pl-10 pr-4 py-2.5 rounded-full outline-none text-sm"
-          style={{ border: '1.5px solid #e0e0e0', background: '#fff' }}
+          style={{ border: `1.5px solid ${inputBorder}`, background: inputBg, color: titleColor }}
           placeholder="搜索标签…"
           value={search}
           onChange={e => setSearch(e.target.value)}
@@ -129,9 +146,9 @@ export default function LeafPage() {
               key={tag.id}
               onClick={() => selectTag(tag)}
               style={{
-                background: isSelected ? c.border : c.bg,
+                background: isSelected ? c.border : (isDark ? adjustAlpha(c.border, 0.2) : c.bg),
                 border: `2px solid ${c.border}`,
-                color: isSelected ? '#fff' : c.text,
+                color: isSelected ? '#fff' : (isDark ? lightenColor(c.text) : c.text),
                 fontSize: `${fs}px`,
                 padding: fs >= 16 ? '10px 18px' : '6px 12px',
                 fontWeight: fs >= 16 ? 'bold' : 'normal',
@@ -175,10 +192,10 @@ export default function LeafPage() {
                   key={entry.id}
                   onClick={() => router.push(`/entry/${entry.id}/view`)}
                   className="p-4 rounded-xl cursor-pointer transition-all active:scale-[0.98]"
-                  style={{ background: '#fff', border: '1px solid #eee' }}
+                  style={{ background: cardBg, border: `1px solid ${cardBorder}` }}
                 >
                   {entry.title ? (
-                    <h3 className="text-sm font-medium mb-1 line-clamp-1" style={{ color: '#333' }}>
+                    <h3 className="text-sm font-medium mb-1 line-clamp-1" style={{ color: titleColor }}>
                       {entry.title}
                     </h3>
                   ) : null}
@@ -189,7 +206,7 @@ export default function LeafPage() {
                     <div className="flex flex-wrap gap-1">
                       {entry.tags.slice(0, 3).map(t => (
                         <span key={t.id} className="text-[10px] px-1.5 py-0.5 rounded-full"
-                          style={{ background: 'rgba(139,195,74,0.1)', color: '#5a8a2f' }}>
+                          style={{ background: isDark ? 'rgba(139,195,74,0.2)' : 'rgba(139,195,74,0.1)', color: isDark ? '#AED581' : '#5a8a2f' }}>
                           #{t.name}
                         </span>
                       ))}
@@ -207,3 +224,4 @@ export default function LeafPage() {
     </div>
   )
 }
+
