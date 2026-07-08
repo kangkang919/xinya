@@ -95,7 +95,7 @@ export default function ViewEntryPage() {
         <button
           onClick={() => router.back()}
           className="flex items-center gap-1 text-sm rounded-full px-3 py-1.5 transition"
-          style={{ color: '#666', background: 'rgba(0,0,0,0.04)' }}
+          style={{ color: isDark ? '#aaa' : '#666', background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)' }}
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
             fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -127,7 +127,7 @@ export default function ViewEntryPage() {
               <span
                 key={tag.id}
                 className="text-xs px-2.5 py-1 rounded-full"
-                style={{ background: 'rgba(139,195,74,0.12)', color: '#5a8a2f' }}
+                style={{ background: isDark ? 'rgba(139,195,74,0.2)' : 'rgba(139,195,74,0.12)', color: isDark ? '#AED581' : '#5a8a2f' }}
               >
                 # {tag.name}
               </span>
