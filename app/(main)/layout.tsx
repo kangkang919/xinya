@@ -45,12 +45,30 @@ const THEME_INACTIVE: Record<string, string> = {
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
-  const initTheme = typeof window !== 'undefined' ? (localStorage.getItem('xinya-theme') || 'autumn') : 'autumn'
+  const initTheme = typeof window !== 'undefined' ? (() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const urlTheme = urlParams.get('theme')
+    if (urlTheme && THEME_BG[urlTheme]) {
+      localStorage.setItem('xinya-theme', urlTheme)
+      window.history.replaceState({}, '', window.location.pathname)
+      return urlTheme
+    }
+    return localStorage.getItem('xinya-theme') || 'autumn'
+  })() : 'autumn'
   const [bg, setBg] = useState(THEME_BG[initTheme] || '#FAFAF5')
   const [themeKey, setThemeKey] = useState(initTheme)
 
   useEffect(() => {
     function applyFromStorage() {
+      // 优先检查 URL 中的 theme 参数（magic-link 登录带入）
+      const urlParams = new URLSearchParams(window.location.search)
+      const urlTheme = urlParams.get('theme')
+      if (urlTheme && THEME_BG[urlTheme]) {
+        localStorage.setItem('xinya-theme', urlTheme)
+        // 清理 URL 参数
+        const newUrl = window.location.pathname
+        window.history.replaceState({}, '', newUrl)
+      }
       const t = localStorage.getItem('xinya-theme') || 'autumn'
       setThemeKey(t)
       setBg(THEME_BG[t] || '#FAFAF5')
