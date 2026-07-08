@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server"
+﻿import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "../../../../lib/prisma"
 import { verifyPassword, signToken, COOKIE_CONFIG } from "../../../../lib/auth"
 
@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
 
     await prisma.user.update({ where: { id: user.id }, data: { openTimes: { increment: 1 } } })
 
-    const response = NextResponse.json({ ok: true, data: { onboardDone: user.onboardDone } })
+    const response = NextResponse.json({ ok: true, data: { onboardDone: user.onboardDone, theme: user.theme } })
     response.cookies.set(COOKIE_CONFIG.name, token, COOKIE_CONFIG.options)
     return response
   } catch (e) {
