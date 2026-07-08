@@ -45,8 +45,9 @@ const THEME_INACTIVE: Record<string, string> = {
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
-  const [bg, setBg] = useState('#FAFAF5')
-  const [themeKey, setThemeKey] = useState('autumn')
+  const initTheme = typeof window !== 'undefined' ? (localStorage.getItem('xinya-theme') || 'autumn') : 'autumn'
+  const [bg, setBg] = useState(THEME_BG[initTheme] || '#FAFAF5')
+  const [themeKey, setThemeKey] = useState(initTheme)
 
   useEffect(() => {
     function applyFromStorage() {
