@@ -53,10 +53,9 @@ function LoginForm() {
         }
         return setError(data.error || "登录失败")
       }
-      // 恢复服务端主题到 localStorage
-      if (data.data?.theme) {
-        localStorage.setItem('xinya-theme', data.data.theme)
-      }
+      // 恢复服务端主题到 localStorage（无条件写入，带默认值兜底）
+      const theme = data.data?.theme || 'autumn'
+      localStorage.setItem('xinya-theme', theme)
       window.location.href = data.data?.onboardDone ? "/" : "/onboard"
     } catch (err: any) {
       setError("网络出了点问题，请稍后再试")
