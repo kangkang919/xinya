@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
     await prisma.user.update({ where: { id: user.id }, data: { openTimes: { increment: 1 } } })
 
     const response = NextResponse.redirect(
-      `${APP_URL}${user.onboardDone ? "/" : "/onboard"}`
+      `${APP_URL}${user.onboardDone ? "/" : "/onboard"}?theme=${user.theme}`
     )
     response.cookies.set(COOKIE_CONFIG.name, jwtToken, COOKIE_CONFIG.options)
 
