@@ -30,33 +30,21 @@ const THEME_INACTIVE: Record<string, string> = {
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
-  const initTheme = typeof window !== 'undefined' ? (() => {
-    const urlParams = new URLSearchParams(window.location.search)
-    const urlTheme = urlParams.get('theme')
-    if (urlTheme && THEME_BG[urlTheme]) {
-      localStorage.setItem('xinya-theme', urlTheme)
-      window.history.replaceState({}, '', window.location.pathname)
-      return urlTheme
-    }
-    return localStorage.getItem('xinya-theme') || 'spring'
-  })() : 'spring'
-  const [bg, setBg] = useState(THEME_BG[initTheme] || '#F4FBF0')
-  const [themeKey, setThemeKey] = useState(initTheme)
+  const [bg, setBg] = useState('#F4FBF0')
+  const [themeKey, setThemeKey] = useState('spring')
 
+  // 初始化主题（仅在客户端执行）
   useEffect(() => {
     function applyFromStorage() {
-      // 优先检查 URL 中的 theme 参数（magic-link 登录带入）
       const urlParams = new URLSearchParams(window.location.search)
       const urlTheme = urlParams.get('theme')
       if (urlTheme && THEME_BG[urlTheme]) {
         localStorage.setItem('xinya-theme', urlTheme)
-        // 清理 URL 参数
         const newUrl = window.location.pathname
         window.history.replaceState({}, '', newUrl)
       }
       const t = localStorage.getItem('xinya-theme') || 'spring'
 
-      // 登录后首次加载：强制触发主题重渲染
       const needRefresh = sessionStorage.getItem('xinya-theme-refresh')
       if (needRefresh) {
         sessionStorage.removeItem('xinya-theme-refresh')
