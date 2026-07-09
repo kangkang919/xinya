@@ -56,29 +56,14 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       }
       const t = localStorage.getItem('xinya-theme') || 'spring'
 
-      // 登录后首次加载：通过"先切默认再切回"强制主题生效
+      // 登录后首次加载：强制触发主题重渲染
       const needRefresh = sessionStorage.getItem('xinya-theme-refresh')
-      if (needRefresh && t !== 'spring') {
-        sessionStorage.removeItem('xinya-theme-refresh')
-        // 先切到默认主题
-        setThemeKey('spring')
-        setBg(THEME_BG['spring'])
-        localStorage.setItem('xinya-theme', 'spring')
-        // 再切回用户实际主题（触发重新渲染）
-        requestAnimationFrame(() => {
-          setThemeKey(t)
-          setBg(THEME_BG[t] || '#FAFAF5')
-          localStorage.setItem('xinya-theme', t)
-          window.dispatchEvent(new Event('xinya-theme-change'))
-        })
-        return
-      }
       if (needRefresh) {
         sessionStorage.removeItem('xinya-theme-refresh')
       }
 
       setThemeKey(t)
-      setBg(THEME_BG[t] || '#FAFAF5')
+      setBg(THEME_BG[t] || '#F4FBF0')
     }
     applyFromStorage()
     window.addEventListener('xinya-theme-change', applyFromStorage)
