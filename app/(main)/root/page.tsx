@@ -154,10 +154,24 @@ export default function RootPage() {
 
   // 标签管理
   const [tags, setTags] = useState<TagItem[]>([])
+  const [showTags, setShowTags] = useState(true)
   const [editingTagId, setEditingTagId] = useState<string | null>(null)
   const [editingName, setEditingName] = useState('')
   const [deletingTagId, setDeletingTagId] = useState<string | null>(null)
   const [tagActionLoading, setTagActionLoading] = useState(false)
+
+  // 拾遗开关
+  const [entryCount, setEntryCount] = useState(0)
+  const [reviewEnabled, setReviewEnabled] = useState(false)
+  const [reviewLoading, setReviewLoading] = useState(false)
+
+  // 密码设置
+  const [showPasswordForm, setShowPasswordForm] = useState(false)
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [passwordError, setPasswordError] = useState('')
+  const [passwordTip, setPasswordTip] = useState('')
+  const [passwordLoading, setPasswordLoading] = useState(false)
 
   // 学习画像
   const [profile, setProfile] = useState<{
@@ -189,13 +203,17 @@ export default function RootPage() {
 
     fetchTags()
     fetchProfile()
+    fetchReviewSettings()
   }, [])
 
   function fetchTags() {
     fetch('/api/tags')
       .then(r => r.json())
       .then(data => {
-        if (data.ok && Array.isArray(data.data)) setTags(data.data)
+        if (data.ok && Array.isArray(data.data)) {
+          setTags(data.data)
+          setEntryCount(data.data.reduce((sum: number, t: TagItem) => sum + t.entryCount, 0))
+        }
       })
       .catch(() => {})
   }
@@ -205,6 +223,17 @@ export default function RootPage() {
       .then(r => r.json())
       .then(data => {
         if (data.ok && data.data) setProfile(data.data)
+      })
+      .catch(() => {})
+  }
+
+  function fetchReviewSettings() {
+    fetch('/api/review/settings')
+      .then(r => r.json())
+      .then(data => {
+        if (data.ok && data.data) {
+          setReviewEnabled(data.data.reviewEnabled || false)
+        }
       })
       .catch(() => {})
   }
@@ -264,6 +293,61 @@ export default function RootPage() {
     setTagActionLoading(false)
   }
 
+  async function toggleReview() {
+    if (entryCount < 20) return
+    setReviewLoading(true)
+    try {
+      const res = await fetch('/api/review/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reviewEnabled: !reviewEnabled }),
+      })
+      const data = await res.json()
+      if (data.ok) {
+        setReviewEnabled(!reviewEnabled)
+      }
+    } catch (_) {}
+    setReviewLoading(false)
+  }
+
+  async function handleSetPassword() {
+    setPasswordError('')
+    setPasswordTip('')
+
+    if (!newPassword || newPassword.length < 6) {
+      setPasswordError('密码至少6位')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('两次输入的密码不一致')
+      return
+    }
+
+    setPasswordLoading(true)
+    try {
+      const res = await fetch('/api/auth/set-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: newPassword }),
+      })
+      const data = await res.json()
+      if (!data.ok) {
+        setPasswordError(data.error || '设置失败')
+        return
+      }
+      setPasswordTip('密码设置成功')
+      setNewPassword('')
+      setConfirmPassword('')
+      setTimeout(() => {
+        setPasswordTip('')
+        setShowPasswordForm(false)
+      }, 2000)
+    } catch (_) {
+      setPasswordError('网络问题，请稍后再试')
+    }
+    setPasswordLoading(false)
+  }
+
   async function logout() {
     await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {})
     router.push('/login')
@@ -297,10 +381,58 @@ export default function RootPage() {
 
       {/* 账号 */}
       <div className="p-4 rounded-xl mb-4" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
-        <p className="text-xs mb-2" style={{ color: dimColor }}>账号</p>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs" style={{ color: dimColor }}>账号</p>
+          <button
+            onClick={() => { setShowPasswordForm(!showPasswordForm); setPasswordError(''); setPasswordTip('') }}
+            className="text-xs"
+            style={{ color: '#8BC34A' }}
+          >
+            {showPasswordForm ? '收起' : '设置密码'}
+          </button>
+        </div>
         <p className="text-sm font-medium" style={{ color: titleColor }}>
           {user?.email ?? '—'}
         </p>
+
+        {showPasswordForm && (
+          <div className="mt-3 pt-3" style={{ borderTop: `1px solid ${isDark ? '#444' : '#f0f0f0'}` }}>
+            {passwordTip && (
+              <p className="text-xs mb-2" style={{ color: '#8BC34A' }}>{passwordTip}</p>
+            )}
+            {passwordError && (
+              <p className="text-xs mb-2" style={{ color: '#e57373' }}>{passwordError}</p>
+            )}
+            <input
+              type="password"
+              placeholder="输入新密码（至少6位）"
+              value={newPassword}
+              onChange={e => setNewPassword(e.target.value)}
+              className="w-full px-3 py-2 text-sm outline-none mb-2 rounded-lg"
+              style={{ border: `1.5px solid ${isDark ? '#555' : '#ccc'}`, background: isDark ? '#333' : '#fafaf5', color: titleColor }}
+            />
+            <input
+              type="password"
+              placeholder="再次输入密码"
+              value={confirmPassword}
+              onChange={e => setConfirmPassword(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSetPassword()}
+              className="w-full px-3 py-2 text-sm outline-none mb-2 rounded-lg"
+              style={{ border: `1.5px solid ${isDark ? '#555' : '#ccc'}`, background: isDark ? '#333' : '#fafaf5', color: titleColor }}
+            />
+            <button
+              onClick={handleSetPassword}
+              disabled={passwordLoading}
+              className="w-full py-2 text-sm font-medium text-white rounded-lg transition-opacity"
+              style={{ background: passwordLoading ? '#aaa' : '#8BC34A' }}
+            >
+              {passwordLoading ? '设置中…' : '确认设置'}
+            </button>
+            <p className="text-xs mt-2" style={{ color: dimColor }}>
+              设置后可使用「密码登录」，忘记密码可通过邮箱链接登录后重新设置
+            </p>
+          </div>
+        )}
       </div>
 
       {/* 主题风格 */}
@@ -340,12 +472,24 @@ export default function RootPage() {
 
       {/* 标签管理 */}
       <div className="p-4 rounded-xl mb-4" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
-        <p className="text-xs mb-3" style={{ color: dimColor }}>标签管理</p>
-        {tags.length === 0 ? (
-          <p className="text-xs text-center py-3" style={{ color: '#ddd' }}>还没有标签，播种心得时创建吧</p>
-        ) : (
-          <div className="space-y-2">
-            {tags.map(tag => (
+        <button
+          className="w-full flex items-center justify-between"
+          onClick={() => setShowTags(!showTags)}
+        >
+          <p className="text-xs" style={{ color: dimColor }}>标签管理</p>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+            fill="none" stroke={dimColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+            style={{ transform: showTags ? 'rotate(180deg)' : 'rotate(0deg)', transition: '0.3s' }}>
+            <path d="m6 9 6 6 6-6" />
+          </svg>
+        </button>
+        {showTags && (
+          <div className="mt-3">
+            {tags.length === 0 ? (
+              <p className="text-xs text-center py-3" style={{ color: '#ddd' }}>还没有标签，播种心得时创建吧</p>
+            ) : (
+              <div className="space-y-2">
+                {tags.map(tag => (
               <div key={tag.id}>
                 {/* 正常行 */}
                 {editingTagId !== tag.id && deletingTagId !== tag.id && (
@@ -452,6 +596,31 @@ export default function RootPage() {
             ))}
           </div>
         )}
+        )}
+      </div>
+
+      {/* 拾遗设置 */}
+      <div className="p-4 rounded-xl mb-4" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium" style={{ color: titleColor }}>拾遗</p>
+            <p className="text-xs mt-1" style={{ color: dimColor }}>
+              {entryCount < 20 ? `积${20 - entryCount}篇学思，唤AI循循温故（AI知识回顾）` : '沐每日甘霖，令薄弱处生根（AI知识回顾）'}
+            </p>
+          </div>
+          <button
+            onClick={toggleReview}
+            disabled={reviewLoading || entryCount < 20}
+            className="px-4 py-1.5 rounded-full text-xs font-medium transition"
+            style={{
+              background: reviewEnabled ? '#8BC34A' : (isDark ? '#333' : '#f0f0f0'),
+              color: reviewEnabled ? '#fff' : (entryCount < 20 ? '#999' : (isDark ? '#aaa' : '#666')),
+              opacity: entryCount < 20 ? 0.5 : 1,
+            }}
+          >
+            {reviewEnabled ? '已开启' : '开启'}
+          </button>
+        </div>
       </div>
 
       {/* 学习画像 */}
