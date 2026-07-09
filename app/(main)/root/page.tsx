@@ -32,6 +32,7 @@ const THEMES = [
   { key: 'summer', label: '夏日繁茂', sub: '蔚蓝清凉', color: '#2196F3', bg: '#EEF6FE' },
   { key: 'autumn', label: '秋日暖阳', sub: '暖橙丰收', color: '#FF8C42', bg: '#FAFAF5' },
   { key: 'winter', label: '冬日静谧', sub: '银灰沉静', color: '#90A4AE', bg: '#F5F5F7' },
+  { key: 'night', label: '墨色幽微', sub: '深邃静谧', color: '#6B8F3C', bg: '#1E1E1E' },
 ]
 
 const CHANGELOGS = [
