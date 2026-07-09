@@ -596,8 +596,8 @@ export default function RootPage() {
             ))}
           </div>
         )}
-        )}
       </div>
+      )}
 
       {/* 拾遗设置 */}
       <div className="p-4 rounded-xl mb-4" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
