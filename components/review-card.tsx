@@ -48,7 +48,7 @@ export default function ReviewCard({ card, onClose, onSkip }: ReviewCardProps) {
   }
 
   function handleViewOriginal() {
-    router.push(`/entry/${card.entryId}/view`)
+    router.push(`/entry/${card.entryId}/view?from=sprout`)
     onClose()
   }
 
