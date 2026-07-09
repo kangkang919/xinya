@@ -1,6 +1,6 @@
 ﻿"use client"
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useTheme } from "@/lib/useTheme"
 
 interface Tag {
@@ -63,6 +63,7 @@ function lightenColor(hex: string): string {
 
 export default function LeafPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { isDark, cardBg, cardBorder, titleColor, dimColor, inputBg, inputBorder } = useTheme()
   const [tags, setTags] = useState<Tag[]>([])
   const [search, setSearch] = useState('')
@@ -77,6 +78,22 @@ export default function LeafPage() {
         if (data.ok) {
           const sorted = [...data.data].sort((a: Tag, b: Tag) => b.entryCount - a.entryCount)
           setTags(sorted)
+          // 从URL恢复选中的标签（从阅读页返回时）
+          const tagId = searchParams.get('tagId')
+          if (tagId) {
+            const tag = sorted.find((t: Tag) => t.id === tagId)
+            if (tag) {
+              setSelectedTag(tag)
+              setLoadingEntries(true)
+              fetch(`/api/entries?tagId=${tag.id}&limit=50`)
+                .then(r => r.json())
+                .then(data => {
+                  if (data.ok) setEntries(data.data.entries || [])
+                })
+                .catch(() => {})
+                .finally(() => setLoadingEntries(false))
+            }
+          }
         }
       })
       .catch(() => {})
@@ -190,7 +207,7 @@ export default function LeafPage() {
               {entries.map(entry => (
                 <div
                   key={entry.id}
-                  onClick={() => router.push(`/entry/${entry.id}/view`)}
+                  onClick={() => router.push(`/entry/${entry.id}/view${selectedTag ? `?tagId=${selectedTag.id}` : ''}`)}
                   className="p-4 rounded-xl cursor-pointer transition-all active:scale-[0.98]"
                   style={{ background: cardBg, border: `1px solid ${cardBorder}` }}
                 >
