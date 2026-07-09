@@ -54,7 +54,7 @@ function LoginForm() {
         return setError(data.error || "登录失败")
       }
       // 恢复服务端主题到 localStorage（无条件写入，带默认值兜底）
-      const theme = data.data?.theme || 'autumn'
+      const theme = data.data?.theme || 'spring'
       localStorage.setItem('xinya-theme', theme)
       // 标记需要主题刷新（强制切换生效）
       sessionStorage.setItem('xinya-theme-refresh', '1')
