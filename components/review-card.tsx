@@ -27,6 +27,7 @@ export default function ReviewCard({ card, onClose, onSkip }: ReviewCardProps) {
   const [submitted, setSubmitted] = useState(false)
   const [result, setResult] = useState<{ correct: boolean; explanation: string } | null>(null)
   const [loading, setLoading] = useState(false)
+  const [showReview, setShowReview] = useState(false)
 
   async function handleSubmit() {
     if (selectedAnswer.length === 0 || loading) return
@@ -113,7 +114,10 @@ export default function ReviewCard({ card, onClose, onSkip }: ReviewCardProps) {
                 {card.conceptName}
               </h3>
               {card.keyPoints ? (
-                <p className="text-sm leading-relaxed mb-6" style={{ color: subColor }}>
+                <p
+                  className="text-sm leading-relaxed mb-6"
+                  style={{ color: subColor, textAlign: 'left', textAlignLast: 'left' }}
+                >
                   {card.keyPoints}
                 </p>
               ) : (
@@ -177,6 +181,83 @@ export default function ReviewCard({ card, onClose, onSkip }: ReviewCardProps) {
                 {loading ? '提交中…' : '提交答案'}
               </button>
             </div>
+          ) : showReview ? (
+            // 回看面板
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-xs px-2 py-0.5 rounded" style={{
+                  background: card.type === 'multiple' ? 'rgba(255,152,0,0.15)' : 'rgba(139,195,74,0.15)',
+                  color: card.type === 'multiple' ? '#FF9800' : '#8BC34A',
+                }}>
+                  {card.type === 'multiple' ? '多选' : card.type === 'truefalse' ? '判断' : '单选'}
+                </span>
+                <span className="text-xs" style={{ color: result?.correct ? '#8BC34A' : '#e57373' }}>
+                  {result?.correct ? '✓ 答对了' : '✗ 答错了'}
+                </span>
+              </div>
+              <h3 className="text-base font-bold mb-4" style={{ color: titleColor }}>
+                {card.question}
+              </h3>
+              <div className="space-y-2 mb-4">
+                {card.options.filter(opt => opt && opt.trim()).map((opt, idx) => {
+                  const isCorrectAnswer = card.answer.includes(idx)
+                  const isUserSelected = selectedAnswer.includes(idx)
+                  let bg = isDark ? '#333' : '#f5f5f5'
+                  let border = cardBorder
+                  let color = titleColor
+                  let label = ''
+
+                  if (card.type === 'multiple') {
+                    // 多选题三态
+                    if (isCorrectAnswer && isUserSelected) {
+                      bg = 'rgba(139,195,74,0.12)'; border = '#8BC34A'; color = '#2E7D32'; label = '✓ 你选了'
+                    } else if (isCorrectAnswer && !isUserSelected) {
+                      bg = 'rgba(255,152,0,0.1)'; border = '#FF9800'; color = '#E65100'; label = '△ 漏选'
+                    } else if (!isCorrectAnswer && isUserSelected) {
+                      bg = 'rgba(229,115,115,0.1)'; border = '#e57373'; color = '#C62828'; label = '✗ 误选'
+                    }
+                  } else {
+                    // 单选/判断
+                    if (isCorrectAnswer) {
+                      bg = 'rgba(139,195,74,0.12)'; border = '#8BC34A'; color = '#2E7D32'; label = '✓ 正确答案'
+                    } else if (isUserSelected) {
+                      bg = 'rgba(229,115,115,0.1)'; border = '#e57373'; color = '#C62828'; label = '✗ 你的选择'
+                    }
+                  }
+
+                  return (
+                    <div
+                      key={idx}
+                      className="w-full text-left px-4 py-3 rounded-xl text-sm"
+                      style={{ background: bg, border: `1.5px solid ${border}`, color }}
+                    >
+                      <div className="flex justify-between items-center">
+                        <span>
+                          <span className="font-medium mr-2" style={{ color: isDark ? '#aaa' : '#666' }}>
+                            {String.fromCharCode(65 + idx)}.
+                          </span>
+                          {opt}
+                        </span>
+                        {label && <span className="text-xs font-medium ml-2 whitespace-nowrap">{label}</span>}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+              {result?.explanation && (
+                <div className="rounded-xl p-3 mb-4" style={{ background: isDark ? '#3a3520' : '#FFF8E1', border: `1px solid ${isDark ? '#5a5030' : '#FFE082'}` }}>
+                  <p className="text-xs font-medium mb-1" style={{ color: '#F57F17' }}>💡 解析</p>
+                  <p className="text-sm" style={{ color: subColor }}>{result.explanation}</p>
+                </div>
+              )}
+              <button
+                onClick={() => setShowReview(false)}
+                className="w-full py-2.5 rounded-xl text-sm"
+                style={{ color: subColor, border: `1px solid ${cardBorder}` }}
+              >
+                关闭回看
+              </button>
+            </div>
           ) : (
             // 反馈区
             <div className="text-center py-4">
@@ -193,6 +274,13 @@ export default function ReviewCard({ card, onClose, onSkip }: ReviewCardProps) {
                 </p>
               )}
               <div className="space-y-2">
+                <button
+                  onClick={() => setShowReview(true)}
+                  className="w-full py-2.5 rounded-xl text-sm font-medium"
+                  style={{ background: 'rgba(139,195,74,0.08)', color: '#8BC34A', border: '1px solid #8BC34A' }}
+                >
+                  📋 回看题目与选项
+                </button>
                 <button
                   onClick={handleViewOriginal}
                   className="w-full py-2.5 rounded-xl text-sm font-medium"
