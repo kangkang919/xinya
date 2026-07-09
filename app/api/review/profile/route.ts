@@ -116,10 +116,10 @@ export async function GET(req: NextRequest) {
     })
     const daysStudied = daysSet.size
 
-    // 总答题数和正确数
-    const totalQuestions = records.length
+    // 总答题次数和正确次数
+    const totalQuestions = records.reduce((sum, r) => sum + (r.answerCount || 1), 0)
     const correctCount = records.filter(r => r.correct).length
-    const accuracy = Math.round((correctCount / totalQuestions) * 100)
+    const accuracy = totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0
 
     // 近5日记录
     const recentDays: { date: string; correct: number; total: number }[] = []
