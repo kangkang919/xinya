@@ -199,6 +199,8 @@ export async function submitAnswer(
     where: { id: record.id },
     data: {
       correct: isCorrect,
+      userAnswer: userAnswer,
+      answerCount: { increment: 1 },
       answeredAt: new Date(),
       nextReviewAt,
       streak: newStreak,
