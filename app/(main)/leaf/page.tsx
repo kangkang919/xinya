@@ -1,5 +1,5 @@
 ﻿"use client"
-import { useEffect, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useTheme } from "@/lib/useTheme"
 
@@ -62,6 +62,14 @@ function lightenColor(hex: string): string {
 }
 
 export default function LeafPage() {
+  return (
+    <Suspense fallback={<div className="p-4 max-w-lg mx-auto"><p className="text-sm text-center" style={{ color: '#999' }}>加载中…</p></div>}>
+      <LeafPageContent />
+    </Suspense>
+  )
+}
+
+function LeafPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { isDark, cardBg, cardBorder, titleColor, dimColor, inputBg, inputBorder } = useTheme()
