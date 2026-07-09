@@ -2,14 +2,14 @@
 import { useEffect, useState } from "react"
 
 export function useTheme() {
-  const [theme, setTheme] = useState("autumn")
+  const [theme, setTheme] = useState("spring")
 
   useEffect(() => {
-    const saved = localStorage.getItem("xinya-theme") || "autumn"
+    const saved = localStorage.getItem("xinya-theme") || "spring"
     setTheme(saved)
 
     function sync() {
-      const v = localStorage.getItem("xinya-theme") || "autumn"
+      const v = localStorage.getItem("xinya-theme") || "spring"
       setTheme(v)
     }
     window.addEventListener("xinya-theme-change", sync)
