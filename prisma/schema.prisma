@@ -170,6 +170,8 @@ model QuizRecord {
   questionId    String
   entryId       String
   correct       Boolean
+  userAnswer    Json?
+  answerCount   Int      @default(1)
   answeredAt    DateTime?
   nextReviewAt  DateTime
   streak        Int      @default(0)
