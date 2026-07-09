@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { useRouter, useParams, useSearchParams } from "next/navigation"
 import { useTheme } from "@/lib/useTheme"
 
@@ -26,11 +26,27 @@ function formatDate(iso: string) {
 }
 
 export default function ViewEntryPage() {
+  return (
+    <Suspense fallback={<div style={{ padding: 20, textAlign: 'center', color: '#999' }}>加载中…</div>}>
+      <ViewEntryContent />
+    </Suspense>
+  )
+}
+
+function ViewEntryContent() {
   const router = useRouter()
   const params = useParams()
   const searchParams = useSearchParams()
+  const from = searchParams.get('from')
   const tagId = searchParams.get('tagId')
-  const goBack = () => router.push(tagId ? `/leaf?tagId=${tagId}` : '/leaf')
+  const goBack = () => {
+    if (from === 'leaf') {
+      router.push(tagId ? `/leaf?tagId=${tagId}` : '/leaf')
+    } else {
+      // from=sprout 或无参数，都返回萌芽首页
+      router.push('/')
+    }
+  }
   const id = params.id as string
   const { isDark, cardBg, titleColor } = useTheme()
 
