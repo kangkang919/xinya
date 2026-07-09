@@ -1,7 +1,6 @@
-﻿"use client"
+"use client"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { useTheme } from "@/lib/useTheme"
 
 interface User {
   email: string
@@ -16,18 +15,6 @@ interface TagItem {
   entryCount: number
 }
 
-interface ExportEntry {
-  id: string
-  title: string
-  content: string
-  tags: string[]
-  mood: string | null
-  recordTime: string
-  createdAt: string
-  isTop: boolean
-  isFavorite: boolean
-}
-
 const THEMES = [
   { key: 'spring', label: '春日萌芽', sub: '嫩绿生机', color: '#8BC34A', bg: '#F4FBF0' },
   { key: 'summer', label: '夏日繁茂', sub: '蔚蓝清凉', color: '#2196F3', bg: '#EEF6FE' },
@@ -37,6 +24,17 @@ const THEMES = [
 ]
 
 const CHANGELOGS = [
+  {
+    version: 'v0.1.1',
+    date: '2026年6月',
+    prose: '如一株幼苗，在阳光与雨露中悄然舒展。这一次，我们为你带来了更丰富的登录方式、更沉浸的视觉体验，以及更多成长的痕迹。',
+    items: [
+      'Magic Link 邮箱链接登录，无需记忆密码',
+      '15 个测试账号，一键体验完整功能',
+      '暗夜主题上线，深邃中感受静谧',
+      '新用户引导优化，每一步都可跳过',
+    ],
+  },
   {
     version: 'v0.1.0',
     date: '2026年6月',
@@ -56,101 +54,13 @@ function applyTheme(themeKey: string) {
   window.dispatchEvent(new Event('xinya-theme-change'))
 }
 
-function formatExportDate(iso: string): string {
-  return new Date(iso).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })
-}
-
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;')
-}
-
-function htmlToPlainText(html: string): string {
-  return html
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<\/p>/gi, '\n')
-    .replace(/<\/div>/gi, '\n')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#039;/g, "'")
-    .replace(/\n{3,}/g, '\n\n')
-    .trim()
-}
-
-function toMarkdown(entries: ExportEntry[]): string {
-  const lines: string[] = [`# 心芽心得导出`, ``, `共 ${entries.length} 篇心得`, ``]
-  entries.forEach((e, i) => {
-    lines.push(`## ${i + 1}. ${e.title}`)
-    lines.push(`- 标签：${e.tags.map(t => `#${t}`).join(' ') || '无'}`)
-    lines.push(`- 创建时间：${formatExportDate(e.createdAt)}`)
-    lines.push('')
-    lines.push(htmlToPlainText(e.content) || '（无内容）')
-    lines.push('')
-    lines.push('---')
-    lines.push('')
-  })
-  return lines.join('\n')
-}
-
-function toHtml(entries: ExportEntry[]): string {
-  const items = entries.map((e, i) => `
-    <article style="margin-bottom:32px;padding-bottom:24px;border-bottom:1px solid #eee;">
-      <h2 style="font-size:18px;color:#333;margin-bottom:12px;">${i + 1}. ${escapeHtml(e.title)}${e.isFavorite ? ' ⭐' : ''}</h2>
-      <div style="font-size:13px;color:#666;margin-bottom:12px;line-height:1.8;">
-        <div style="margin-bottom:4px;">标签：${e.tags.map(t => `<span style="display:inline-block;color:#5a8a2f;background:rgba(139,195,74,0.1);padding:2px 8px;border-radius:12px;margin-right:6px;">#${escapeHtml(t)}</span>`).join('') || '无'}</div>
-        <div style="margin-bottom:4px;">心情：${e.mood ? escapeHtml(e.mood) : '—'}</div>
-        <div style="margin-bottom:4px;">记录时间：${formatExportDate(e.recordTime)}</div>
-        <div>创建时间：${formatExportDate(e.createdAt)}</div>
-      </div>
-      <div style="font-size:14px;color:#333;line-height:1.8;">${e.content || '（无内容）'}</div>
-    </article>
-  `).join('')
-
-  return `<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>心芽心得导出</title>
-</head>
-<body style="max-width:720px;margin:40px auto;padding:0 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background:#fafafa;">
-  <h1 style="font-size:22px;color:#333;text-align:center;margin-bottom:8px;">心芽心得导出</h1>
-  <p style="text-align:center;color:#999;font-size:13px;margin-bottom:32px;">共 ${entries.length} 篇心得</p>
-  ${items}
-</body>
-</html>`
-}
-
-function downloadBlob(content: string, filename: string, type: string) {
-  const blob = new Blob([content], { type })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
-  URL.revokeObjectURL(url)
-}
-
 export default function RootPage() {
   const router = useRouter()
-  const { isDark, cardBg, cardBorder, titleColor, dimColor } = useTheme()
   const [user, setUser] = useState<User | null>(null)
   const [currentTheme, setCurrentTheme] = useState('autumn')
   const [saving, setSaving] = useState(false)
   const [showChangelog, setShowChangelog] = useState(false)
   const [savedTip, setSavedTip] = useState(false)
-  const [exporting, setExporting] = useState(false)
-  const [exportTip, setExportTip] = useState(false)
 
   // 标签管理
   const [tags, setTags] = useState<TagItem[]>([])
@@ -158,6 +68,20 @@ export default function RootPage() {
   const [editingName, setEditingName] = useState('')
   const [deletingTagId, setDeletingTagId] = useState<string | null>(null)
   const [tagActionLoading, setTagActionLoading] = useState(false)
+  const [showTags, setShowTags] = useState(false)
+
+  // 密码设置
+  const [showPasswordForm, setShowPasswordForm] = useState(false)
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [passwordLoading, setPasswordLoading] = useState(false)
+  const [passwordTip, setPasswordTip] = useState('')
+  const [passwordError, setPasswordError] = useState('')
+
+  // 拾遗设置
+  const [entryCount, setEntryCount] = useState(0)
+  const [reviewEnabled, setReviewEnabled] = useState(false)
+  const [reviewLoading, setReviewLoading] = useState(false)
 
   useEffect(() => {
     const saved = localStorage.getItem('xinya-theme') || 'autumn'
@@ -178,6 +102,17 @@ export default function RootPage() {
       .catch(() => {})
 
     fetchTags()
+
+    // 获取拾遗设置
+    fetch('/api/review/settings')
+      .then(r => r.json())
+      .then(data => {
+        if (data.ok) {
+          setEntryCount(data.data.entryCount)
+          setReviewEnabled(data.data.reviewEnabled)
+        }
+      })
+      .catch(() => {})
   }, [])
 
   function fetchTags() {
@@ -249,21 +184,67 @@ export default function RootPage() {
     router.push('/login')
   }
 
-  async function handleExport() {
-    if (exporting) return
-    setExporting(true)
+  async function handleSetPassword() {
+    setPasswordError('')
+    setPasswordTip('')
+
+    if (!newPassword || newPassword.length < 6) {
+      setPasswordError('密码至少6位')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('两次输入的密码不一致')
+      return
+    }
+
+    setPasswordLoading(true)
     try {
-      const res = await fetch('/api/export')
-      const json = await res.json()
-      if (!json.ok) throw new Error('导出失败')
-      const entries: ExportEntry[] = json.data
-      const now = new Date().toISOString().slice(0, 10)
-      downloadBlob(toMarkdown(entries), `xinya-export-${now}.md`, 'text/markdown')
-      setExportTip(true)
-      setTimeout(() => setExportTip(false), 2000)
-    } catch (_) {}
-    setExporting(false)
+      const res = await fetch('/api/auth/set-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: newPassword }),
+      })
+      const data = await res.json()
+      if (!data.ok) {
+        setPasswordError(data.error || '设置失败')
+        return
+      }
+      setPasswordTip('密码设置成功')
+      setNewPassword('')
+      setConfirmPassword('')
+      setTimeout(() => {
+        setPasswordTip('')
+        setShowPasswordForm(false)
+      }, 2000)
+    } catch (_) {
+      setPasswordError('网络问题，请稍后再试')
+    }
+    setPasswordLoading(false)
   }
+
+  async function toggleReview() {
+    if (entryCount < 20) return
+    setReviewLoading(true)
+    try {
+      const res = await fetch('/api/review/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reviewEnabled: !reviewEnabled }),
+      })
+      const data = await res.json()
+      if (data.ok) {
+        setReviewEnabled(!reviewEnabled)
+      }
+    } catch (_) {}
+    setReviewLoading(false)
+  }
+
+  const isDark = currentTheme === 'night'
+  const cardBg = isDark ? '#2A2A2A' : '#fff'
+  const cardBorder = isDark ? '#444' : '#eee'
+  const titleColor = isDark ? '#E0E0E0' : '#333'
+  const subColor = isDark ? '#999' : '#999'
+  const dimColor = isDark ? '#666' : '#bbb'
 
   return (
     <div className="p-4 max-w-lg mx-auto pb-24">
@@ -277,16 +258,64 @@ export default function RootPage() {
 
       {/* 账号 */}
       <div className="p-4 rounded-xl mb-4" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
-        <p className="text-xs mb-2" style={{ color: dimColor }}>账号</p>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs" style={{ color: subColor }}>账号</p>
+          <button
+            onClick={() => { setShowPasswordForm(!showPasswordForm); setPasswordError(''); setPasswordTip('') }}
+            className="text-xs"
+            style={{ color: '#8BC34A' }}
+          >
+            {showPasswordForm ? '收起' : '设置密码'}
+          </button>
+        </div>
         <p className="text-sm font-medium" style={{ color: titleColor }}>
           {user?.email ?? '—'}
         </p>
+
+        {showPasswordForm && (
+          <div className="mt-3 pt-3" style={{ borderTop: `1px solid ${isDark ? '#444' : '#f0f0f0'}` }}>
+            {passwordTip && (
+              <p className="text-xs mb-2" style={{ color: '#8BC34A' }}>{passwordTip}</p>
+            )}
+            {passwordError && (
+              <p className="text-xs mb-2" style={{ color: '#e57373' }}>{passwordError}</p>
+            )}
+            <input
+              type="password"
+              placeholder="输入新密码（至少6位）"
+              value={newPassword}
+              onChange={e => setNewPassword(e.target.value)}
+              className="input-sketch w-full px-3 py-2 text-sm outline-none mb-2"
+              style={{ border: `1.5px solid ${isDark ? '#555' : '#ccc'}`, background: isDark ? '#333' : '#fafaf5', color: titleColor }}
+            />
+            <input
+              type="password"
+              placeholder="再次输入密码"
+              value={confirmPassword}
+              onChange={e => setConfirmPassword(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSetPassword()}
+              className="input-sketch w-full px-3 py-2 text-sm outline-none mb-2"
+              style={{ border: `1.5px solid ${isDark ? '#555' : '#ccc'}`, background: isDark ? '#333' : '#fafaf5', color: titleColor }}
+            />
+            <button
+              onClick={handleSetPassword}
+              disabled={passwordLoading}
+              className="btn-sketch w-full py-2 text-sm font-medium text-white transition-opacity"
+              style={{ background: passwordLoading ? '#aaa' : '#8BC34A' }}
+            >
+              {passwordLoading ? '设置中…' : '确认设置'}
+            </button>
+            <p className="text-xs mt-2" style={{ color: dimColor }}>
+              设置后可使用「密码登录」，忘记密码可通过邮箱链接登录后重新设置
+            </p>
+          </div>
+        )}
       </div>
 
       {/* 主题风格 */}
       <div className="p-4 rounded-xl mb-4" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
         <div className="flex items-center justify-between mb-3">
-          <p className="text-xs" style={{ color: dimColor }}>主题风格</p>
+          <p className="text-xs" style={{ color: subColor }}>主题风格</p>
           {savedTip && (
             <span className="text-xs" style={{ color: '#8BC34A' }}>✓ 已切换</span>
           )}
@@ -302,7 +331,7 @@ export default function RootPage() {
                 className="p-3 rounded-xl text-left transition-all"
                 style={{
                   background: isSelected ? t.bg : (isDark ? '#333' : '#FAFAFA'),
-                  border: `2px solid ${isSelected ? t.color : cardBorder}`,
+                  border: `2px solid ${isSelected ? t.color : (isDark ? '#555' : '#eee')}`,
                   opacity: saving ? 0.7 : 1,
                 }}
               >
@@ -311,7 +340,7 @@ export default function RootPage() {
                   <span className="text-sm font-medium" style={{ color: titleColor }}>{t.label}</span>
                   {isSelected && <span className="ml-auto text-xs" style={{ color: t.color }}>✓</span>}
                 </div>
-                <p className="text-xs" style={{ color: dimColor }}>{t.sub}</p>
+                <p className="text-xs" style={{ color: subColor }}>{t.sub}</p>
               </button>
             )
           })}
@@ -320,11 +349,23 @@ export default function RootPage() {
 
       {/* 标签管理 */}
       <div className="p-4 rounded-xl mb-4" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
-        <p className="text-xs mb-3" style={{ color: dimColor }}>标签管理</p>
-        {tags.length === 0 ? (
-          <p className="text-xs text-center py-3" style={{ color: '#ddd' }}>还没有标签，播种心得时创建吧</p>
-        ) : (
-          <div className="space-y-2">
+        <button
+          className="w-full flex items-center justify-between"
+          onClick={() => setShowTags(!showTags)}
+        >
+          <p className="text-xs" style={{ color: subColor }}>标签管理</p>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+            fill="none" stroke={subColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+            style={{ transform: showTags ? 'rotate(180deg)' : 'rotate(0deg)', transition: '0.3s' }}>
+            <path d="m6 9 6 6 6-6" />
+          </svg>
+        </button>
+        {showTags && (
+          <div className="mt-3">
+            {tags.length === 0 ? (
+              <p className="text-xs text-center py-3" style={{ color: dimColor }}>还没有标签，播种心得时创建吧</p>
+            ) : (
+              <div className="space-y-2">
             {tags.map(tag => (
               <div key={tag.id}>
                 {/* 正常行 */}
@@ -335,11 +376,11 @@ export default function RootPage() {
                         style={{ background: 'rgba(139,195,74,0.1)', color: '#5a8a2f' }}>
                         # {tag.name}
                       </span>
-                      <span className="text-xs flex-shrink-0" style={{ color: '#ccc' }}>
+                      <span className="text-xs flex-shrink-0" style={{ color: dimColor }}>
                         {tag.entryCount} 篇
                       </span>
                       {tag.isDefault && (
-                        <span className="text-xs flex-shrink-0" style={{ color: '#ddd' }}>默认</span>
+                        <span className="text-xs flex-shrink-0" style={{ color: dimColor }}>默认</span>
                       )}
                     </div>
                     <div className="flex items-center gap-3 flex-shrink-0 ml-2">
@@ -347,7 +388,7 @@ export default function RootPage() {
                       <button
                         onClick={() => startEditTag(tag)}
                         className="text-xs transition"
-                        style={{ color: '#bbb' }}
+                        style={{ color: dimColor }}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
                           fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -381,7 +422,7 @@ export default function RootPage() {
                       onChange={e => setEditingName(e.target.value)}
                       onKeyDown={e => { if (e.key === 'Enter') saveTagName(tag.id); if (e.key === 'Escape') setEditingTagId(null) }}
                       className="flex-1 text-xs px-2 py-1 rounded-lg outline-none"
-                      style={{ border: '1.5px solid #8BC34A', color: '#333' }}
+                      style={{ border: '1.5px solid #8BC34A', color: titleColor, background: 'transparent' }}
                       autoFocus
                     />
                     <button
@@ -395,7 +436,7 @@ export default function RootPage() {
                     <button
                       onClick={() => setEditingTagId(null)}
                       className="text-xs px-2 py-1 rounded-lg"
-                      style={{ color: '#999', border: `1px solid ${cardBorder}` }}
+                      style={{ color: subColor, border: `1px solid ${cardBorder}` }}
                     >
                       取消
                     </button>
@@ -421,7 +462,7 @@ export default function RootPage() {
                       <button
                         onClick={() => setDeletingTagId(null)}
                         className="text-xs px-2 py-1 rounded-lg"
-                        style={{ color: '#999', border: `1px solid ${cardBorder}` }}
+                        style={{ color: subColor, border: `1px solid ${cardBorder}` }}
                       >
                         取消
                       </button>
@@ -430,31 +471,34 @@ export default function RootPage() {
                 )}
               </div>
             ))}
+              </div>
+            )}
           </div>
         )}
       </div>
 
-      {/* 数据导出 */}
+      {/* 拾遗设置 */}
       <div className="p-4 rounded-xl mb-4" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-xs" style={{ color: dimColor }}>导出心得</p>
-          {exportTip && (
-            <span className="text-xs" style={{ color: '#8BC34A' }}>✓ 已开始下载</span>
-          )}
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium" style={{ color: titleColor }}>拾遗</p>
+            <p className="text-xs mt-1" style={{ color: dimColor }}>
+              {entryCount < 20 ? `积${20 - entryCount}篇学思，唤AI循循温故（AI知识回顾）` : '沐每日甘霖，令薄弱处生根（AI知识回顾）'}
+            </p>
+          </div>
+          <button
+            onClick={toggleReview}
+            disabled={reviewLoading || entryCount < 20}
+            className="px-4 py-1.5 rounded-full text-xs font-medium transition"
+            style={{
+              background: reviewEnabled ? '#8BC34A' : (isDark ? '#333' : '#f0f0f0'),
+              color: reviewEnabled ? '#fff' : (entryCount < 20 ? '#999' : (isDark ? '#aaa' : '#666')),
+              opacity: entryCount < 20 ? 0.5 : 1,
+            }}
+          >
+            {reviewEnabled ? '已开启' : '开启'}
+          </button>
         </div>
-        <button
-          onClick={handleExport}
-          disabled={exporting}
-          className="w-full py-2.5 rounded-xl text-sm font-medium transition"
-          style={{
-            background: 'rgba(139,195,74,0.08)',
-            color: '#5a8a2f',
-            border: '1px solid rgba(139,195,74,0.3)',
-            opacity: exporting ? 0.6 : 1,
-          }}
-        >
-          {exporting ? '导出中...' : '导出为 Markdown'}
-        </button>
       </div>
 
       {/* 版本 & 开打次数 */}
@@ -465,15 +509,15 @@ export default function RootPage() {
         >
           <div className="flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
-              fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              fill="none" stroke={subColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="10" />
               <path d="M12 16v-4" />
               <path d="M12 8h.01" />
             </svg>
-            <span className="text-sm" style={{ color: '#666' }}>版本 v0.1.0</span>
+            <span className="text-sm" style={{ color: isDark ? '#aaa' : '#666' }}>版本更新</span>
           </div>
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-            fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+            fill="none" stroke={subColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
             style={{ transform: showChangelog ? 'rotate(180deg)' : 'rotate(0deg)', transition: '0.3s' }}>
             <path d="m6 9 6 6 6-6" />
           </svg>
@@ -488,15 +532,15 @@ export default function RootPage() {
                     style={{ background: 'rgba(139,195,74,0.12)', color: '#5a8a2f' }}>
                     {log.version}
                   </span>
-                  <span className="text-xs" style={{ color: '#bbb' }}>{log.date}</span>
+                  <span className="text-xs" style={{ color: dimColor }}>{log.date}</span>
                 </div>
                 <p className="text-xs leading-relaxed mb-3 italic"
-                  style={{ color: '#888', borderLeft: '2px solid #e0e0e0', paddingLeft: '8px' }}>
+                  style={{ color: isDark ? '#888' : '#888', borderLeft: `2px solid ${isDark ? '#444' : '#e0e0e0'}`, paddingLeft: '8px' }}>
                   {log.prose}
                 </p>
                 <ul className="space-y-1.5">
                   {log.items.map((item, i) => (
-                    <li key={i} className="flex items-start gap-2 text-xs" style={{ color: '#666' }}>
+                    <li key={i} className="flex items-start gap-2 text-xs" style={{ color: isDark ? '#aaa' : '#666' }}>
                       <span style={{ color: '#8BC34A', flexShrink: 0 }}>·</span>
                       {item}
                     </li>
@@ -507,7 +551,7 @@ export default function RootPage() {
           </div>
         )}
 
-        <div className="mt-3 pt-3 flex justify-between" style={{ borderTop: `1px solid ${isDark ? '#333' : '#f0f0f0'}` }}>
+        <div className="mt-3 pt-3 flex justify-between" style={{ borderTop: `1px solid ${isDark ? '#444' : '#f0f0f0'}` }}>
           <span className="text-sm" style={{ color: isDark ? '#aaa' : '#666' }}>累计打开</span>
           <span className="text-sm" style={{ color: titleColor }}>{user?.openTimes ?? '—'} 次</span>
         </div>
@@ -524,4 +568,3 @@ export default function RootPage() {
     </div>
   )
 }
-
