@@ -1,6 +1,7 @@
 ﻿"use client"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { useTheme } from "@/lib/useTheme"
 
 interface User {
   email: string
@@ -142,6 +143,7 @@ function downloadBlob(content: string, filename: string, type: string) {
 
 export default function RootPage() {
   const router = useRouter()
+  const { isDark, cardBg, cardBorder, titleColor, dimColor } = useTheme()
   const [user, setUser] = useState<User | null>(null)
   const [currentTheme, setCurrentTheme] = useState('autumn')
   const [saving, setSaving] = useState(false)
@@ -267,24 +269,24 @@ export default function RootPage() {
     <div className="p-4 max-w-lg mx-auto pb-24">
       {/* 页面标题 */}
       <div className="flex items-center justify-between mb-1">
-        <h1 className="text-xl font-bold" style={{ color: '#333' }}>
+        <h1 className="text-xl font-bold" style={{ color: titleColor }}>
           <span style={{ color: '#8BC34A', display: 'inline-block', width: '1.4em', textAlign: 'center' }}>🌿</span>根系
         </h1>
       </div>
-      <p className="text-xs mb-5" style={{ color: '#bbb' }}>此处是你的根，安静而深厚</p>
+      <p className="text-xs mb-5" style={{ color: dimColor }}>此处是你的根，安静而深厚</p>
 
       {/* 账号 */}
-      <div className="p-4 rounded-xl mb-4" style={{ background: '#fff', border: '1px solid #eee' }}>
-        <p className="text-xs mb-2" style={{ color: '#999' }}>账号</p>
-        <p className="text-sm font-medium" style={{ color: '#333' }}>
+      <div className="p-4 rounded-xl mb-4" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
+        <p className="text-xs mb-2" style={{ color: dimColor }}>账号</p>
+        <p className="text-sm font-medium" style={{ color: titleColor }}>
           {user?.email ?? '—'}
         </p>
       </div>
 
       {/* 主题风格 */}
-      <div className="p-4 rounded-xl mb-4" style={{ background: '#fff', border: '1px solid #eee' }}>
+      <div className="p-4 rounded-xl mb-4" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
         <div className="flex items-center justify-between mb-3">
-          <p className="text-xs" style={{ color: '#999' }}>主题风格</p>
+          <p className="text-xs" style={{ color: dimColor }}>主题风格</p>
           {savedTip && (
             <span className="text-xs" style={{ color: '#8BC34A' }}>✓ 已切换</span>
           )}
@@ -299,17 +301,17 @@ export default function RootPage() {
                 disabled={saving}
                 className="p-3 rounded-xl text-left transition-all"
                 style={{
-                  background: isSelected ? t.bg : '#FAFAFA',
-                  border: `2px solid ${isSelected ? t.color : '#eee'}`,
+                  background: isSelected ? t.bg : (isDark ? '#333' : '#FAFAFA'),
+                  border: `2px solid ${isSelected ? t.color : cardBorder}`,
                   opacity: saving ? 0.7 : 1,
                 }}
               >
                 <div className="flex items-center gap-2 mb-1">
                   <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ background: t.color }} />
-                  <span className="text-sm font-medium" style={{ color: '#333' }}>{t.label}</span>
+                  <span className="text-sm font-medium" style={{ color: titleColor }}>{t.label}</span>
                   {isSelected && <span className="ml-auto text-xs" style={{ color: t.color }}>✓</span>}
                 </div>
-                <p className="text-xs" style={{ color: '#999' }}>{t.sub}</p>
+                <p className="text-xs" style={{ color: dimColor }}>{t.sub}</p>
               </button>
             )
           })}
@@ -317,8 +319,8 @@ export default function RootPage() {
       </div>
 
       {/* 标签管理 */}
-      <div className="p-4 rounded-xl mb-4" style={{ background: '#fff', border: '1px solid #eee' }}>
-        <p className="text-xs mb-3" style={{ color: '#999' }}>标签管理</p>
+      <div className="p-4 rounded-xl mb-4" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
+        <p className="text-xs mb-3" style={{ color: dimColor }}>标签管理</p>
         {tags.length === 0 ? (
           <p className="text-xs text-center py-3" style={{ color: '#ddd' }}>还没有标签，播种心得时创建吧</p>
         ) : (
@@ -393,7 +395,7 @@ export default function RootPage() {
                     <button
                       onClick={() => setEditingTagId(null)}
                       className="text-xs px-2 py-1 rounded-lg"
-                      style={{ color: '#999', border: '1px solid #eee' }}
+                      style={{ color: '#999', border: `1px solid ${cardBorder}` }}
                     >
                       取消
                     </button>
@@ -419,7 +421,7 @@ export default function RootPage() {
                       <button
                         onClick={() => setDeletingTagId(null)}
                         className="text-xs px-2 py-1 rounded-lg"
-                        style={{ color: '#999', border: '1px solid #eee' }}
+                        style={{ color: '#999', border: `1px solid ${cardBorder}` }}
                       >
                         取消
                       </button>
@@ -433,9 +435,9 @@ export default function RootPage() {
       </div>
 
       {/* 数据导出 */}
-      <div className="p-4 rounded-xl mb-4" style={{ background: '#fff', border: '1px solid #eee' }}>
+      <div className="p-4 rounded-xl mb-4" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
         <div className="flex items-center justify-between mb-3">
-          <p className="text-xs" style={{ color: '#999' }}>导出心得</p>
+          <p className="text-xs" style={{ color: dimColor }}>导出心得</p>
           {exportTip && (
             <span className="text-xs" style={{ color: '#8BC34A' }}>✓ 已开始下载</span>
           )}
@@ -456,7 +458,7 @@ export default function RootPage() {
       </div>
 
       {/* 版本 & 开打次数 */}
-      <div className="p-4 rounded-xl mb-4" style={{ background: '#fff', border: '1px solid #eee' }}>
+      <div className="p-4 rounded-xl mb-4" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
         <button
           className="w-full flex items-center justify-between"
           onClick={() => setShowChangelog(!showChangelog)}
@@ -505,16 +507,16 @@ export default function RootPage() {
           </div>
         )}
 
-        <div className="mt-3 pt-3 flex justify-between" style={{ borderTop: '1px solid #f0f0f0' }}>
-          <span className="text-sm" style={{ color: '#666' }}>累计打开</span>
-          <span className="text-sm" style={{ color: '#333' }}>{user?.openTimes ?? '—'} 次</span>
+        <div className="mt-3 pt-3 flex justify-between" style={{ borderTop: `1px solid ${isDark ? '#333' : '#f0f0f0'}` }}>
+          <span className="text-sm" style={{ color: isDark ? '#aaa' : '#666' }}>累计打开</span>
+          <span className="text-sm" style={{ color: titleColor }}>{user?.openTimes ?? '—'} 次</span>
         </div>
       </div>
 
       {/* 退出登录 */}
       <button
         className="w-full py-3 rounded-xl text-sm font-medium"
-        style={{ color: '#e57373', border: '1px solid rgba(229,115,115,0.2)', background: '#fff' }}
+        style={{ color: '#e57373', border: '1px solid rgba(229,115,115,0.2)', background: cardBg }}
         onClick={logout}
       >
         退出登录
