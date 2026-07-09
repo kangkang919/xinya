@@ -1,6 +1,6 @@
 "use client"
 import { useEffect, useState } from "react"
-import { useRouter, useParams } from "next/navigation"
+import { useRouter, useParams, useSearchParams } from "next/navigation"
 import { useTheme } from "@/lib/useTheme"
 
 interface Tag { id: string; name: string }
@@ -28,6 +28,9 @@ function formatDate(iso: string) {
 export default function ViewEntryPage() {
   const router = useRouter()
   const params = useParams()
+  const searchParams = useSearchParams()
+  const tagId = searchParams.get('tagId')
+  const goBack = () => router.push(tagId ? `/leaf?tagId=${tagId}` : '/leaf')
   const id = params.id as string
   const { isDark, cardBg, titleColor } = useTheme()
 
@@ -70,7 +73,7 @@ export default function ViewEntryPage() {
           <div className="text-3xl mb-2">🍂</div>
           <p className="text-sm mb-4" style={{ color: '#bbb' }}>这篇心得不见了</p>
           <button
-            onClick={() => router.back()}
+            onClick={() => goBack()}
             className="px-4 py-2 rounded-full text-sm"
             style={{ background: '#8BC34A', color: '#fff' }}
           >
@@ -93,7 +96,7 @@ export default function ViewEntryPage() {
         }}
       >
         <button
-          onClick={() => router.back()}
+          onClick={() => goBack()}
           className="flex items-center gap-1 text-sm rounded-full px-3 py-1.5 transition"
           style={{ color: isDark ? '#aaa' : '#666', background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)' }}
         >
