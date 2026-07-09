@@ -596,7 +596,6 @@ export default function RootPage() {
             ))}
           </div>
         )}
-        )}
       </div>
 
       {/* 拾遗设置 */}
