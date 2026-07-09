@@ -65,7 +65,7 @@ export function EntryCard({ id, title, contentPreview, tags, mood, recordTime,
     <div
       className="card-sketch p-4 shadow-sm relative transition-all hover:shadow-md cursor-pointer"
       style={{ background: cardBg, border: isTop ? "2px solid #8BC34A" : `1.5px solid ${cardBorder}` }}
-      onClick={() => router.push(`/entry/${id}/view`)}
+      onClick={() => router.push(`/entry/${id}/view?from=sprout`)}
     >
       {/* 置顶标记 */}
       {isTop && (
