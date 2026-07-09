@@ -4,41 +4,26 @@ import { useRouter, usePathname } from "next/navigation"
 
 const THEME_BG: Record<string, string> = {
   spring: '#F4FBF0',
-  summer: '#EEF6FE',
-  autumn: '#FAFAF5',
-  winter: '#F5F5F7',
   night: '#1E1E1E',
 }
 
 const THEME_NAV_BG: Record<string, string> = {
   spring: 'rgba(255,255,255,0.95)',
-  summer: 'rgba(255,255,255,0.95)',
-  autumn: 'rgba(255,255,255,0.95)',
-  winter: 'rgba(255,255,255,0.95)',
   night: 'rgba(36,36,36,0.97)',
 }
 
 const THEME_NAV_BORDER: Record<string, string> = {
   spring: '#e0e0e0',
-  summer: '#e0e0e0',
-  autumn: '#e0e0e0',
-  winter: '#e0e0e0',
   night: '#333',
 }
 
 const THEME_ACTIVE: Record<string, string> = {
   spring: '#8BC34A',
-  summer: '#2196F3',
-  autumn: '#FF8C42',
-  winter: '#90A4AE',
-  night: '#8BC34A',
+  night: '#6B8F3C',
 }
 
 const THEME_INACTIVE: Record<string, string> = {
   spring: '#aaa',
-  summer: '#aaa',
-  autumn: '#aaa',
-  winter: '#aaa',
   night: '#666',
 }
 
@@ -53,9 +38,9 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       window.history.replaceState({}, '', window.location.pathname)
       return urlTheme
     }
-    return localStorage.getItem('xinya-theme') || 'autumn'
-  })() : 'autumn'
-  const [bg, setBg] = useState(THEME_BG[initTheme] || '#FAFAF5')
+    return localStorage.getItem('xinya-theme') || 'spring'
+  })() : 'spring'
+  const [bg, setBg] = useState(THEME_BG[initTheme] || '#F4FBF0')
   const [themeKey, setThemeKey] = useState(initTheme)
 
   useEffect(() => {
@@ -69,7 +54,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         const newUrl = window.location.pathname
         window.history.replaceState({}, '', newUrl)
       }
-      const t = localStorage.getItem('xinya-theme') || 'autumn'
+      const t = localStorage.getItem('xinya-theme') || 'spring'
 
       // 登录后首次加载：通过"先切默认再切回"强制主题生效
       const needRefresh = sessionStorage.getItem('xinya-theme-refresh')
