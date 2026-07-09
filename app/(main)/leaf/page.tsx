@@ -215,7 +215,7 @@ function LeafPageContent() {
               {entries.map(entry => (
                 <div
                   key={entry.id}
-                  onClick={() => router.push(`/entry/${entry.id}/view${selectedTag ? `?tagId=${selectedTag.id}` : ''}`)}
+                  onClick={() => router.push(`/entry/${entry.id}/view?from=leaf${selectedTag ? `&tagId=${selectedTag.id}` : ''}`)}
                   className="p-4 rounded-xl cursor-pointer transition-all active:scale-[0.98]"
                   style={{ background: cardBg, border: `1px solid ${cardBorder}` }}
                 >
