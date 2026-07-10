@@ -130,28 +130,6 @@ export default function SharePanel({
         </span>
       </div>
 
-      {/* 标签 */}
-      {entryTags.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "10px" }}>
-          {entryTags.map((tag, i) => (
-            <span
-              key={i}
-              style={{
-                fontSize: "11px",
-                padding: "0 8px",
-                height: "20px",
-                lineHeight: "20px",
-                borderRadius: "10px",
-                background: isDark ? "rgba(139,195,74,0.2)" : "rgba(139,195,74,0.12)",
-                color: isDark ? "#AED581" : "#5a8a2f",
-              }}
-            >
-              #{tag.name}
-            </span>
-          ))}
-        </div>
-      )}
-
       {/* 标题 */}
       {entryTitle && (
         <div
