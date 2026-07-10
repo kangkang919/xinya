@@ -2,7 +2,7 @@
 import { useState, useRef, useCallback } from "react"
 
 // 从 CDN 动态加载 html2canvas
-function loadHtml2Canvas(): Promise<typeof import("html2canvas")> {
+function loadHtml2Canvas(): Promise<any> {
   return new Promise((resolve, reject) => {
     if ((window as any).html2canvas) {
       resolve({ default: (window as any).html2canvas })
