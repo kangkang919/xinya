@@ -124,7 +124,7 @@ export default function SharePanel({
       {/* Logo 水印 */}
       <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "16px" }}>
         <span style={{ fontSize: "18px" }}>🌱</span>
-        <span style={{ fontSize: "13px", fontWeight: 600, color: "#8BC34A" }}>心芽</span>
+        <span style={{ fontSize: "16px", fontWeight: 600, color: "#8BC34A" }}>心芽</span>
         <span style={{ fontSize: "11px", color: isDark ? "#888" : "#bbb", marginLeft: "auto" }}>
           shuxiangnote.top
         </span>
@@ -138,10 +138,13 @@ export default function SharePanel({
               key={i}
               style={{
                 fontSize: "11px",
-                padding: "2px 8px",
+                padding: "3px 8px",
                 borderRadius: "10px",
                 background: isDark ? "rgba(139,195,74,0.2)" : "rgba(139,195,74,0.12)",
                 color: isDark ? "#AED581" : "#5a8a2f",
+                display: "inline-flex",
+                alignItems: "center",
+                lineHeight: 1,
               }}
             >
               #{tag.name}
