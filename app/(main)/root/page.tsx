@@ -1,6 +1,7 @@
 "use client"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { toMarkdown, downloadBlob } from "@/lib/export-utils"
 
 interface User {
   email: string
@@ -13,6 +14,13 @@ interface TagItem {
   name: string
   isDefault: boolean
   entryCount: number
+}
+
+interface ExportEntry {
+  title: string
+  content: string
+  tags: { name: string }[]
+  createdAt: string
 }
 
 const THEMES = [
@@ -89,6 +97,10 @@ export default function RootPage() {
     weakAreas: { tag: string; accuracy: number; count: number }[]
     strongAreas: { tag: string; accuracy: number; count: number }[]
   } | null>(null)
+
+  // 数据导出
+  const [exporting, setExporting] = useState(false)
+  const [exportTip, setExportTip] = useState(false)
 
   useEffect(() => {
     const saved = localStorage.getItem('xinya-theme') || 'spring'
@@ -197,6 +209,22 @@ export default function RootPage() {
   async function logout() {
     await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {})
     router.push('/login')
+  }
+
+  async function handleExport() {
+    if (exporting) return
+    setExporting(true)
+    try {
+      const res = await fetch('/api/export')
+      const json = await res.json()
+      if (!json.ok) throw new Error('导出失败')
+      const entries: ExportEntry[] = json.data
+      const now = new Date().toISOString().slice(0, 10)
+      downloadBlob(toMarkdown(entries), `xinya-export-${now}.md`, 'text/markdown')
+      setExportTip(true)
+      setTimeout(() => setExportTip(false), 2000)
+    } catch (_) {}
+    setExporting(false)
   }
 
   async function handleSetPassword() {
@@ -596,6 +624,29 @@ export default function RootPage() {
           )}
         </div>
       )}
+
+      {/* 数据导出 */}
+      <div className="p-4 rounded-xl mb-4" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs" style={{ color: dimColor }}>导出心得</p>
+          {exportTip && (
+            <span className="text-xs" style={{ color: '#8BC34A' }}>✓ 已开始下载</span>
+          )}
+        </div>
+        <button
+          onClick={handleExport}
+          disabled={exporting}
+          className="w-full py-2.5 rounded-xl text-sm font-medium transition"
+          style={{
+            background: 'rgba(139,195,74,0.08)',
+            color: '#5a8a2f',
+            border: '1px solid rgba(139,195,74,0.3)',
+            opacity: exporting ? 0.6 : 1,
+          }}
+        >
+          {exporting ? '导出中...' : '导出为 Markdown'}
+        </button>
+      </div>
 
       {/* 版本 & 开打次数 */}
       <div className="p-4 rounded-xl mb-4" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
