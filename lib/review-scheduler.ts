@@ -53,7 +53,7 @@ export async function getTodayCard(userId: string): Promise<TodayCard | null> {
 
   // 查找待复习题目（nextReviewAt <= now，按答错优先 > 久未复习优先）
   const now = new Date()
-  const dueQuestion = await prisma.quizRecord.findFirst({
+  const dueQuestions = await prisma.quizRecord.findMany({
     where: {
       userId,
       nextReviewAt: { lte: now },
@@ -69,14 +69,17 @@ export async function getTodayCard(userId: string): Promise<TodayCard | null> {
         },
       },
     },
+    take: 10, // 取前10个候选，从中随机选一个
   })
 
-  if (dueQuestion) {
-    return formatCard(dueQuestion)
+  if (dueQuestions.length > 0) {
+    // 随机选取一个，避免同一篇心得的题目连续推送
+    const randomIndex = Math.floor(Math.random() * dueQuestions.length)
+    return formatCard(dueQuestions[randomIndex])
   }
 
   // 若无待复习题，优先查找已有题目但未答题的记录
-  const unreviewedRecord = await prisma.quizRecord.findFirst({
+  const unreviewedRecords = await prisma.quizRecord.findMany({
     where: {
       userId,
       answeredAt: { equals: null },
@@ -89,11 +92,13 @@ export async function getTodayCard(userId: string): Promise<TodayCard | null> {
         },
       },
     },
+    take: 10,
   })
 
-  if (unreviewedRecord) {
-    console.log("[Scheduler] Found unreviewed record, entryId:", unreviewedRecord.entryId)
-    return formatCard(unreviewedRecord)
+  if (unreviewedRecords.length > 0) {
+    const randomIndex = Math.floor(Math.random() * unreviewedRecords.length)
+    console.log("[Scheduler] Found unreviewed record, entryId:", unreviewedRecords[randomIndex].entryId)
+    return formatCard(unreviewedRecords[randomIndex])
   }
 
   // 最后才查找尚未出题的心得（需要在线生成题目）
@@ -124,7 +129,7 @@ export async function getTodayCard(userId: string): Promise<TodayCard | null> {
   }
 
   // 所有心得都有题目了，查找最久未复习的
-  const oldestRecord = await prisma.quizRecord.findFirst({
+  const oldestRecords = await prisma.quizRecord.findMany({
     where: { userId },
     orderBy: { nextReviewAt: "asc" },
     include: {
@@ -134,10 +139,12 @@ export async function getTodayCard(userId: string): Promise<TodayCard | null> {
         },
       },
     },
+    take: 10,
   })
 
-  if (oldestRecord) {
-    return formatCard(oldestRecord)
+  if (oldestRecords.length > 0) {
+    const randomIndex = Math.floor(Math.random() * oldestRecords.length)
+    return formatCard(oldestRecords[randomIndex])
   }
 
   return null
