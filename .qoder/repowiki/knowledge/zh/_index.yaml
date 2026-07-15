@@ -3,11 +3,11 @@ schema_version: 1
 locale: zh-CN
 branch: main
 nodes_managed: true
-exported_at: "2026-07-15T11:49:34Z"
+exported_at: "2026-07-15T12:19:41Z"
 modules:
     "":
-        dir_name: 心芽日记 Next.js 应用根工程
-        title: 心芽日记 Next.js 应用根工程
+        dir_name: 心芽日记应用根工程
+        title: 心芽日记应用根工程
         scope:
             - README.md
             - package.json

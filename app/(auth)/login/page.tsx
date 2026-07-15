@@ -60,16 +60,6 @@ function LoginForm() {
       sessionStorage.setItem('xinya-theme-refresh', '1')
       window.location.href = data.data?.onboardDone ? "/" : "/onboard"
     } catch (err: any) {
-      // fetch可能被redirect拦截，检查是否已登录
-      try {
-        const meRes = await fetch("/api/auth/me", { credentials: "include" })
-        const meData = await meRes.json()
-        if (meData.ok) {
-          // 登录成功了，redirect已生效
-          window.location.href = "/"
-          return
-        }
-      } catch {}
       setError("网络出了点问题，请稍后再试")
     } finally {
       setLoading(false)

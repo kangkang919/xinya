@@ -25,23 +25,11 @@ export async function POST(req: NextRequest) {
     }
 
     const token = signToken(user.id)
-    console.log("[Login-DEBUG] token生成成功, userId:", user.id)
 
     await prisma.user.update({ where: { id: user.id }, data: { openTimes: { increment: 1 } } })
 
-    // 直接返回redirect响应，由服务器设置cookie并跳转（避免客户端fetch后cookie丢失）
-    const redirectUrl = user.onboardDone ? "/" : "/onboard"
-    // 用Host头构造正确的base URL（nginx代理后req.url是localhost:3000）
-    const host = req.headers.get("host") || "shuxiangnote.top"
-    const proto = req.headers.get("x-forwarded-proto") || "https"
-    const baseUrl = `${proto}://${host}`
-    console.log("[Login-DEBUG] baseUrl:", baseUrl, "redirect到:", redirectUrl)
-    const response = NextResponse.redirect(new URL(redirectUrl, baseUrl), 303)
-    response.cookies.set(COOKIE_CONFIG.name, token, {
-      ...COOKIE_CONFIG.options,
-      secure: proto === "https",
-    })
-    console.log("[Login-DEBUG] redirect响应headers:", JSON.stringify(Object.fromEntries(response.headers.entries())))
+    const response = NextResponse.json({ ok: true, data: { onboardDone: user.onboardDone, theme: user.theme } })
+    response.cookies.set(COOKIE_CONFIG.name, token, COOKIE_CONFIG.options)
     return response
   } catch (e) {
     console.error("[Login]", e)
