@@ -55,13 +55,16 @@ function LoginForm() {
       }
       // 恢复服务端主题到 localStorage（无条件写入，带默认值兜底）
       const theme = data.data?.theme || 'spring'
+      console.log('[Login-DEBUG] 登录API响应:', JSON.stringify(data))
       localStorage.setItem('xinya-theme', theme)
       // 标记需要主题刷新（强制切换生效）
       sessionStorage.setItem('xinya-theme-refresh', '1')
-      console.log('[Login-DEBUG] 登录成功, 3秒后跳转到:', data.data?.onboardDone ? "/" : "/onboard")
+      const targetUrl = data.data?.onboardDone ? "/" : "/onboard"
+      console.log('[Login-DEBUG] 准备跳转到:', targetUrl, '3秒后执行')
       // 临时加3秒延迟方便调试
       setTimeout(() => {
-        window.location.href = data.data?.onboardDone ? "/" : "/onboard"
+        console.log('[Login-DEBUG] 正在执行 window.location.href =', targetUrl)
+        window.location.href = targetUrl
       }, 3000)
     } catch (err: any) {
       setError("网络出了点问题，请稍后再试")

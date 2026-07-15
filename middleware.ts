@@ -15,11 +15,6 @@ export function middleware(request: NextRequest) {
   console.log("[Middleware-DEBUG] pathname:", pathname, "isAuthPage:", isAuthPage, "hasToken:", hasToken, "tokenPreview:", tokenValue)
 
   if (isAuthPage) {
-    // 已登录用户访问登录/注册页，直接跳转到首页
-    if (hasToken) {
-      console.log("[Middleware-DEBUG] 已登录用户访问auth页面, 重定向到 /")
-      return NextResponse.redirect(new URL("/", request.url))
-    }
     return NextResponse.next()
   }
 

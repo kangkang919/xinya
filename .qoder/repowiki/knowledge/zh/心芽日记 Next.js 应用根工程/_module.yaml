@@ -1,6 +1,6 @@
 schema_version: 1
 module_path: ""
-title: 心芽 Next.js 应用根工程
+title: 心芽日记 Next.js 应用根工程
 scope:
     - README.md
     - package.json
