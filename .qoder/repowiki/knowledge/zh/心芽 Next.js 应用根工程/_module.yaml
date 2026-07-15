@@ -1,0 +1,22 @@
+schema_version: 1
+module_path: ""
+title: 心芽 Next.js 应用根工程
+scope:
+    - README.md
+    - package.json
+    - next.config.ts
+    - middleware.ts
+    - ecosystem.config.js
+    - deploy.sh
+    - eslint.config.mjs
+    - postcss.config.mjs
+    - tsconfig.json
+    - next-env.d.ts
+    - .env.example
+    - .gitignore
+    - AGENTS.md
+    - CLAUDE.md
+    - package-lock.json
+source_files: []
+depends_on: []
+related_to: []

@@ -1,0 +1,79 @@
+# 知识卡导出索引文件
+schema_version: 1
+locale: zh-CN
+branch: main
+nodes_managed: true
+exported_at: "2026-07-15T00:58:15Z"
+modules:
+    "":
+        dir_name: 心芽 Next.js 应用根工程
+        title: 心芽 Next.js 应用根工程
+        scope:
+            - README.md
+            - package.json
+            - next.config.ts
+            - middleware.ts
+            - ecosystem.config.js
+            - deploy.sh
+            - eslint.config.mjs
+            - postcss.config.mjs
+            - tsconfig.json
+            - next-env.d.ts
+            - .env.example
+            - .gitignore
+            - AGENTS.md
+            - CLAUDE.md
+            - package-lock.json
+        source_files: []
+        children:
+            - docs
+            - scripts
+            - server_lib
+            - shared_components
+        depends_on: []
+        related_to: []
+    docs:
+        dir_name: 心芽项目文档与生产配置备份
+        title: 心芽项目文档与生产配置备份
+        scope:
+            - doc/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: server_lib
+    scripts:
+        dir_name: 数据初始化与批量补全运维脚本
+        title: 数据初始化与批量补全运维脚本
+        scope:
+            - scripts/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: server_lib
+            - path: shared_components
+    server_lib:
+        dir_name: 跨层共享工具库与数据模型
+        title: 跨层共享工具库与数据模型
+        scope:
+            - lib/
+            - prisma/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: docs
+            - path: scripts
+            - path: shared_components
+    shared_components:
+        dir_name: 心得编辑与复习卡片组件集
+        title: 心得编辑与复习卡片组件集
+        scope:
+            - components/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: scripts
+            - path: server_lib

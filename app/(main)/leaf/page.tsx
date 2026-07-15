@@ -1,5 +1,5 @@
 ﻿"use client"
-import { Suspense, useEffect, useState } from "react"
+import { Suspense, useEffect, useState, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useTheme } from "@/lib/useTheme"
 
@@ -80,31 +80,85 @@ function LeafPageContent() {
   const [loadingEntries, setLoadingEntries] = useState(false)
 
   useEffect(() => {
+    // 检查是否从编辑页返回且标签有变更
+    const savedData = sessionStorage.getItem('leaf_saved')
+    let tagChanged = false
+    if (savedData) {
+      sessionStorage.removeItem('leaf_saved')
+      try {
+        const parsed = JSON.parse(savedData)
+        tagChanged = !!parsed.tagChanged
+      } catch {}
+    }
+
     fetch('/api/tags')
       .then(r => r.json())
       .then(data => {
         if (data.ok) {
           const sorted = [...data.data].sort((a: Tag, b: Tag) => b.entryCount - a.entryCount)
           setTags(sorted)
-          // 从URL恢复选中的标签（从阅读页返回时）
+          // 从URL恢复选中的标签（从阅读页/编辑页返回时）
           const tagId = searchParams.get('tagId')
           if (tagId) {
             const tag = sorted.find((t: Tag) => t.id === tagId)
             if (tag) {
               setSelectedTag(tag)
-              setLoadingEntries(true)
-              fetch(`/api/entries?tagId=${tag.id}&limit=50`)
-                .then(r => r.json())
-                .then(data => {
-                  if (data.ok) setEntries(data.data.entries || [])
-                })
-                .catch(() => {})
-                .finally(() => setLoadingEntries(false))
+              if (tagChanged) {
+                // 标签有变更，不自动加载列表，等待用户点击标签后刷新
+                setEntries([])
+              } else {
+                // 标签未变更，正常加载列表
+                setLoadingEntries(true)
+                fetch(`/api/entries?tagId=${tag.id}&limit=50`)
+                  .then(r => r.json())
+                  .then(data => {
+                    if (data.ok) setEntries(data.data.entries || [])
+                  })
+                  .catch(() => {})
+                  .finally(() => setLoadingEntries(false))
+              }
             }
           }
         }
       })
       .catch(() => {})
+  }, [])
+
+  // 从编辑页返回后，恢复滚动位置（等待数据加载完成后）
+  const scrollRestoreRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    const saved = sessionStorage.getItem('leaf_scroll')
+    if (saved) {
+      sessionStorage.removeItem('leaf_scroll')
+      scrollRestoreRef.current = parseInt(saved, 10)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (scrollRestoreRef.current !== null && !loadingEntries) {
+      const y = scrollRestoreRef.current
+      scrollRestoreRef.current = null
+      setTimeout(() => window.scrollTo(0, y), 50)
+    }
+  }, [loadingEntries])
+
+  // 持续保存滚动位置（SPA导航和页面刷新都适用）
+  useEffect(() => {
+    let scrollTimer: ReturnType<typeof setTimeout>
+    const handleScroll = () => {
+      clearTimeout(scrollTimer)
+      scrollTimer = setTimeout(() => {
+        sessionStorage.setItem('leaf_scroll', String(window.scrollY))
+      }, 150)
+    }
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', handleScroll)
+      clearTimeout(scrollTimer)
+      // 卸载时也保存当前位置
+      sessionStorage.setItem('leaf_scroll', String(window.scrollY))
+    }
   }, [])
 
   function selectTag(tag: Tag) {
@@ -215,7 +269,10 @@ function LeafPageContent() {
               {entries.map(entry => (
                 <div
                   key={entry.id}
-                  onClick={() => router.push(`/entry/${entry.id}/view?from=leaf${selectedTag ? `&tagId=${selectedTag.id}` : ''}`)}
+                  onClick={() => {
+                    sessionStorage.setItem('leaf_scroll', String(window.scrollY))
+                    router.push(`/entry/${entry.id}/view?from=leaf${selectedTag ? `&tagId=${selectedTag.id}` : ''}`)
+                  }}
                   className="p-4 rounded-xl cursor-pointer transition-all active:scale-[0.98]"
                   style={{ background: cardBg, border: `1px solid ${cardBorder}` }}
                 >

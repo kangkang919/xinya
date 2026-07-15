@@ -1,6 +1,6 @@
 "use client"
 import { useState, useEffect, useRef, useCallback } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { EyeOff } from "lucide-react"
 import toast from "react-hot-toast"
 import EditorToolbar from "./EditorToolbar"
@@ -21,6 +21,9 @@ interface EditorProps {
 
 export default function Editor({ entryId, isNew }: EditorProps) {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const fromPage = searchParams.get('from') || ''
+  const fromTagId = searchParams.get('tagId') || ''
   const { isDark, titleColor, inputBg, inputBorder } = useTheme()
   const [title, setTitle] = useState("")
   const [mood, setMood] = useState<string | null>(null)
@@ -33,6 +36,7 @@ export default function Editor({ entryId, isNew }: EditorProps) {
   const [charCount, setCharCount] = useState(0)
   const editorRef = useRef<HTMLDivElement>(null)
   const initialized = useRef(false)
+  const initialTagIds = useRef<string[]>([])
 
   useEffect(() => { fetch("/api/tags").then(r => r.json()).then(d => { if (d.ok) setAllTags(d.data) }) }, [])
 
@@ -44,6 +48,7 @@ export default function Editor({ entryId, isNew }: EditorProps) {
           if (editorRef.current) editorRef.current.innerHTML = d.data.content || ""
           setMood(d.data.mood)
           setSelectedTags(d.data.tags.map((t: { id: string }) => t.id))
+          initialTagIds.current = d.data.tags.map((t: { id: string }) => t.id)
           initialized.current = true
           setCharCount((d.data.content || "").replace(/<[^>]*>/g, "").replace(/\s/g, "").length)
         }
@@ -119,7 +124,21 @@ export default function Editor({ entryId, isNew }: EditorProps) {
       const body = { title: title.trim(), content: editorRef.current?.innerHTML || "", mood, tagIds: selectedTags, isDraft: false }
       const res = await fetch(isNew ? "/api/entries" : `/api/entries/${entryId}`, { method: isNew ? "POST" : "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
       const data = await res.json()
-      if (data.ok) { toast.success("心得已保存"); router.push("/") } else toast.error(data.error || "保存失败")
+      if (data.ok) {
+        toast.success("心得已保存")
+        // 检测标签是否变更，记录到 sessionStorage 供枝叶页判断
+        if (fromPage === 'leaf' && !isNew) {
+          const tagsChanged = initialTagIds.current.length !== selectedTags.length ||
+            !initialTagIds.current.every(id => selectedTags.includes(id))
+          sessionStorage.setItem('leaf_saved', JSON.stringify({ tagChanged: tagsChanged, tagId: fromTagId }))
+        }
+        // 根据来源页面导航回去
+        if (fromPage === 'leaf') {
+          router.push(`/leaf?tagId=${fromTagId}`)
+        } else {
+          router.push("/")
+        }
+      } else toast.error(data.error || "保存失败")
     } catch { toast.error("网络异常") } finally { setSaving(false) }
   }
 

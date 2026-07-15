@@ -1,0 +1,12 @@
+schema_version: 1
+module_path: server_lib
+title: 跨层共享工具库与数据模型
+scope:
+    - lib/
+    - prisma/
+source_files: []
+depends_on: []
+related_to:
+    - path: docs
+    - path: scripts
+    - path: shared_components

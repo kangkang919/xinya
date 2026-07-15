@@ -1,0 +1,10 @@
+schema_version: 1
+module_path: shared_components
+title: 心得编辑与复习卡片组件集
+scope:
+    - components/
+source_files: []
+depends_on: []
+related_to:
+    - path: scripts
+    - path: server_lib

@@ -126,7 +126,7 @@ function ViewEntryContent() {
         </button>
 
         <button
-          onClick={() => router.push(`/entry/${id}`)}
+          onClick={() => router.push(`/entry/${id}?from=${from || ''}&tagId=${tagId || ''}`)}
           className="flex items-center gap-1 text-sm rounded-full px-3 py-1.5 transition"
           style={{ color: '#8BC34A', background: 'rgba(139,195,74,0.1)' }}
         >
