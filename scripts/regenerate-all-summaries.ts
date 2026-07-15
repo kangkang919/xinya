@@ -6,7 +6,13 @@ import { PrismaClient } from "@prisma/client"
 const prisma = new PrismaClient()
 
 const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY
-const DEEPSEEK_API_URL = process.env.DEEPSEEK_BASE_URL + "/chat/completions"
+const DEEPSEEK_API_URL = (process.env.DEEPSEEK_BASE_URL || "https://api.deepseek.com/v1") + "/chat/completions"
+
+if (!DEEPSEEK_API_KEY) {
+  console.error("[RegenerateAll] 错误: DEEPSEEK_API_KEY 未设置，请在 .env.production 中配置")
+  process.exit(1)
+}
+console.log("[RegenerateAll] API URL:", DEEPSEEK_API_URL)
 
 async function generateQuestions(title: string, content: string) {
   const prompt = `请根据以下心得内容，生成复习用的题目和要点总结。
