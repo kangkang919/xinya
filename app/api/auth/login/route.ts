@@ -31,11 +31,15 @@ export async function POST(req: NextRequest) {
 
     // 直接返回redirect响应，由服务器设置cookie并跳转（避免客户端fetch后cookie丢失）
     const redirectUrl = user.onboardDone ? "/" : "/onboard"
-    console.log("[Login-DEBUG] 返回redirect到:", redirectUrl)
-    const response = NextResponse.redirect(new URL(redirectUrl, req.url), 303)
+    // 用Host头构造正确的base URL（nginx代理后req.url是localhost:3000）
+    const host = req.headers.get("host") || "shuxiangnote.top"
+    const proto = req.headers.get("x-forwarded-proto") || "https"
+    const baseUrl = `${proto}://${host}`
+    console.log("[Login-DEBUG] baseUrl:", baseUrl, "redirect到:", redirectUrl)
+    const response = NextResponse.redirect(new URL(redirectUrl, baseUrl), 303)
     response.cookies.set(COOKIE_CONFIG.name, token, {
       ...COOKIE_CONFIG.options,
-      secure: req.url.startsWith("https"),
+      secure: proto === "https",
     })
     console.log("[Login-DEBUG] redirect响应headers:", JSON.stringify(Object.fromEntries(response.headers.entries())))
     return response
