@@ -26,14 +26,18 @@ export async function POST(req: NextRequest) {
 
     const token = signToken(user.id)
     console.log("[Login-DEBUG] token生成成功, userId:", user.id)
-    console.log("[Login-DEBUG] COOKIE_CONFIG:", JSON.stringify(COOKIE_CONFIG))
 
     await prisma.user.update({ where: { id: user.id }, data: { openTimes: { increment: 1 } } })
 
-    const response = NextResponse.json({ ok: true, data: { onboardDone: user.onboardDone, theme: user.theme } })
-    response.cookies.set(COOKIE_CONFIG.name, token, COOKIE_CONFIG.options)
-    console.log("[Login-DEBUG] cookie已设置, 准备返回响应")
-    console.log("[Login-DEBUG] 响应headers:", JSON.stringify(Object.fromEntries(response.headers.entries())))
+    // 直接返回redirect响应，由服务器设置cookie并跳转（避免客户端fetch后cookie丢失）
+    const redirectUrl = user.onboardDone ? "/" : "/onboard"
+    console.log("[Login-DEBUG] 返回redirect到:", redirectUrl)
+    const response = NextResponse.redirect(new URL(redirectUrl, req.url), 303)
+    response.cookies.set(COOKIE_CONFIG.name, token, {
+      ...COOKIE_CONFIG.options,
+      secure: req.url.startsWith("https"),
+    })
+    console.log("[Login-DEBUG] redirect响应headers:", JSON.stringify(Object.fromEntries(response.headers.entries())))
     return response
   } catch (e) {
     console.error("[Login]", e)

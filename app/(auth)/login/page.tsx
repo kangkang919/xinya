@@ -55,18 +55,21 @@ function LoginForm() {
       }
       // 恢复服务端主题到 localStorage（无条件写入，带默认值兜底）
       const theme = data.data?.theme || 'spring'
-      console.log('[Login-DEBUG] 登录API响应:', JSON.stringify(data))
       localStorage.setItem('xinya-theme', theme)
       // 标记需要主题刷新（强制切换生效）
       sessionStorage.setItem('xinya-theme-refresh', '1')
-      const targetUrl = data.data?.onboardDone ? "/" : "/onboard"
-      console.log('[Login-DEBUG] 准备跳转到:', targetUrl, '3秒后执行')
-      // 临时加3秒延迟方便调试
-      setTimeout(() => {
-        console.log('[Login-DEBUG] 正在执行 window.location.href =', targetUrl)
-        window.location.href = targetUrl
-      }, 3000)
+      window.location.href = data.data?.onboardDone ? "/" : "/onboard"
     } catch (err: any) {
+      // fetch可能被redirect拦截，检查是否已登录
+      try {
+        const meRes = await fetch("/api/auth/me", { credentials: "include" })
+        const meData = await meRes.json()
+        if (meData.ok) {
+          // 登录成功了，redirect已生效
+          window.location.href = "/"
+          return
+        }
+      } catch {}
       setError("网络出了点问题，请稍后再试")
     } finally {
       setLoading(false)
