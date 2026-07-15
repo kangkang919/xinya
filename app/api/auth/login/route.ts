@@ -25,11 +25,15 @@ export async function POST(req: NextRequest) {
     }
 
     const token = signToken(user.id)
+    console.log("[Login-DEBUG] token生成成功, userId:", user.id)
+    console.log("[Login-DEBUG] COOKIE_CONFIG:", JSON.stringify(COOKIE_CONFIG))
 
     await prisma.user.update({ where: { id: user.id }, data: { openTimes: { increment: 1 } } })
 
     const response = NextResponse.json({ ok: true, data: { onboardDone: user.onboardDone, theme: user.theme } })
     response.cookies.set(COOKIE_CONFIG.name, token, COOKIE_CONFIG.options)
+    console.log("[Login-DEBUG] cookie已设置, 准备返回响应")
+    console.log("[Login-DEBUG] 响应headers:", JSON.stringify(Object.fromEntries(response.headers.entries())))
     return response
   } catch (e) {
     console.error("[Login]", e)

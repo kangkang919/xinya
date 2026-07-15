@@ -11,12 +11,15 @@ export function middleware(request: NextRequest) {
   }
 
   const hasToken = request.cookies.has("xinya_token")
+  const tokenValue = request.cookies.get("xinya_token")?.value?.substring(0, 20) + "..."
+  console.log("[Middleware-DEBUG] pathname:", pathname, "isAuthPage:", isAuthPage, "hasToken:", hasToken, "tokenPreview:", tokenValue)
 
   if (isAuthPage) {
     return NextResponse.next()
   }
 
   if (!hasToken) {
+    console.log("[Middleware-DEBUG] 无token, 重定向到 /login")
     return NextResponse.redirect(new URL("/login", request.url))
   }
 

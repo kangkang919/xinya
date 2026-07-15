@@ -3,7 +3,7 @@ schema_version: 1
 locale: zh-CN
 branch: main
 nodes_managed: true
-exported_at: "2026-07-15T00:58:15Z"
+exported_at: "2026-07-15T10:50:27Z"
 modules:
     "":
         dir_name: 心芽 Next.js 应用根工程
@@ -33,15 +33,14 @@ modules:
         depends_on: []
         related_to: []
     docs:
-        dir_name: 心芽项目文档与生产配置备份
-        title: 心芽项目文档与生产配置备份
+        dir_name: 心芽项目文档与运维资料
+        title: 心芽项目文档与运维资料
         scope:
             - doc/
         source_files: []
         children: []
         depends_on: []
-        related_to:
-            - path: server_lib
+        related_to: []
     scripts:
         dir_name: 数据初始化与批量补全运维脚本
         title: 数据初始化与批量补全运维脚本
@@ -52,7 +51,6 @@ modules:
         depends_on: []
         related_to:
             - path: server_lib
-            - path: shared_components
     server_lib:
         dir_name: 跨层共享工具库与数据模型
         title: 跨层共享工具库与数据模型
@@ -63,17 +61,15 @@ modules:
         children: []
         depends_on: []
         related_to:
-            - path: docs
             - path: scripts
             - path: shared_components
     shared_components:
-        dir_name: 心得编辑与复习卡片组件集
-        title: 心得编辑与复习卡片组件集
+        dir_name: 心芽应用共享 UI 组件库
+        title: 心芽应用共享 UI 组件库
         scope:
             - components/
         source_files: []
         children: []
         depends_on: []
         related_to:
-            - path: scripts
             - path: server_lib

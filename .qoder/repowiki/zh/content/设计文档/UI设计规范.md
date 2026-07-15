@@ -8,10 +8,23 @@
 - [showcase/page.tsx（视觉样板页）](file://app/showcase/page.tsx)
 - [leaf/page.tsx（枝叶页）](file://app/(main)/leaf/page.tsx)
 - [root/page.tsx（根系页）](file://app/(main)/root/page.tsx)
+- [page.tsx（萌芽页）](file://app/(main)/page.tsx)
+- [ring/page.tsx（年轮页）](file://app/(main)/ring/page.tsx)
+- [Editor.tsx（富文本编辑器）](file://components/Editor.tsx)
+- [EditorToolbar.tsx（编辑器工具栏）](file://components/EditorToolbar.tsx)
 - [postcss.config.mjs](file://postcss.config.mjs)
 - [心芽小程序设计框架v2.0.md](file://doc/心芽小程序设计框架v2.0.md)
 - [暗色系修改经验总结.md](file://doc/暗色系修改经验总结.md)
+- [心芽各页面标题行高对齐规范.md](file://doc/心芽各页面标题行高对齐规范.md)
+- [心芽富文本文字编辑规范.md](file://doc/心芽富文本文字编辑规范.md)
 </cite>
+
+## 更新摘要
+**变更内容**
+- 新增页面标题对齐规范章节，详细说明多页面标题统一对齐的实现方案
+- 新增富文本编辑器设计标准章节，包含工具栏、颜色选择器、编辑器容器等组件规范
+- 更新组件样式约定，补充富文本编辑器相关的设计细节
+- 完善响应式设计适配策略，增加编辑器移动端适配说明
 
 ## 目录
 1. [引言](#引言)
@@ -26,7 +39,7 @@
 10. [附录：主题色板与使用清单](#附录主题色板与使用清单)
 
 ## 引言
-本规范面向“心芽”项目的UI设计与前端实现，统一色彩、字体、间距、布局网格、组件样式、主题系统与图标规范，确保多端一致体验。文档同时给出代码级映射与可视化图示，便于研发与设计协同落地。
+本规范面向"心芽"项目的UI设计与前端实现，统一色彩、字体、间距、布局网格、组件样式、主题系统与图标规范，确保多端一致体验。文档同时给出代码级映射与可视化图示，便于研发与设计协同落地。
 
 ## 项目结构
 本项目采用 Next.js App Router 组织页面与布局，样式基于 Tailwind CSS + 全局CSS变量；主题系统通过客户端 Hook 与布局层状态管理，配合本地存储持久化。
@@ -40,6 +53,8 @@ B --> E["展示样板页<br/>app/showcase/page.tsx"]
 F["全局样式<br/>app/globals.css"] --> B
 G["主题Hook<br/>lib/useTheme.ts"] --> C
 H["Tailwind配置<br/>postcss.config.mjs"] --> F
+I["富文本编辑器<br/>components/Editor.tsx"] --> C
+J["编辑器工具栏<br/>components/EditorToolbar.tsx"] --> I
 ```
 
 图表来源
@@ -47,6 +62,8 @@ H["Tailwind配置<br/>postcss.config.mjs"] --> F
 - [globals.css:1-79](file://app/globals.css#L1-L79)
 - [useTheme.ts:1-30](file://lib/useTheme.ts#L1-L30)
 - [postcss.config.mjs:1-7](file://postcss.config.mjs#L1-L7)
+- [Editor.tsx:1-211](file://components/Editor.tsx#L1-L211)
+- [EditorToolbar.tsx:1-78](file://components/EditorToolbar.tsx#L1-L78)
 
 章节来源
 - [layout.tsx（主布局）](file://app/(main)/layout.tsx#L1-L81)
@@ -70,6 +87,10 @@ H["Tailwind配置<br/>postcss.config.mjs"] --> F
   - 遮罩+手绘圆角对话框，确认/取消双按钮。
 - 底部导航
   - 四Tab（萌芽/枝叶/年轮/根系），中央悬浮新增按钮，安全区域适配。
+- 富文本编辑器
+  - 工具栏：固定顶部，毛玻璃背景，支持加粗/斜体/列表/颜色等功能。
+  - 编辑器容器：contentEditable实现，支持实时字数统计和专注模式。
+  - 颜色选择器：弹出式色板，6种预设颜色，点击自动收起。
 
 章节来源
 - [showcase/page.tsx（视觉样板页）:330-346](file://app/showcase/page.tsx#L330-L346)
@@ -77,9 +98,11 @@ H["Tailwind配置<br/>postcss.config.mjs"] --> F
 - [showcase/page.tsx（视觉样板页）:201-223](file://app/showcase/page.tsx#L201-L223)
 - [showcase/page.tsx（视觉样板页）:229-264](file://app/showcase/page.tsx#L229-L264)
 - [globals.css:70-78](file://app/globals.css#L70-L78)
+- [Editor.tsx:156-206](file://components/Editor.tsx#L156-L206)
+- [EditorToolbar.tsx:41-76](file://components/EditorToolbar.tsx#L41-L76)
 
 ## 架构总览
-主题系统由“布局层状态 + 客户端Hook + 本地存储 + 全局CSS变量”共同构成。布局负责首屏背景与导航样式，Hook提供卡片、输入等衍生色值，全局CSS定义品牌色与基础排版。
+主题系统由"布局层状态 + 客户端Hook + 本地存储 + 全局CSS变量"共同构成。布局负责首屏背景与导航样式，Hook提供卡片、输入等衍生色值，全局CSS定义品牌色与基础排版。
 
 ```mermaid
 sequenceDiagram
@@ -170,7 +193,164 @@ L->>L : 重新计算并渲染新主题
 - [showcase/page.tsx（视觉样板页）:330-346](file://app/showcase/page.tsx#L330-L346)
 - [showcase/page.tsx（视觉样板页）:392-419](file://app/showcase/page.tsx#L392-L419)
 
-### 五、背景主题系统（5套）
+### 五、页面标题对齐规范
+
+**新增** 为确保多页面切换时的视觉一致性，所有主页面必须遵循统一的标题对齐规范。
+
+#### 5.1 统一标题结构
+所有主页面使用相同的标题 HTML 结构：
+
+```tsx
+{/* 页面标题 */}
+<div className="flex items-center justify-between mb-1">
+  <h1 className="text-xl font-bold" style={{ color: titleColor }}>
+    <span style={{ color: "#8BC34A", display: "inline-block", width: "1.4em", textAlign: "center" }}>
+      🌱  {/* emoji 图标 */}
+    </span>
+    页面名称
+  </h1>
+  {/* 右侧可选元素，如筛选按钮、统计数字等 */}
+</div>
+
+{/* slogan 副标题 */}
+<p className="text-xs mb-5" style={{ color: dimColor }}>
+  诗意化的页面描述文案
+</p>
+```
+
+#### 5.2 关键参数规范
+| 参数 | 值 | 说明 |
+|------|-----|------|
+| 标题字号 | `text-xl`（20px） | 统一字号 |
+| 标题字重 | `font-bold` | 统一粗体 |
+| 标题下间距 | `mb-1`（4px） | 标题与 slogan 的间距 |
+| slogan 字号 | `text-xs`（12px） | 统一小字 |
+| slogan 下间距 | `mb-5`（20px） | slogan 与下方内容的间距 |
+| 容器上内边距 | `px-4`（16px） | 左右内边距统一 |
+
+#### 5.3 emoji 图标对齐技巧
+标题中的 emoji 图标使用固定宽度容器，确保不同 emoji 宽度不一致时标题文字仍然对齐：
+
+```tsx
+<span style={{
+  color: "#8BC34A",
+  display: "inline-block",
+  width: "1.4em",        // ← 关键：固定宽度
+  textAlign: "center"    // ← emoji 居中
+}}>
+  🌱  {/* 不同页面的 emoji 不同，但占用空间相同 */}
+</span>
+```
+
+#### 5.4 右侧元素占位
+当某些页面标题右侧有按钮（如筛选、统计），而其他页面没有时，需要用占位元素保持标题居中/左对齐：
+
+**方案 A：flex justify-between + 空占位**
+```tsx
+<div className="flex items-center justify-between mb-1">
+  <h1>...</h1>
+  <div style={{ width: "40px" }} />  {/* 占位，宽度与对面按钮一致 */}
+</div>
+```
+
+**方案 B：右侧固定区域**
+```tsx
+<div className="flex items-center justify-between mb-1">
+  <h1>...</h1>
+  <div className="flex items-center gap-2">
+    {hasRightElement ? <RightButton /> : <div style={{ width: "32px" }} />}
+  </div>
+</div>
+```
+
+#### 5.5 各页面标题对照表
+| 页面 | emoji | 标题 | slogan | 右侧元素 |
+|------|-------|------|--------|---------|
+| 萌芽页 | 🌱 | 萌芽 | 心之所向，芽之所生 | 收藏筛选 + 搜索 |
+| 枝叶页 | 🍃 | 枝叶 | 思绪的脉络，在此生枝蔓叶 | 无 |
+| 年轮页 | 🌀 | 年轮 | 感受心得生长的节律 | 月份导航（标题下方） |
+| 根系页 | 🌿 | 根系 | 此处是你的根，安静而深厚 | 无 |
+
+章节来源
+- [心芽各页面标题行高对齐规范.md:1-191](file://doc/心芽各页面标题行高对齐规范.md#L1-L191)
+- [leaf/page.tsx:189-195](file://app/(main)/leaf/page.tsx#L189-L195)
+- [page.tsx:200-205](file://app/(main)/page.tsx#L200-L205)
+- [ring/page.tsx:132-138](file://app/(main)/ring/page.tsx#L132-L138)
+- [root/page.tsx:294-300](file://app/(main)/root/page.tsx#L294-L300)
+
+### 六、富文本编辑器设计标准
+
+**新增** 富文本编辑器是心芽的核心功能之一，需要遵循严格的设计规范以确保一致的编辑体验。
+
+#### 6.1 工具栏设计规范
+- 布局结构
+  - 固定顶部定位，毛玻璃背景效果（backdropFilter: blur(12px)）
+  - 横向排列，超出时支持横向滚动（overflow-x-auto）
+  - 分隔线将功能分组：格式工具 | 标签/专注模式 | 字数统计
+
+- 按钮规格
+  | 属性 | 值 | 说明 |
+  |------|-----|------|
+  | 按钮尺寸 | 32×32px（p-2 + icon 18px） | 触摸友好，不占过多空间 |
+  | 图标颜色 | `#666`（默认） | 中性灰，不抢视觉焦点 |
+  | 按钮圆角 | `rounded-lg`（8px） | 柔和圆角 |
+  | hover 效果 | `hover:bg-gray-100` | 浅灰背景反馈 |
+  | 分隔线 | 1px 宽，`#e0e0e0`，高 20px | 视觉分组 |
+
+#### 6.2 颜色选择器规范
+- 预设色板（6 色）
+  | 颜色 | Hex | 用途建议 |
+  |------|-----|---------|
+  | 深灰 | `#333333` | 默认正文色，恢复默认 |
+  | 嫩绿 | `#8BC34A` | 强调、关键词 |
+  | 天蓝 | `#42A5F5` | 补充说明 |
+  | 橙色 | `#FF8C42` | 警示、重要 |
+  | 棕色 | `#795548` | 引用、备注 |
+  | 红色 | `#e57373` | 错误、否定 |
+
+- 交互行为
+  - 点击调色板按钮展开色板
+  - 色板为横向排列的圆形色块（28×28px）
+  - 选中颜色后自动收起色板
+  - 色板使用绝对定位，z-index 确保在最上层
+
+#### 6.3 编辑器容器规范
+- 技术实现
+  - 使用 `contentEditable` + `document.execCommand` 方案
+  - 支持实时字数统计（纯文字，不含HTML标签和空格）
+  - 专注模式：隐藏工具栏，全屏编辑体验
+
+- 样式规范
+  ```tsx
+  <div
+    contentEditable
+    className="w-full outline-none text-sm leading-relaxed"
+    style={{
+      padding: "16px",
+      minHeight: "30vh",
+      color: "#333"
+    }}
+  />
+  ```
+
+- 列表样式补充
+  ```css
+  .view-content ul { list-style: disc; padding-left: 1.5em; margin: 0.5em 0; }
+  .view-content ol { list-style: decimal; padding-left: 1.5em; margin: 0.5em 0; }
+  .view-content li { margin: 0.2em 0; }
+  ```
+
+#### 6.4 标题输入框规范
+- 独立于编辑器的 `<input>` 元素
+- 不支持富文本格式，仅支持纯文本
+- 样式：`text-xl font-bold`，透明背景融入页面
+
+章节来源
+- [心芽富文本文字编辑规范.md:1-228](file://doc/心芽富文本文字编辑规范.md#L1-L228)
+- [EditorToolbar.tsx:41-76](file://components/EditorToolbar.tsx#L41-L76)
+- [Editor.tsx:156-206](file://components/Editor.tsx#L156-L206)
+
+### 七、背景主题系统（5套）
 - 主题定义
   - 春日萌芽（默认）：浅绿暖白
   - 夏日繁茂：深绿色系
@@ -207,7 +387,7 @@ Reapply --> End
 - [showcase/page.tsx（视觉样板页）:279-287](file://app/showcase/page.tsx#L279-L287)
 - [心芽小程序设计框架v2.0.md:203-211](file://doc/心芽小程序设计框架v2.0.md#L203-L211)
 
-### 六、响应式设计断点与适配策略
+### 八、响应式设计断点与适配策略
 - 断点定义
   - 手机：<768px，单列流式布局
   - 桌面：>1024px，三栏布局（参考产品规范）
@@ -215,12 +395,14 @@ Reapply --> End
   - 移动端优先，使用 Tailwind 响应式前缀控制不同断点的布局与字号。
   - 底部导航增加安全区域适配，避免被系统手势遮挡。
   - 列表与卡片在小屏下保持紧凑间距与大触控热区。
+  - 富文本编辑器工具栏支持横向滚动，确保移动端可用。
 
 章节来源
 - [心芽小程序设计框架v2.0.md:236-237](file://doc/心芽小程序设计框架v2.0.md#L236-L237)
 - [globals.css:76-78](file://app/globals.css#L76-L78)
+- [EditorToolbar.tsx:51](file://components/EditorToolbar.tsx#L51)
 
-### 七、图标规范与视觉元素统一标准
+### 九、图标规范与视觉元素统一标准
 - 图标库
   - 统一使用 Lucide Icons，线条风格、线宽一致，确保视觉统一。
 - 图标使用
@@ -239,6 +421,7 @@ Reapply --> End
   - 主布局与 useTheme 协作完成主题切换与持久化。
 - 页面与组件
   - 枝叶页、根系页等直接使用 useTheme 提供的色值，保证卡片、输入等在不同主题下的可读性与一致性。
+  - 富文本编辑器组件依赖主题系统，支持明暗模式自适应。
 
 ```mermaid
 graph LR
@@ -246,7 +429,9 @@ CSS["全局样式<br/>globals.css"] --> Layout["主布局<br/>layout.tsx"]
 CSS --> Showcase["样板页<br/>showcase/page.tsx"]
 Theme["主题Hook<br/>useTheme.ts"] --> Leaf["枝叶页<br/>leaf/page.tsx"]
 Theme --> Root["根系页<br/>root/page.tsx"]
+Theme --> Editor["编辑器<br/>Editor.tsx"]
 PostCSS["PostCSS/Tailwind<br/>postcss.config.mjs"] --> CSS
+Toolbar["工具栏<br/>EditorToolbar.tsx"] --> Editor
 ```
 
 图表来源
@@ -256,6 +441,8 @@ PostCSS["PostCSS/Tailwind<br/>postcss.config.mjs"] --> CSS
 - [leaf/page.tsx（枝叶页）](file://app/(main)/leaf/page.tsx#L212-L237)
 - [root/page.tsx（根系页）](file://app/(main)/root/page.tsx#L462-L516)
 - [postcss.config.mjs:1-7](file://postcss.config.mjs#L1-L7)
+- [Editor.tsx:1-211](file://components/Editor.tsx#L1-L211)
+- [EditorToolbar.tsx:1-78](file://components/EditorToolbar.tsx#L1-L78)
 
 章节来源
 - [leaf/page.tsx（枝叶页）](file://app/(main)/leaf/page.tsx#L212-L237)
@@ -269,6 +456,8 @@ PostCSS["PostCSS/Tailwind<br/>postcss.config.mjs"] --> CSS
   - 控制动画时长与频率，避免过度动画影响性能与可访问性。
 - 可访问性
   - 确保文本与背景的对比度满足 WCAG 要求；为交互元素提供足够的触控热区。
+  - 富文本编辑器支持键盘快捷键（Ctrl+B/Ctrl+I），提升可访问性。
+  - 颜色选择器提供足够的对比度和点击热区。
 
 [本节为通用建议，无需具体文件引用]
 
@@ -281,14 +470,20 @@ PostCSS["PostCSS/Tailwind<br/>postcss.config.mjs"] --> CSS
   - 检查是否派发 window 主题变更事件，并确保布局层监听该事件。
 - 颜色不一致
   - 核对全局CSS变量与 useTheme 返回值在各页面的使用位置，避免硬编码覆盖。
+- 富文本编辑器问题
+  - execCommand 执行成功但看不到效果：检查CSS样式是否正确应用到ul/ol/li元素。
+  - 点击工具栏按钮后光标丢失：确保在execCmd函数中调用focus()恢复焦点。
+  - 粘贴外部内容格式混乱：监听paste事件，使用insertText命令插入纯文本。
 
 章节来源
 - [暗色系修改经验总结.md:1-178](file://doc/暗色系修改经验总结.md#L1-L178)
 - [layout.tsx（主布局）](file://app/(main)/layout.tsx#L30-L81)
 - [useTheme.ts:4-29](file://lib/useTheme.ts#L4-L29)
+- [Editor.tsx:69-72](file://components/Editor.tsx#L69-L72)
+- [Editor.tsx:177-206](file://components/Editor.tsx#L177-L206)
 
 ## 结论
-本规范围绕“心芽”的品牌气质与产品定位，明确了色彩、字体、间距、组件、主题与图标的统一标准，并通过代码级映射与图示帮助团队高效落地。建议在后续迭代中持续完善主题扩展与组件库沉淀，确保多端一致的视觉体验。
+本规围绕"心芽"的品牌气质与产品定位，明确了色彩、字体、间距、组件、主题与图标的统一标准，并通过代码级映射与图示帮助团队高效落地。新增的页面标题对齐规范和富文本编辑器设计标准进一步完善了用户体验的一致性保障。建议在后续迭代中持续完善主题扩展与组件库沉淀，确保多端一致的视觉体验。
 
 [本节为总结性内容，无需具体文件引用]
 

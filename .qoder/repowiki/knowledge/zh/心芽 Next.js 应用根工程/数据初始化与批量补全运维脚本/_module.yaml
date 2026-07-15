@@ -7,4 +7,3 @@ source_files: []
 depends_on: []
 related_to:
     - path: server_lib
-    - path: shared_components

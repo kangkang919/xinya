@@ -1,10 +1,9 @@
 schema_version: 1
 module_path: shared_components
-title: 心得编辑与复习卡片组件集
+title: 心芽应用共享 UI 组件库
 scope:
     - components/
 source_files: []
 depends_on: []
 related_to:
-    - path: scripts
     - path: server_lib

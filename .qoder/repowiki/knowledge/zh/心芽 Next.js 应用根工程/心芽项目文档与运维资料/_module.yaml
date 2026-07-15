@@ -1,9 +1,8 @@
 schema_version: 1
 module_path: docs
-title: 心芽项目文档与生产配置备份
+title: 心芽项目文档与运维资料
 scope:
     - doc/
 source_files: []
 depends_on: []
-related_to:
-    - path: server_lib
+related_to: []
