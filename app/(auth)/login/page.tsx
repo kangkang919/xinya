@@ -58,7 +58,11 @@ function LoginForm() {
       localStorage.setItem('xinya-theme', theme)
       // 标记需要主题刷新（强制切换生效）
       sessionStorage.setItem('xinya-theme-refresh', '1')
-      window.location.href = data.data?.onboardDone ? "/" : "/onboard"
+      console.log('[Login-DEBUG] 登录成功, 3秒后跳转到:', data.data?.onboardDone ? "/" : "/onboard")
+      // 临时加3秒延迟方便调试
+      setTimeout(() => {
+        window.location.href = data.data?.onboardDone ? "/" : "/onboard"
+      }, 3000)
     } catch (err: any) {
       setError("网络出了点问题，请稍后再试")
     } finally {
