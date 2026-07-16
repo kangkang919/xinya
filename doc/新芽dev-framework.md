@@ -881,6 +881,19 @@ Step 7: pm2 start ecosystem.config.js
 - 每次修改只改一个地方，验证后再改下一个
 - 修改前先问自己："这个改动是否可能引入新问题？"
 
+### 规则 6：部署时必须主动提供服务器部署指令
+
+每次代码变更完成、需要用户部署时，**必须在回复中主动附上完整的服务器部署指令**，不要等用户来问。
+
+标准部署指令格式：
+```bash
+cd /path/to/xinya
+git fetch gitee
+git reset --hard gitee/main
+npm run build
+pm2 delete xinya && pm2 start ecosystem.config.js && pm2 save
+```
+
 ---
 
 ## 附录 A：变更记录
@@ -913,6 +926,8 @@ Step 7: pm2 start ecosystem.config.js
 | 2026-07-01 | F6.5 暗夜主题完整实现 | 已验收 |
 | 2026-07-01 | F7.1-F7.4 Magic Link 登录/注册完整实现 | 已验收 |
 | 2026-07-01 | F9 拾遗功能后端+前端实现（调试中） | 进行中 |
+| 2026-07-15 | 修复新用户暗色主题在其他页面被重置为春日萌芽的问题（根系页useEffect不再无条件覆盖localStorage） | 已推送待部署 |
+| 2026-07-15 | 新增规则6：部署时必须主动提供服务器部署指令 | 已确认 |
 | 2026-06-21 | 暗色主题持久化修复：登录流程无条件写入 theme 到 localStorage + 双切模式（spring→用户主题）强制生效 | 已验收 |
 | 2026-06-21 | 枝叶页暗色主题适配：搜索框/心得列表使用 useTheme 变量（inputBg/cardBg） | 已验收 |
 | 2026-06-21 | 枝叶页标签级导航返回：URL tagId 参数传递，阅读页返回时自动恢复标签选中状态 | 已验收 |
