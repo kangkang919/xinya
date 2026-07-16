@@ -13,10 +13,11 @@
 
 ## 更新摘要
 **所做更改**
-- 更新了Cookie安全配置策略，新增基于协议的动态secure属性设置
-- 改进了nginx代理环境下的兼容性处理
-- 增强了HTTPS环境下的安全性保障
-- 更新了相关架构图和实现细节
+- 简化了JWT令牌管理流程，移除了复杂的服务器端重定向逻辑
+- 采用标准的JSON响应模式替代303重定向
+- Cookie设置保持不变，但响应类型统一为200
+- 移除了动态secure属性配置和nginx代理支持
+- 优化了认证流程的简洁性和一致性
 
 ## 目录
 1. [简介](#简介)
@@ -31,7 +32,7 @@
 10. [附录](#附录)
 
 ## 简介
-本技术文档围绕心芽的JWT令牌管理系统，系统性阐述令牌的生成、验证、刷新策略、Cookie安全配置、过期时间管理与自动续期机制、存储最佳实践与安全考虑，以及令牌验证失败的错误处理与重试方案。文档以代码级实现为依据，提供可视化图示与可操作建议，帮助开发者快速理解并正确扩展认证体系。
+本技术文档围绕心芽的JWT令牌管理系统，系统性阐述令牌的生成、验证、刷新策略、Cookie安全配置、过期时间管理与自动续期机制、存储最佳实践与安全考虑，以及令牌验证失败的错误处理与重试方案。系统已简化为标准的JSON响应模式，移除了复杂的服务器端重定向逻辑，提供更简洁一致的认证体验。
 
 ## 项目结构
 本项目采用Next.js App Router，认证相关逻辑集中在以下位置：
@@ -66,21 +67,21 @@ MW --> AUTH_LIB
 
 图表来源
 - [lib/auth.ts:1-56](file://lib/auth.ts#L1-L56)
-- [middleware.ts:1-32](file://middleware.ts#L1-L32)
-- [app/api/auth/login/route.ts:1-51](file://app/api/auth/login/route.ts#L1-L51)
+- [middleware.ts:1-29](file://middleware.ts#L1-L29)
+- [app/api/auth/login/route.ts:1-39](file://app/api/auth/login/route.ts#L1-L39)
 - [app/api/auth/logout/route.ts:1-10](file://app/api/auth/logout/route.ts#L1-L10)
 - [app/api/auth/verify-email/route.ts:1-38](file://app/api/auth/verify-email/route.ts#L1-L38)
 - [app/api/auth/magic-link/verify/route.ts:1-70](file://app/api/auth/magic-link/verify/route.ts#L1-L70)
-- [app/(auth)/login/page.tsx:1-219](file://app/(auth)/login/page.tsx#L1-L219)
+- [app/(auth)/login/page.tsx:1-209](file://app/(auth)/login/page.tsx#L1-L209)
 
 章节来源
 - [lib/auth.ts:1-56](file://lib/auth.ts#L1-L56)
-- [middleware.ts:1-32](file://middleware.ts#L1-L32)
-- [app/api/auth/login/route.ts:1-51](file://app/api/auth/login/route.ts#L1-L51)
+- [middleware.ts:1-29](file://middleware.ts#L1-L29)
+- [app/api/auth/login/route.ts:1-39](file://app/api/auth/login/route.ts#L1-L39)
 - [app/api/auth/logout/route.ts:1-10](file://app/api/auth/logout/route.ts#L1-L10)
 - [app/api/auth/verify-email/route.ts:1-38](file://app/api/auth/verify-email/route.ts#L1-L38)
 - [app/api/auth/magic-link/verify/route.ts:1-70](file://app/api/auth/magic-link/verify/route.ts#L1-L70)
-- [app/(auth)/login/page.tsx:1-219](file://app/(auth)/login/page.tsx#L1-L219)
+- [app/(auth)/login/page.tsx:1-209](file://app/(auth)/login/page.tsx#L1-L209)
 
 ## 核心组件
 - signToken(userId): 使用固定密钥对包含用户标识的载荷进行签名，设置较短或合理的过期时间（当前为30天）。
@@ -92,7 +93,7 @@ MW --> AUTH_LIB
 - [lib/auth.ts:18-55](file://lib/auth.ts#L18-L55)
 
 ## 架构总览
-下图展示了从浏览器发起登录到服务端签发JWT Cookie，再到受保护资源访问的整体流程。
+下图展示了从浏览器发起登录到服务端签发JWT Cookie，再到受保护资源访问的整体流程。系统现已简化为标准JSON响应模式。
 
 ```mermaid
 sequenceDiagram
@@ -106,18 +107,17 @@ UI->>API : POST /api/auth/login (credentials : include)
 API->>AUTH : verifyPassword(密码, 哈希)
 API->>AUTH : signToken(userId)
 AUTH-->>API : token
-API->>API : 检测协议(HTTP/HTTPS)<br/>动态设置secure属性
-API-->>B : 200 + Set-Cookie(xinya_token=token; httpOnly; secure; sameSite=lax; maxAge=30d)
+API-->>B : 200 + JSON响应 + Set-Cookie(xinya_token=token; httpOnly; secure=false; sameSite=lax; maxAge=30d)
 B->>MW : 访问受保护页面
 MW->>MW : 检查Cookie是否存在
 MW-->>B : 允许访问或重定向至登录页
 ```
 
 图表来源
-- [app/(auth)/login/page.tsx:37-77](file://app/(auth)/login/page.tsx#L37-L77)
-- [app/api/auth/login/route.ts:5-50](file://app/api/auth/login/route.ts#L5-L50)
+- [app/(auth)/login/page.tsx:37-67](file://app/(auth)/login/page.tsx#L37-L67)
+- [app/api/auth/login/route.ts:5-38](file://app/api/auth/login/route.ts#L5-L38)
 - [lib/auth.ts:18-55](file://lib/auth.ts#L18-L55)
-- [middleware.ts:4-27](file://middleware.ts#L4-L27)
+- [middleware.ts:4-24](file://middleware.ts#L4-L24)
 
 ## 详细组件分析
 
@@ -155,14 +155,14 @@ NullReturn --> VEnd
   - 路径：/（全站可用）
 - 安全属性
   - httpOnly: true（禁止JS读取，缓解XSS窃取风险）
-  - **已更新** secure: 动态配置，根据协议自动设置（HTTP=false, HTTPS=true）
+  - secure: false（静态配置，不再动态检测协议）
   - sameSite: lax（跨站请求时仅在顶级导航发送，平衡兼容性与CSRF防护）
   - maxAge: 30天（与令牌过期一致）
   - path: /（全站生效）
-- **已更新** 动态安全配置
-  - 登录API中根据`x-forwarded-proto`头部动态设置secure属性
-  - 支持nginx代理环境下的HTTPS检测
-  - 本地开发环境默认使用HTTP，生产环境自动启用HTTPS安全标志
+- **已简化** 静态安全配置
+  - 移除了动态secure属性检测逻辑
+  - 统一使用静态配置，简化部署复杂度
+  - 开发者需自行确保HTTPS环境下的安全配置
 
 ```mermaid
 classDiagram
@@ -175,20 +175,13 @@ class CookieConfig {
 +number maxAge
 +string path
 }
-class DynamicSecureConfig {
-+string proto
-+boolean isHttps
-+boolean secureFlag
-}
 ```
 
 图表来源
 - [lib/auth.ts:45-55](file://lib/auth.ts#L45-L55)
-- [app/api/auth/login/route.ts:34-43](file://app/api/auth/login/route.ts#L34-L43)
 
 章节来源
 - [lib/auth.ts:45-55](file://lib/auth.ts#L45-L55)
-- [app/api/auth/login/route.ts:34-43](file://app/api/auth/login/route.ts#L34-L43)
 - [app/api/auth/logout/route.ts:5-9](file://app/api/auth/logout/route.ts#L5-L9)
 
 ### 令牌过期时间与自动续期机制
@@ -208,10 +201,10 @@ class DynamicSecureConfig {
 - 存储位置
   - 优先使用httpOnly Cookie，避免被JS读取，降低XSS风险。
   - 如需更细粒度控制，可使用内存态存储（如内存变量）配合无状态API，但需处理刷新与多标签同步问题。
-- **已更新** 传输安全
-  - 生产环境启用HTTPS并将secure设为true，防止中间人窃听。
-  - **新增** 系统已实现动态secure属性设置，自动适配HTTP/HTTPS环境。
-  - **新增** nginx代理环境下通过`x-forwarded-proto`头部正确识别协议。
+- **已简化** 传输安全
+  - 移除了动态secure属性检测，采用静态配置
+  - 生产环境需手动确保HTTPS部署和secure=true配置
+  - 简化了部署复杂度，但需要运维人员关注安全配置
 - 跨站策略
   - sameSite=lax适用于大多数场景；若存在跨站嵌入需求，可评估sameSite=none并配合secure=true。
 - 令牌内容最小化
@@ -237,10 +230,10 @@ class DynamicSecureConfig {
 
 章节来源
 - [lib/auth.ts:23-43](file://lib/auth.ts#L23-L43)
-- [middleware.ts:13-27](file://middleware.ts#L13-L27)
-- [app/(auth)/login/page.tsx:37-77](file://app/(auth)/login/page.tsx#L37-L77)
+- [middleware.ts:13-24](file://middleware.ts#L13-L24)
+- [app/(auth)/login/page.tsx:37-67](file://app/(auth)/login/page.tsx#L37-L67)
 
-### 登录流程时序图（含动态Cookie设置）
+### 登录流程时序图（简化版）
 ```mermaid
 sequenceDiagram
 participant C as "客户端"
@@ -252,39 +245,39 @@ A-->>L : 验证结果
 alt 验证通过
 L->>A : signToken(userId)
 A-->>L : token
-L->>L : 检测x-forwarded-proto头部<br/>确定协议类型
-L->>L : 动态设置secure属性<br/>(HTTPS=true, HTTP=false)
-L-->>C : 200 + Set-Cookie(xinya_token=token; secure)
+L-->>C : 200 + JSON响应 + Set-Cookie
 else 验证失败
 L-->>C : 401 错误信息
 end
 ```
 
 图表来源
-- [app/api/auth/login/route.ts:5-50](file://app/api/auth/login/route.ts#L5-L50)
-- [lib/auth.ts:18-30](file://lib/auth.ts#L18-L30)
+- [app/api/auth/login/route.ts:5-38](file://app/api/auth/login/route.ts#L5-L38)
+- [lib/auth.ts:18-30](file://lib/auth.ts#L18-30)
 
 ### 邮箱验证码校验与自动登录
 - 流程要点
   - 校验验证码有效性及是否过期，成功后标记用户已验证。
   - 立即签发JWT并通过Cookie完成自动登录。
+  - 采用标准JSON响应模式，返回{ ok: true }。
 - 错误处理
   - 参数缺失、验证码不正确或过期均返回明确错误码与信息。
 
 章节来源
 - [app/api/auth/verify-email/route.ts:6-36](file://app/api/auth/verify-email/route.ts#L6-L36)
-- [lib/auth.ts:18-30](file://lib/auth.ts#L18-L30)
+- [lib/auth.ts:18-30](file://lib/auth.ts#L18-30)
 
 ### 魔法链接验证与自动登录
 - 流程要点
   - 根据URL参数获取一次性令牌，校验是否有效与未过期。
   - 自动创建或激活用户，签发JWT并通过Cookie完成登录。
+  - **已简化** 移除了复杂的URL构建逻辑，采用统一的响应处理方式。
 - 错误处理
   - 链接无效、已使用或过期时重定向至登录页并附带错误信息。
 
 章节来源
 - [app/api/auth/magic-link/verify/route.ts:8-68](file://app/api/auth/magic-link/verify/route.ts#L8-L68)
-- [lib/auth.ts:18-30](file://lib/auth.ts#L18-L30)
+- [lib/auth.ts:18-30](file://lib/auth.ts#L18-30)
 
 ## 依赖关系分析
 - 模块耦合
@@ -308,16 +301,16 @@ MW --> LOGOUT["app/api/auth/logout/route.ts"]
 
 图表来源
 - [lib/auth.ts:1-56](file://lib/auth.ts#L1-L56)
-- [middleware.ts:1-32](file://middleware.ts#L1-L32)
-- [app/api/auth/login/route.ts:1-51](file://app/api/auth/login/route.ts#L1-L51)
+- [middleware.ts:1-29](file://middleware.ts#L1-L29)
+- [app/api/auth/login/route.ts:1-39](file://app/api/auth/login/route.ts#L1-L39)
 - [app/api/auth/logout/route.ts:1-10](file://app/api/auth/logout/route.ts#L1-L10)
 - [app/api/auth/verify-email/route.ts:1-38](file://app/api/auth/verify-email/route.ts#L1-L38)
 - [app/api/auth/magic-link/verify/route.ts:1-70](file://app/api/auth/magic-link/verify/route.ts#L1-L70)
 
 章节来源
 - [lib/auth.ts:1-56](file://lib/auth.ts#L1-L56)
-- [middleware.ts:1-32](file://middleware.ts#L1-L32)
-- [app/api/auth/login/route.ts:1-51](file://app/api/auth/login/route.ts#L1-L51)
+- [middleware.ts:1-29](file://middleware.ts#L1-L29)
+- [app/api/auth/login/route.ts:1-39](file://app/api/auth/login/route.ts#L1-L39)
 - [app/api/auth/logout/route.ts:1-10](file://app/api/auth/logout/route.ts#L1-L10)
 - [app/api/auth/verify-email/route.ts:1-38](file://app/api/auth/verify-email/route.ts#L1-L38)
 - [app/api/auth/magic-link/verify/route.ts:1-70](file://app/api/auth/magic-link/verify/route.ts#L1-L70)
@@ -326,12 +319,12 @@ MW --> LOGOUT["app/api/auth/logout/route.ts"]
 - 性能
   - 令牌验签计算开销较低，适合高频鉴权；建议在高并发场景下缓存公共配置（如密钥来源）以减少I/O。
   - 避免在令牌中携带大对象，减小Cookie体积。
-- **已更新** 安全性
-  - **新增** 生产环境自动启用HTTPS安全标志，无需手动配置。
-  - **新增** nginx代理环境下正确识别HTTPS协议，确保secure属性正确设置。
+- **已简化** 安全性
+  - 移除了动态secure属性检测，简化了部署复杂度
   - 使用强随机密钥，避免泄露；定期轮换密钥并制定旧令牌过渡策略。
   - 结合黑名单或数据库标记实现强制下线与批量撤销。
   - 限制登录失败次数与IP频率，防范暴力破解。
+  - 注意：生产环境需手动确保HTTPS部署和secure=true配置。
 
 [本节为通用指导，不直接分析具体文件]
 
@@ -341,21 +334,21 @@ MW --> LOGOUT["app/api/auth/logout/route.ts"]
   - 跨站请求无法携带Cookie：确认sameSite策略是否符合预期，必要时调整为strict或none（需配合secure=true）。
   - 令牌过期频繁：调整过期时间或引入刷新令牌机制。
   - 本地调试无法携带Cookie：确保fetch请求包含credentials: include。
-  - **新增** nginx代理环境下Cookie安全问题：检查x-forwarded-proto头部是否正确传递。
+  - **新增** HTTPS环境问题：由于移除了动态secure检测，需确保生产环境正确配置HTTPS和secure=true。
 - 定位步骤
   - 查看浏览器开发者工具的"应用-Cookies"，确认xinya_token是否存在且属性正确。
   - 检查服务端日志输出（登录、验证、中间件）以定位错误分支。
   - 核对环境变量JWT_SECRET是否与部署环境一致。
-  - **新增** 检查代理服务器是否正确设置x-forwarded-proto头部。
+  - **新增** 检查生产环境的HTTPS配置是否正确。
 
 章节来源
-- [app/(auth)/login/page.tsx:37-77](file://app/(auth)/login/page.tsx#L37-L77)
-- [middleware.ts:13-27](file://middleware.ts#L13-L27)
+- [app/(auth)/login/page.tsx:37-67](file://app/(auth)/login/page.tsx#L37-L67)
+- [middleware.ts:13-24](file://middleware.ts#L13-L24)
 - [lib/auth.ts:45-55](file://lib/auth.ts#L45-L55)
-- [app/api/auth/login/route.ts:34-43](file://app/api/auth/login/route.ts#L34-L43)
+- [app/api/auth/login/route.ts:5-38](file://app/api/auth/login/route.ts#L5-L38)
 
 ## 结论
-当前系统实现了基于JWT的无状态认证，采用httpOnly Cookie承载令牌，具备基础的安全防护能力。**已更新** 系统现已支持动态Cookie安全配置，能够根据HTTP/HTTPS协议自动设置secure属性，显著提升了nginx代理环境下的兼容性和安全性。建议在后续迭代中引入刷新令牌与自动续期机制，完善401统一处理与重试策略，进一步提升整体安全性与用户体验。
+当前系统实现了基于JWT的无状态认证，采用httpOnly Cookie承载令牌，具备基础的安全防护能力。**已简化** 系统现已采用标准的JSON响应模式，移除了复杂的服务器端重定向逻辑和动态secure属性检测，显著降低了部署复杂度。建议在后续迭代中引入刷新令牌与自动续期机制，完善401统一处理与重试策略，进一步提升整体安全性与用户体验。
 
 [本节为总结性内容，不直接分析具体文件]
 
@@ -365,14 +358,12 @@ MW --> LOGOUT["app/api/auth/logout/route.ts"]
   - httpOnly：禁止JavaScript访问Cookie，降低XSS风险。
   - Secure：仅通过HTTPS传输Cookie。
   - SameSite：控制跨站请求时是否携带Cookie。
-  - x-forwarded-proto：代理服务器传递的原始协议头部。
-- **已更新** 参考实现路径
-  - 令牌生成与验证：[lib/auth.ts:18-30](file://lib/auth.ts#L18-L30)
-  - 当前用户解析：[lib/auth.ts:32-43](file://lib/auth.ts#L32-L43)
-  - Cookie配置：[lib/auth.ts:45-55](file://lib/auth.ts#L45-L55)
-  - **新增** 动态secure属性设置：[app/api/auth/login/route.ts:34-43](file://app/api/auth/login/route.ts#L34-L43)
-  - 登录流程：[app/api/auth/login/route.ts:5-50](file://app/api/auth/login/route.ts#L5-L50)
+- **已简化** 参考实现路径
+  - 令牌生成与验证：[lib/auth.ts:18-30](file://lib/auth.ts#L18-30)
+  - 当前用户解析：[lib/auth.ts:32-43](file://lib/auth.ts#L32-43)
+  - Cookie配置：[lib/auth.ts:45-55](file://lib/auth.ts#L45-55)
+  - 登录流程：[app/api/auth/login/route.ts:5-38](file://app/api/auth/login/route.ts#L5-L38)
   - 登出流程：[app/api/auth/logout/route.ts:5-9](file://app/api/auth/logout/route.ts#L5-L9)
   - 邮箱验证与自动登录：[app/api/auth/verify-email/route.ts:6-36](file://app/api/auth/verify-email/route.ts#L6-L36)
   - 魔法链接验证与自动登录：[app/api/auth/magic-link/verify/route.ts:8-68](file://app/api/auth/magic-link/verify/route.ts#L8-L68)
-  - 中间件鉴权：[middleware.ts:4-27](file://middleware.ts#L4-L27)
+  - 中间件鉴权：[middleware.ts:4-24](file://middleware.ts#L4-L24)
