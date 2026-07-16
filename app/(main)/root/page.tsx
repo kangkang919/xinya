@@ -103,9 +103,7 @@ export default function RootPage() {
   const [exportTip, setExportTip] = useState(false)
 
   useEffect(() => {
-    const saved = localStorage.getItem('xinya-theme') || 'spring'
-    setCurrentTheme(saved)
-    applyTheme(saved)
+    const localTheme = localStorage.getItem('xinya-theme')
 
     fetch('/api/auth/me')
       .then(r => r.json())
@@ -113,12 +111,26 @@ export default function RootPage() {
         if (data.ok && data.data) {
           setUser(data.data)
           const serverTheme = data.data.theme || 'spring'
-          setCurrentTheme(serverTheme)
-          applyTheme(serverTheme)
-          localStorage.setItem('xinya-theme', serverTheme)
+
+          if (localTheme) {
+            // localStorage 有值（用户可能在其他页面切换了主题），以本地为准
+            setCurrentTheme(localTheme)
+            applyTheme(localTheme)
+          } else {
+            // localStorage 为空（新用户首次登录），使用服务端主题
+            setCurrentTheme(serverTheme)
+            applyTheme(serverTheme)
+            localStorage.setItem('xinya-theme', serverTheme)
+          }
         }
       })
       .catch(() => {})
+
+    // 如果 /api/auth/me 失败，回退到本地已有主题
+    if (localTheme) {
+      setCurrentTheme(localTheme)
+      applyTheme(localTheme)
+    }
 
     fetchTags()
 
