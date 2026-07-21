@@ -1,6 +1,6 @@
 "use client"
 import { Bookmark, Pin, Smile, Frown, Meh, Sparkles, CloudRain, MoreVertical } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import toast from "react-hot-toast"
 
@@ -33,6 +33,19 @@ export function EntryCard({ id, title, contentPreview, tags, mood, recordTime,
   isTop, isFavorite, isDark = false, onToggleFavorite, onTogglePin, onDelete }: EntryCardProps) {
   const router = useRouter()
   const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  // 点击外部关闭菜单
+  useEffect(() => {
+    if (!menuOpen) return
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [menuOpen])
 
   const cardBg = isDark ? "#2A2A2A" : "#fff"
   const cardBorder = isTop ? "#8BC34A" : (isDark ? "#444" : "#e0e0e0")
@@ -83,7 +96,7 @@ export function EntryCard({ id, title, contentPreview, tags, mood, recordTime,
       </button>
 
       {/* 更多按钮 */}
-      <div className="absolute top-2.5 right-9">
+      <div className="absolute top-2.5 right-9" ref={menuRef}>
         <button onClick={e => { e.stopPropagation(); setMenuOpen(!menuOpen) }}
           className="p-1 rounded-full hover:bg-gray-100">
           <MoreVertical size={16} color="#999" />

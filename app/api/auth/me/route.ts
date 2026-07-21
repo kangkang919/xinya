@@ -1,5 +1,5 @@
 export const dynamic = "force-dynamic"
-﻿import { NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 import { getCurrentUserId } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 

@@ -1,5 +1,7 @@
 import { prisma } from "./prisma"
 import { generateKeyPoints } from "./template-questions"
+import { generateQuestions } from "./deepseek"
+import { devLog } from "./utils"
 
 // 记录调用日志（保留最近30条）
 export async function logReviewCall(
@@ -97,7 +99,7 @@ export async function getTodayCard(userId: string): Promise<TodayCard | null> {
 
   if (unreviewedRecords.length > 0) {
     const randomIndex = Math.floor(Math.random() * unreviewedRecords.length)
-    console.log("[Scheduler] Found unreviewed record, entryId:", unreviewedRecords[randomIndex].entryId)
+    devLog("[Scheduler] Found unreviewed record, entryId:", unreviewedRecords[randomIndex].entryId)
     return formatCard(unreviewedRecords[randomIndex])
   }
 
@@ -113,7 +115,7 @@ export async function getTodayCard(userId: string): Promise<TodayCard | null> {
 
   if (entriesWithoutQuestions.length > 0) {
     const entry = entriesWithoutQuestions[0]
-    console.log("[Scheduler] No questions found, returning entry for generation:", entry.id)
+    devLog("[Scheduler] No questions found, returning entry for generation:", entry.id)
     return {
       entryId: entry.id,
       entryTitle: entry.title,
@@ -228,4 +230,75 @@ export async function skipToday(userId: string): Promise<void> {
     update: { lastCardDate: today },
     create: { userId, lastCardDate: today },
   })
+}
+
+/**
+ * 共享：AI 生成题目并保存到数据库
+ * @param step "pre-generate" | "regenerate" 用于日志标记
+ * @param deleteOld 是否先删除旧题目（编辑时用）
+ */
+export async function generateAndSaveQuestions(
+  userId: string,
+  entryId: string,
+  title: string,
+  content: string,
+  step: "pre-generate" | "regenerate" = "pre-generate",
+  deleteOld = false
+) {
+  devLog(`[${step}] Starting, entryId: ${entryId}, title: ${title}`)
+  const result = await generateQuestions(title, content, 1)
+  const questions = result.questions
+  devLog(`[${step}] generateQuestions returned: ${questions.length} questions`)
+
+  // 保存 AI 生成的要点
+  if (result.keyPoints) {
+    await prisma.entry.update({
+      where: { id: entryId },
+      data: { keyPoints: result.keyPoints },
+    })
+  }
+
+  // 编辑时删除旧题目和答题记录
+  if (deleteOld) {
+    const oldQuestions = await prisma.quizQuestion.findMany({ where: { entryId } })
+    if (oldQuestions.length > 0) {
+      const oldQuestionIds = oldQuestions.map(q => q.id)
+      await prisma.quizRecord.deleteMany({ where: { questionId: { in: oldQuestionIds } } })
+      await prisma.quizQuestion.deleteMany({ where: { id: { in: oldQuestionIds } } })
+    }
+  }
+
+  if (questions.length > 0) {
+    for (let i = 0; i < questions.length; i++) {
+      const q = questions[i]
+      const question = await prisma.quizQuestion.create({
+        data: {
+          entryId,
+          question: q.question,
+          type: q.type,
+          options: q.options,
+          answer: q.answer,
+          explanation: q.explanation,
+          angle: i + 1,
+        },
+      })
+
+      const nextReviewAt = new Date()
+      nextReviewAt.setDate(nextReviewAt.getDate() + 1)
+
+      await prisma.quizRecord.create({
+        data: {
+          userId,
+          questionId: question.id,
+          entryId,
+          correct: false,
+          nextReviewAt,
+          streak: 0,
+        },
+      })
+    }
+    await logReviewCall(userId, entryId, step, true, questions.length)
+  } else {
+    await logReviewCall(userId, entryId, step, false, 0, "DeepSeek returned empty")
+  }
 }

@@ -1,51 +1,7 @@
 import { NextResponse } from "next/server"
 import { getCurrentUserId } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-
-// 统一按北京时间统计
-const TIMEZONE = "Asia/Shanghai"
-
-function getBeijingDateParts(d: Date) {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: TIMEZONE,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(d)
-  const get = (t: string) => parseInt(parts.find(p => p.type === t)?.value || "0")
-  return { y: get("year"), m: get("month"), d: get("day") }
-}
-
-// 北京时间某天 0:00 对应的 UTC 时间点
-function beijingDayStart(y: number, m: number, day: number): Date {
-  // 北京时间 = UTC + 8，所以北京时间 0:00 等于 UTC 前一天 16:00
-  return new Date(Date.UTC(y, m - 1, day, 16, 0, 0) - 86400000)
-}
-
-function beijingTodayStart(d: Date): Date {
-  const { y, m, d: day } = getBeijingDateParts(d)
-  return beijingDayStart(y, m, day)
-}
-
-function getBeijingDayOfWeek(y: number, m: number, day: number): number {
-  // 用北京时间中午12点对应的 UTC 时刻取星期几，避免跨日边界误差
-  // 北京时间 12:00 = UTC 当日 04:00
-  return new Date(Date.UTC(y, m - 1, day, 4, 0, 0)).getUTCDay()
-}
-
-function beijingWeekStart(d: Date): Date {
-  const { y, m, d: day } = getBeijingDateParts(d)
-  const dayOfWeek = getBeijingDayOfWeek(y, m, day)
-  // 周一为本周第一天：周日 -> 回退 6 天，周一 -> 0
-  const daysFromMonday = (dayOfWeek + 6) % 7
-  const todayStart = beijingDayStart(y, m, day)
-  return new Date(todayStart.getTime() - daysFromMonday * 86400000)
-}
-
-function beijingDateString(d: Date): string {
-  const { y, m, d: day } = getBeijingDateParts(d)
-  return `${y}-${String(m).padStart(2, "0")}-${String(day).padStart(2, "0")}`
-}
+import { getBeijingDateParts, beijingDayStart, beijingTodayStart, beijingWeekStart, beijingDateString } from "@/lib/utils"
 
 export async function GET() {
   const userId = await getCurrentUserId()
@@ -59,7 +15,7 @@ export async function GET() {
   const [todayEntries, weekEntries, allEntries, lastEntry] = await Promise.all([
     prisma.entry.findMany({ where: { userId, isDraft: false, recordTime: { gte: todayStart } }, select: { id: true } }),
     prisma.entry.findMany({ where: { userId, isDraft: false, recordTime: { gte: weekStart } }, select: { id: true } }),
-    prisma.entry.findMany({ where: { userId, isDraft: false }, select: { recordTime: true }, orderBy: { recordTime: "desc" } }),
+    prisma.entry.findMany({ where: { userId, isDraft: false, recordTime: { gte: new Date(Date.now() - 90 * 86400000) } }, select: { recordTime: true }, orderBy: { recordTime: "desc" } }),
     prisma.entry.findFirst({ where: { userId, isDraft: false }, select: { title: true }, orderBy: { recordTime: "desc" } }),
   ])
 

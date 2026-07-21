@@ -1,8 +1,8 @@
 ﻿import { NextRequest, NextResponse } from "next/server"
 import { getCurrentUserId } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { generateQuestions } from "@/lib/deepseek"
-import { logReviewCall } from "@/lib/review-scheduler"
+import { generateAndSaveQuestions } from "@/lib/review-scheduler"
+import { stripHtml } from "@/lib/utils"
 
 // GET /api/entries?search=&favorite=&tagId=&from=&to=&page=1&limit=20
 export async function GET(req: NextRequest) {
@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
   const from = searchParams.get("from")
   const to = searchParams.get("to")
   const page = Math.max(1, parseInt(searchParams.get("page") || "1"))
-  const limit = Math.min(1000, Math.max(1, parseInt(searchParams.get("limit") || "20")))
+  const limit = Math.min(50, Math.max(1, parseInt(searchParams.get("limit") || "20")))
 
   const where: any = { userId, isDraft: false }
   if (favorite) where.isFavorite = true
@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
   const data = entries.map(e => ({
     id: e.id,
     title: e.title,
-    contentPreview: e.content.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim().slice(0, 80),
+    contentPreview: stripHtml(e.content, 80),
     tags: e.tags,
     mood: e.mood,
     recordTime: e.recordTime.toISOString(),
@@ -94,69 +94,12 @@ export async function POST(req: NextRequest) {
   })
 
   // 异步预生成题目（不阻塞响应）
-  console.log("[Entries] Creating entry, isDraft:", isDraft, "content length:", content?.length)
   if (!isDraft && content) {
-    console.log("[Entries] Triggering pre-generation for entry:", entry.id)
-    preGenerateQuestions(userId, entry.id, title.trim(), content).catch(e =>
+    generateAndSaveQuestions(userId, entry.id, title.trim(), content, "pre-generate").catch(e =>
       console.error("[PreGenerate] Error:", e)
     )
   }
 
   return NextResponse.json({ ok: true, data: entry })
-}
-
-// 异步预生成题目
-async function preGenerateQuestions(
-  userId: string,
-  entryId: string,
-  title: string,
-  content: string
-) {
-  console.log("[PreGenerate] Starting, entryId:", entryId, "title:", title)
-  const result = await generateQuestions(title, content, 1)
-  const questions = result.questions
-  console.log("[PreGenerate] generateQuestions returned:", questions.length, "questions")
-
-  // 保存 AI 生成的要点
-  if (result.keyPoints) {
-    await prisma.entry.update({
-      where: { id: entryId },
-      data: { keyPoints: result.keyPoints },
-    })
-  }
-
-  if (questions.length > 0) {
-    for (let i = 0; i < questions.length; i++) {
-      const q = questions[i]
-      const question = await prisma.quizQuestion.create({
-        data: {
-          entryId,
-          question: q.question,
-          type: q.type,
-          options: q.options,
-          answer: q.answer,
-          explanation: q.explanation,
-          angle: i + 1,
-        },
-      })
-
-      const nextReviewAt = new Date()
-      nextReviewAt.setDate(nextReviewAt.getDate() + 1)
-
-      await prisma.quizRecord.create({
-        data: {
-          userId,
-          questionId: question.id,
-          entryId,
-          correct: false,
-          nextReviewAt,
-          streak: 0,
-        },
-      })
-    }
-    await logReviewCall(userId, entryId, "pre-generate", true, questions.length)
-  } else {
-    await logReviewCall(userId, entryId, "pre-generate", false, 0, "DeepSeek returned empty")
-  }
 }
 

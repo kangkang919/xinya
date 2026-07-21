@@ -1,23 +1,7 @@
 import { NextResponse } from "next/server"
 import { getCurrentUserId } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-
-const TIMEZONE = "Asia/Shanghai"
-
-function getBeijingDateParts(d: Date) {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: TIMEZONE,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(d)
-  const get = (t: string) => parseInt(parts.find(p => p.type === t)?.value || "0")
-  return { y: get("year"), m: get("month"), d: get("day") }
-}
-
-function beijingDayStart(y: number, m: number, day: number): Date {
-  return new Date(Date.UTC(y, m - 1, day, 16, 0, 0) - 86400000)
-}
+import { getBeijingDateParts, beijingDayStart } from "@/lib/utils"
 
 export async function GET(req: Request) {
   const userId = await getCurrentUserId()
@@ -69,7 +53,7 @@ export async function GET(req: Request) {
     days.push({
       day: d,
       count: dayCounts[d],
-      isToday: year === nowY && month === nowM && d === nowM ? false : false,
+      isToday: false,
     })
   }
 

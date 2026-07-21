@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
     const isNewUser = !existingUser
 
     // 构建 magic link URL
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://shuxiangnote.top"
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
     const magicUrl = `${baseUrl}/api/auth/magic-link/verify?token=${token}`
 
     // 发送邮件

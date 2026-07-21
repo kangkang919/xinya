@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getCurrentUserId } from "../../../../lib/auth"
-import { prisma } from "../../../../lib/prisma"
+import { getCurrentUserId } from "@/lib/auth"
+import { prisma } from "@/lib/prisma"
 
 const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY
 const DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
@@ -101,6 +101,7 @@ export async function GET(req: NextRequest) {
         },
       },
       orderBy: { answeredAt: "asc" },
+      take: 500,
     })
 
     if (records.length === 0) {

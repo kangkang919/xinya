@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getCurrentUserId } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { generateQuestions } from "@/lib/deepseek"
-import { logReviewCall } from "@/lib/review-scheduler"
+import { generateAndSaveQuestions } from "@/lib/review-scheduler"
+import { stripHtml } from "@/lib/utils"
 
 // GET /api/entries/[id]
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -22,7 +22,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       id: entry.id,
       title: entry.title,
       content: entry.content,
-      contentPreview: entry.content.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim().slice(0, 80),
+      contentPreview: stripHtml(entry.content, 80),
       tags: entry.tags,
       mood: entry.mood,
       recordTime: entry.recordTime.toISOString(),
@@ -64,8 +64,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   // 编辑后异步重新生成 AI 总结和题目
   if (!isDraft && content) {
-    console.log("[Entries] Entry updated, triggering AI regeneration for entry:", entry.id)
-    regenerateQuestions(userId, entry.id, title.trim(), content).catch(e =>
+    generateAndSaveQuestions(userId, entry.id, title.trim(), content, "regenerate", true).catch(e =>
       console.error("[Regenerate] Error:", e)
     )
   }
@@ -75,12 +74,20 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
 // DELETE /api/entries/[id]
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const userId = await getCurrentUserId()
-  if (!userId) return NextResponse.json({ ok: false }, { status: 401 })
-  const { id } = await params
+  try {
+    const userId = await getCurrentUserId()
+    if (!userId) return NextResponse.json({ ok: false }, { status: 401 })
+    const { id } = await params
 
-  await prisma.entry.delete({ where: { id, userId } })
-  return NextResponse.json({ ok: true })
+    await prisma.entry.delete({ where: { id, userId } })
+    return NextResponse.json({ ok: true })
+  } catch (e: any) {
+    if (e?.code === "P2025") {
+      return NextResponse.json({ ok: false, error: "未找到该心得" }, { status: 404 })
+    }
+    console.error("[DeleteEntry]", e)
+    return NextResponse.json({ ok: false, error: "删除失败" }, { status: 500 })
+  }
 }
 
 // PATCH /api/entries/[id] - 部分更新（置顶/收藏）
@@ -101,67 +108,4 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   })
 
   return NextResponse.json({ ok: true, data: entry })
-}
-
-// 异步重新生成题目（编辑后调用）
-async function regenerateQuestions(
-  userId: string,
-  entryId: string,
-  title: string,
-  content: string
-) {
-  console.log("[Regenerate] Starting, entryId:", entryId, "title:", title)
-  const result = await generateQuestions(title, content, 1)
-  const questions = result.questions
-  console.log("[Regenerate] generateQuestions returned:", questions.length, "questions")
-
-  // 更新 AI 生成的要点
-  if (result.keyPoints) {
-    await prisma.entry.update({
-      where: { id: entryId },
-      data: { keyPoints: result.keyPoints },
-    })
-  }
-
-  // 删除旧题目和答题记录，重新生成
-  const oldQuestions = await prisma.quizQuestion.findMany({ where: { entryId } })
-  if (oldQuestions.length > 0) {
-    const oldQuestionIds = oldQuestions.map(q => q.id)
-    await prisma.quizRecord.deleteMany({ where: { questionId: { in: oldQuestionIds } } })
-    await prisma.quizQuestion.deleteMany({ where: { id: { in: oldQuestionIds } } })
-  }
-
-  if (questions.length > 0) {
-    for (let i = 0; i < questions.length; i++) {
-      const q = questions[i]
-      const question = await prisma.quizQuestion.create({
-        data: {
-          entryId,
-          question: q.question,
-          type: q.type,
-          options: q.options,
-          answer: q.answer,
-          explanation: q.explanation,
-          angle: i + 1,
-        },
-      })
-
-      const nextReviewAt = new Date()
-      nextReviewAt.setDate(nextReviewAt.getDate() + 1)
-
-      await prisma.quizRecord.create({
-        data: {
-          userId,
-          questionId: question.id,
-          entryId,
-          correct: false,
-          nextReviewAt,
-          streak: 0,
-        },
-      })
-    }
-    await logReviewCall(userId, entryId, "regenerate", true, questions.length)
-  } else {
-    await logReviewCall(userId, entryId, "regenerate", false, 0, "DeepSeek returned empty")
-  }
 }

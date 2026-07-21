@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { signToken, COOKIE_CONFIG } from "@/lib/auth"
 import { hashPassword } from "@/lib/auth"
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://shuxiangnote.top"
+const APP_URL = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
 
 export async function GET(req: NextRequest) {
   try {

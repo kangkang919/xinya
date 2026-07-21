@@ -1,9 +1,17 @@
 ﻿import { NextRequest, NextResponse } from "next/server"
-import { prisma } from "../../../../lib/prisma"
-import { verifyPassword, signToken, COOKIE_CONFIG } from "../../../../lib/auth"
+import { prisma } from "@/lib/prisma"
+import { verifyPassword, signToken, COOKIE_CONFIG } from "@/lib/auth"
+import { checkRateLimit } from "@/lib/rate-limit"
 
 export async function POST(req: NextRequest) {
   try {
+    // 频率限制：每 IP 每分钟最多 5 次登录尝试
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown"
+    const { limited } = checkRateLimit(`login:${ip}`, 5, 60 * 1000)
+    if (limited) {
+      return NextResponse.json({ error: "尝试次数过多，请1分钟后再试" }, { status: 429 })
+    }
+
     const { email, password } = await req.json()
 
     if (!email || !password) {

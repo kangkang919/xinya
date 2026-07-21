@@ -1,13 +1,20 @@
-﻿import { NextRequest, NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { signToken, COOKIE_CONFIG } from "@/lib/auth"
 import { cookies } from "next/headers"
+import { checkRateLimit } from "@/lib/rate-limit"
 
 export async function POST(req: NextRequest) {
   try {
     const { userId, code } = await req.json()
     if (!userId || !code)
       return NextResponse.json({ ok: false, error: "参数缺失" }, { status: 400 })
+
+    // 频率限制：每个用户每10分钟最多验证 5 次
+    const { limited } = checkRateLimit(`verify:${userId}`, 5, 10 * 60 * 1000)
+    if (limited) {
+      return NextResponse.json({ ok: false, error: "验证次数过多，请10分钟后再试" }, { status: 429 })
+    }
 
     const token = await prisma.emailToken.findFirst({
       where: { userId, token: code, type: "verify", used: false }

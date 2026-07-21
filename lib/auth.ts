@@ -1,8 +1,8 @@
-﻿import bcrypt from "bcryptjs"
+import bcrypt from "bcryptjs"
 import jwt from "jsonwebtoken"
 import { cookies } from "next/headers"
 
-const JWT_SECRET = process.env.JWT_SECRET || "xinya-dev-secret-change-in-prod"
+const JWT_SECRET: string = process.env.JWT_SECRET ?? (() => { throw new Error("环境变量 JWT_SECRET 未设置，请在 .env 中配置") })()
 const COOKIE_NAME = "xinya_token"
 
 // 密码加密
@@ -47,7 +47,7 @@ export const COOKIE_CONFIG = {
   name: COOKIE_NAME,
   options: {
     httpOnly: true,
-    secure: false,
+    secure: process.env.NODE_ENV === "production",
     sameSite: "lax" as const,
     maxAge: 30 * 24 * 60 * 60, // 30天
     path: "/",

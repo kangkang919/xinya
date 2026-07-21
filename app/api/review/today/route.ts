@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getCurrentUserId } from "../../../../lib/auth"
-import { getTodayCard, logReviewCall } from "../../../../lib/review-scheduler"
-import { generateQuestions } from "../../../../lib/deepseek"
-import { generateTemplateQuestions } from "../../../../lib/template-questions"
-import { prisma } from "../../../../lib/prisma"
+import { getCurrentUserId } from "@/lib/auth"
+import { getTodayCard, logReviewCall } from "@/lib/review-scheduler"
+import { generateQuestions } from "@/lib/deepseek"
+import { generateTemplateQuestions } from "@/lib/template-questions"
+import { prisma } from "@/lib/prisma"
+import { devLog } from "@/lib/utils"
 
 async function cacheQuestions(
   userId: string,
@@ -47,20 +48,20 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "未登录" }, { status: 401 })
     }
 
-    console.log("[ReviewToday] Start, userId:", userId)
+    devLog("[ReviewToday] Start, userId:", userId)
 
     let card = await getTodayCard(userId)
-    console.log("[ReviewToday] getTodayCard result:", card ? { entryId: card.entryId, questionId: card.questionId } : null)
+    devLog("[ReviewToday] getTodayCard result:", card ? { entryId: card.entryId, questionId: card.questionId } : null)
 
     // 若返回的是无题目的心得，按组合方案出题
     if (card && !card.questionId) {
       const entry = await prisma.entry.findUnique({ where: { id: card.entryId } })
       if (entry) {
-        console.log("[ReviewToday] Generating questions for entry:", entry.id, "title:", entry.title)
+        devLog("[ReviewToday] Generating questions for entry:", entry.id, "title:", entry.title)
         // 步骤1：尝试在线生成（30秒超时 + 1次重试）
         const result = await generateQuestions(entry.title, entry.content, 1)
         const questions = result.questions
-        console.log("[ReviewToday] generateQuestions returned:", questions.length, "questions")
+        devLog("[ReviewToday] generateQuestions returned:", questions.length, "questions")
 
         // 保存 AI 生成的要点
         if (result.keyPoints) {
@@ -73,15 +74,15 @@ export async function GET(req: NextRequest) {
         if (questions.length > 0) {
           // 在线生成成功
           await cacheQuestions(userId, entry.id, questions)
-          console.log("[ReviewToday] Cached", questions.length, "questions via online generation")
+          devLog("[ReviewToday] Cached", questions.length, "questions via online generation")
           await logReviewCall(userId, entry.id, "online-retry", true, questions.length)
         } else {
           // 步骤2：降级到模板题目
-          console.log("[ReviewToday] Online generation failed, falling back to template")
+          devLog("[ReviewToday] Online generation failed, falling back to template")
           const templateResult = generateTemplateQuestions(entry.title, entry.content)
           const templateQs = templateResult.questions
           await cacheQuestions(userId, entry.id, templateQs)
-          console.log("[ReviewToday] Cached", templateQs.length, "template questions")
+          devLog("[ReviewToday] Cached", templateQs.length, "template questions")
           await logReviewCall(userId, entry.id, "template-fallback", true, templateQs.length)
 
           // 保存模板要点
@@ -95,7 +96,7 @@ export async function GET(req: NextRequest) {
 
         // 重新获取卡片（现在有题目了）
         card = await getTodayCard(userId)
-        console.log("[ReviewToday] After generation, card:", card ? { entryId: card.entryId, questionId: card.questionId } : null)
+        devLog("[ReviewToday] After generation, card:", card ? { entryId: card.entryId, questionId: card.questionId } : null)
       }
     } else if (card && card.questionId) {
       // 缓存命中

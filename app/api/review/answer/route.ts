@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getCurrentUserId } from "../../../../lib/auth"
-import { submitAnswer } from "../../../../lib/review-scheduler"
+import { getCurrentUserId } from "@/lib/auth"
+import { submitAnswer } from "@/lib/review-scheduler"
 
 export async function POST(req: NextRequest) {
   try {
