@@ -30,11 +30,8 @@ export default function EditorToolbar({
   const sepColor = isDark ? "#444" : "#e0e0e0"
   const hoverBg = isDark ? "hover:bg-gray-700" : "hover:bg-gray-100"
   const [showColorPicker, setShowColorPicker] = useState(false)
-  const [colorPickerPos, setColorPickerPos] = useState<{ top: number; left: number } | null>(null)
 
-  function openColorPicker(e: React.MouseEvent) {
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-    setColorPickerPos({ top: rect.bottom + 4, left: rect.left })
+  function openColorPicker() {
     setShowColorPicker(!showColorPicker)
   }
 
@@ -61,12 +58,21 @@ export default function EditorToolbar({
           <span className="ml-auto text-xs" style={{ color: isDark ? "#666" : "#bbb" }}>{charCount} 字</span>
         </div>
       </div>
-      {showColorPicker && colorPickerPos && (
+      {showColorPicker && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setShowColorPicker(false)} />
-          <div className={`border rounded-xl shadow-xl p-3 flex gap-2 ${isDark ? 'bg-gray-800 border-gray-600' : 'bg-white border-gray-200'}`} style={{ top: colorPickerPos.top, left: colorPickerPos.left }}>
+          <div
+            className={`fixed z-[60] border rounded-xl shadow-xl p-3 flex gap-2 ${isDark ? 'bg-gray-800 border-gray-600' : 'bg-white border-gray-200'}`}
+            style={{ top: 100, left: '50%', transform: 'translateX(-50%)' }}
+          >
             {COLORS.map(c => (
-              <button key={c} onClick={() => { document.execCommand("foreColor", false, c); setShowColorPicker(false) }} className="w-8 h-8 rounded-full border-2 hover:scale-125 transition-transform shadow-sm" style={{ background: c, borderColor: c === "#333333" ? "#999" : c }} />
+              <button
+                key={c}
+                onMouseDown={e => e.preventDefault()}
+                onClick={() => { document.execCommand("foreColor", false, c); setShowColorPicker(false) }}
+                className="w-8 h-8 rounded-full border-2 hover:scale-125 transition-transform shadow-sm"
+                style={{ background: c, borderColor: c === "#333333" ? "#999" : c }}
+              />
             ))}
           </div>
         </>
