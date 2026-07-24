@@ -1,13 +1,20 @@
 ﻿"use client"
-import { Suspense, useEffect, useState, useRef } from "react"
+import { Suspense, useEffect, useState, useRef, useMemo } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useTheme } from "@/lib/useTheme"
+
+interface TagChild {
+  id: string
+  name: string
+}
 
 interface Tag {
   id: string
   name: string
+  parentId: string | null
   entryCount: number
   isDefault: boolean
+  children: TagChild[]
 }
 
 interface Entry {
@@ -20,7 +27,13 @@ interface Entry {
   isFavorite: boolean
 }
 
-// 根据使用量生成标签样式
+interface EntryGroup {
+  tagId: string
+  tagName: string
+  entries: Entry[]
+}
+
+// 标签云颜色
 const TAG_COLORS = [
   { border: '#8BC34A', text: '#5a8a2f', bg: 'rgba(139,195,74,0.12)' },
   { border: '#42A5F5', text: '#2b7ac2', bg: 'rgba(66,165,245,0.12)' },
@@ -36,17 +49,14 @@ function getTagColor(index: number) {
 function tagFontSize(count: number, maxCount: number): number {
   if (maxCount === 0) return 12
   const ratio = count / maxCount
-  return Math.round(12 + ratio * 8) // 12px ~ 20px
+  return Math.round(12 + ratio * 8)
 }
 
 function formatDate(iso: string) {
   const d = new Date(iso)
-  const month = d.getMonth() + 1
-  const day = d.getDate()
-  return `${month}月${day}日`
+  return `${d.getMonth() + 1}月${d.getDate()}日`
 }
 
-// 暗色模式辅助函数
 function adjustAlpha(hex: string, alpha: number): string {
   const r = parseInt(hex.slice(1, 3), 16)
   const g = parseInt(hex.slice(3, 5), 16)
@@ -74,13 +84,15 @@ function LeafPageContent() {
   const searchParams = useSearchParams()
   const { isDark, cardBg, cardBorder, titleColor, dimColor, inputBg, inputBorder } = useTheme()
   const [tags, setTags] = useState<Tag[]>([])
-  const [search, setSearch] = useState('')
   const [selectedTag, setSelectedTag] = useState<Tag | null>(null)
   const [entries, setEntries] = useState<Entry[]>([])
   const [loadingEntries, setLoadingEntries] = useState(false)
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
+
+  // 分离顶级标签和子标签
+  const topLevelTags = useMemo(() => tags.filter(t => !t.parentId), [tags])
 
   useEffect(() => {
-    // 检查是否从编辑页返回且标签有变更
     const savedData = sessionStorage.getItem('leaf_saved')
     let tagChanged = false
     if (savedData) {
@@ -97,17 +109,12 @@ function LeafPageContent() {
         if (data.ok) {
           const sorted = [...data.data].sort((a: Tag, b: Tag) => b.entryCount - a.entryCount)
           setTags(sorted)
-          // 从URL恢复选中的标签（从阅读页/编辑页返回时）
           const tagId = searchParams.get('tagId')
           if (tagId) {
             const tag = sorted.find((t: Tag) => t.id === tagId)
             if (tag) {
               setSelectedTag(tag)
-              if (tagChanged) {
-                // 标签有变更，不自动加载列表，等待用户点击标签后刷新
-                setEntries([])
-              } else {
-                // 标签未变更，正常加载列表
+              if (!tagChanged) {
                 setLoadingEntries(true)
                 fetch(`/api/entries?tagId=${tag.id}&limit=50`)
                   .then(r => r.json())
@@ -124,7 +131,7 @@ function LeafPageContent() {
       .catch(() => {})
   }, [])
 
-  // 从编辑页返回后，恢复滚动位置（等待数据加载完成后）
+  // 滚动位置恢复
   const scrollRestoreRef = useRef<number | null>(null)
 
   useEffect(() => {
@@ -143,7 +150,6 @@ function LeafPageContent() {
     }
   }, [loadingEntries])
 
-  // 持续保存滚动位置（SPA导航和页面刷新都适用）
   useEffect(() => {
     let scrollTimer: ReturnType<typeof setTimeout>
     const handleScroll = () => {
@@ -156,7 +162,6 @@ function LeafPageContent() {
     return () => {
       window.removeEventListener('scroll', handleScroll)
       clearTimeout(scrollTimer)
-      // 卸载时也保存当前位置
       sessionStorage.setItem('leaf_scroll', String(window.scrollY))
     }
   }, [])
@@ -165,9 +170,11 @@ function LeafPageContent() {
     if (selectedTag?.id === tag.id) {
       setSelectedTag(null)
       setEntries([])
+      setExpandedGroups(new Set())
       return
     }
     setSelectedTag(tag)
+    setExpandedGroups(new Set())
     setLoadingEntries(true)
     fetch(`/api/entries?tagId=${tag.id}&limit=50`)
       .then(r => r.json())
@@ -178,11 +185,64 @@ function LeafPageContent() {
       .finally(() => setLoadingEntries(false))
   }
 
-  const filteredTags = search.trim()
-    ? tags.filter(t => t.name.toLowerCase().includes(search.trim().toLowerCase()))
-    : tags
+  function toggleGroup(tagId: string) {
+    setExpandedGroups(prev => {
+      const next = new Set(prev)
+      if (next.has(tagId)) next.delete(tagId)
+      else next.add(tagId)
+      return next
+    })
+  }
 
-  const maxCount = tags.length > 0 ? Math.max(...tags.map(t => t.entryCount)) : 0
+  // 将心得按子标签分组
+  const entryGroups = useMemo((): EntryGroup[] => {
+    if (!selectedTag || entries.length === 0) return []
+
+    const children = selectedTag.children || []
+    if (children.length === 0) {
+      // 没有子标签，全部作为单组
+      return [{ tagId: selectedTag.id, tagName: selectedTag.name, entries }]
+    }
+
+    const childIds = new Set(children.map(c => c.id))
+    const groups: EntryGroup[] = []
+    const grouped = new Map<string, Entry[]>()
+
+    // 初始化子标签分组
+    for (const child of children) {
+      grouped.set(child.id, [])
+    }
+    // 未归类（只挂在父标签、不在任何子标签下的心得）
+    const ungrouped: Entry[] = []
+
+    for (const entry of entries) {
+      const entryChildTag = entry.tags.find(t => childIds.has(t.id))
+      if (entryChildTag) {
+        grouped.get(entryChildTag.id)!.push(entry)
+      } else {
+        ungrouped.push(entry)
+      }
+    }
+
+    // 只保留有心得的分组
+    for (const child of children) {
+      const groupEntries = grouped.get(child.id) || []
+      if (groupEntries.length > 0) {
+        groups.push({ tagId: child.id, tagName: child.name, entries: groupEntries })
+      }
+    }
+
+    // 未归类的放在最后
+    if (ungrouped.length > 0) {
+      groups.push({ tagId: '__ungrouped__', tagName: '未归类', entries: ungrouped })
+    }
+
+    return groups
+  }, [selectedTag, entries])
+
+  const maxCount = topLevelTags.length > 0
+    ? Math.max(...topLevelTags.map(t => t.entryCount))
+    : 0
 
   return (
     <div className="p-4 max-w-lg mx-auto pb-24">
@@ -194,29 +254,9 @@ function LeafPageContent() {
       </div>
       <p className="text-xs mb-5" style={{ color: dimColor }}>思绪的脉络，在此生枝蔓叶</p>
 
-      {/* 搜索框 */}
-      <div className="relative mb-6">
-        <svg
-          xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
-          fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-          className="absolute left-3 top-1/2 -translate-y-1/2"
-          aria-hidden="true"
-        >
-          <path d="m21 21-4.34-4.34" />
-          <circle cx="11" cy="11" r="8" />
-        </svg>
-        <input
-          className="w-full pl-10 pr-4 py-2.5 rounded-full outline-none text-sm"
-          style={{ border: `1.5px solid ${inputBorder}`, background: inputBg, color: titleColor }}
-          placeholder="搜索标签…"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
-      </div>
-
-      {/* 标签云 */}
+      {/* 标签云（仅顶级标签） */}
       <div className="flex flex-wrap gap-2 mb-6">
-        {filteredTags.map((tag, i) => {
+        {topLevelTags.map((tag, i) => {
           const c = getTagColor(i)
           const isSelected = selectedTag?.id === tag.id
           const fs = tagFontSize(tag.entryCount, maxCount)
@@ -242,8 +282,8 @@ function LeafPageContent() {
             </button>
           )
         })}
-        {filteredTags.length === 0 && (
-          <p className="text-sm" style={{ color: '#bbb' }}>没有找到相关标签</p>
+        {topLevelTags.length === 0 && (
+          <p className="text-sm" style={{ color: '#bbb' }}>还没有标签</p>
         )}
       </div>
 
@@ -264,40 +304,75 @@ function LeafPageContent() {
               <div className="text-2xl mb-2">🍂</div>
               <p className="text-sm" style={{ color: '#bbb' }}>还没有这个标签的心得</p>
             </div>
+          ) : entryGroups.length > 1 ? (
+            // 有子标签分组：可折叠/展开
+            <div className="space-y-3">
+              {entryGroups.map(group => {
+                const isExpanded = expandedGroups.has(group.tagId)
+                const isUngrouped = group.tagId === '__ungrouped__'
+                return (
+                  <div key={group.tagId}>
+                    {/* 分组标题 */}
+                    <button
+                      onClick={() => toggleGroup(group.tagId)}
+                      className="w-full flex items-center justify-between py-2 px-1 rounded-lg transition"
+                      style={{ background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="text-xs transition-transform"
+                          style={{
+                            display: 'inline-block',
+                            transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                            color: '#8BC34A',
+                          }}
+                        >
+                          ▶
+                        </span>
+                        <span className="text-sm font-medium" style={{ color: titleColor }}>
+                          {isUngrouped ? '📎 ' : '🏷️ '}{group.tagName}
+                        </span>
+                        <span className="text-xs" style={{ color: '#999' }}>
+                          {group.entries.length} 篇
+                        </span>
+                      </div>
+                    </button>
+
+                    {/* 分组内的心得列表 */}
+                    {isExpanded && (
+                      <div className="space-y-2 mt-2 ml-2">
+                        {group.entries.map(entry => (
+                          <EntryCard
+                            key={entry.id}
+                            entry={entry}
+                            isDark={isDark}
+                            cardBg={cardBg}
+                            cardBorder={cardBorder}
+                            titleColor={titleColor}
+                            selectedTag={selectedTag}
+                            router={router}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
           ) : (
+            // 无子标签分组：直接平铺显示
             <div className="space-y-3">
               {entries.map(entry => (
-                <div
+                <EntryCard
                   key={entry.id}
-                  onClick={() => {
-                    sessionStorage.setItem('leaf_scroll', String(window.scrollY))
-                    router.push(`/entry/${entry.id}/view?from=leaf${selectedTag ? `&tagId=${selectedTag.id}` : ''}`)
-                  }}
-                  className="p-4 rounded-xl cursor-pointer transition-all active:scale-[0.98]"
-                  style={{ background: cardBg, border: `1px solid ${cardBorder}` }}
-                >
-                  {entry.title ? (
-                    <h3 className="text-sm font-medium mb-1 line-clamp-1" style={{ color: titleColor }}>
-                      {entry.title}
-                    </h3>
-                  ) : null}
-                  <p className="text-xs line-clamp-2 mb-2" style={{ color: '#999' }}>
-                    {entry.contentPreview || '空空如也…'}
-                  </p>
-                  <div className="flex items-center justify-between">
-                    <div className="flex flex-wrap gap-1">
-                      {entry.tags.slice(0, 3).map(t => (
-                        <span key={t.id} className="text-[10px] px-1.5 py-0.5 rounded-full"
-                          style={{ background: isDark ? 'rgba(139,195,74,0.2)' : 'rgba(139,195,74,0.1)', color: isDark ? '#AED581' : '#5a8a2f' }}>
-                          #{t.name}
-                        </span>
-                      ))}
-                    </div>
-                    <span className="text-[10px]" style={{ color: '#bbb' }}>
-                      {formatDate(entry.recordTime)}
-                    </span>
-                  </div>
-                </div>
+                  entry={entry}
+                  isDark={isDark}
+                  cardBg={cardBg}
+                  cardBorder={cardBorder}
+                  titleColor={titleColor}
+                  selectedTag={selectedTag}
+                  router={router}
+                />
               ))}
             </div>
           )}
@@ -307,3 +382,46 @@ function LeafPageContent() {
   )
 }
 
+// 心得卡片子组件
+function EntryCard({ entry, isDark, cardBg, cardBorder, titleColor, selectedTag, router }: {
+  entry: Entry
+  isDark: boolean
+  cardBg: string
+  cardBorder: string
+  titleColor: string
+  selectedTag: Tag | null
+  router: ReturnType<typeof useRouter>
+}) {
+  return (
+    <div
+      onClick={() => {
+        sessionStorage.setItem('leaf_scroll', String(window.scrollY))
+        router.push(`/entry/${entry.id}/view?from=leaf${selectedTag ? `&tagId=${selectedTag.id}` : ''}`)
+      }}
+      className="p-4 rounded-xl cursor-pointer transition-all active:scale-[0.98]"
+      style={{ background: cardBg, border: `1px solid ${cardBorder}` }}
+    >
+      {entry.title ? (
+        <h3 className="text-sm font-medium mb-1 line-clamp-1" style={{ color: titleColor }}>
+          {entry.title}
+        </h3>
+      ) : null}
+      <p className="text-xs line-clamp-2 mb-2" style={{ color: '#999' }}>
+        {entry.contentPreview || '空空如也…'}
+      </p>
+      <div className="flex items-center justify-between">
+        <div className="flex flex-wrap gap-1">
+          {entry.tags.slice(0, 3).map(t => (
+            <span key={t.id} className="text-[10px] px-1.5 py-0.5 rounded-full"
+              style={{ background: isDark ? 'rgba(139,195,74,0.2)' : 'rgba(139,195,74,0.1)', color: isDark ? '#AED581' : '#5a8a2f' }}>
+              #{t.name}
+            </span>
+          ))}
+        </div>
+        <span className="text-[10px]" style={{ color: '#bbb' }}>
+          {formatDate(entry.recordTime)}
+        </span>
+      </div>
+    </div>
+  )
+}

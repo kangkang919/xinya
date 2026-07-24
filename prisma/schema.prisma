@@ -58,14 +58,18 @@ model Tag {
   id        String   @id @default(cuid())
   userId    String
   name      String
+  parentId  String?
   isDefault Boolean  @default(false)
   createdAt DateTime @default(now())
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  entries   Entry[]  @relation("EntryTags")
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entries  Entry[]  @relation("EntryTags")
+  parent   Tag?     @relation("TagHierarchy", fields: [parentId], references: [id])
+  children Tag[]    @relation("TagHierarchy")
 
   @@unique([userId, name])
   @@index([userId])
+  @@index([parentId])
 }
 
 model Share {

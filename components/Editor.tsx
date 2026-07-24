@@ -14,6 +14,19 @@ const MOODS = [
   { key: "worried", emoji: "😰", label: "忧虑", color: "#90A4AE" },
 ]
 
+interface TagData {
+  id: string
+  name: string
+  parentId: string | null
+  children?: { id: string; name: string }[]
+}
+
+interface SimilarEntry {
+  id: string
+  title: string
+  recordTime: string
+}
+
 interface EditorProps {
   entryId?: string
   isNew: boolean
@@ -28,17 +41,40 @@ export default function Editor({ entryId, isNew }: EditorProps) {
   const [title, setTitle] = useState("")
   const [mood, setMood] = useState<string | null>(null)
   const [selectedTags, setSelectedTags] = useState<string[]>([])
-  const [allTags, setAllTags] = useState<{ id: string; name: string }[]>([])
+  const [allTags, setAllTags] = useState<TagData[]>([])
   const [saving, setSaving] = useState(false)
   const [focusMode, setFocusMode] = useState(false)
   const [showTagPicker, setShowTagPicker] = useState(true)
   const [newTagName, setNewTagName] = useState("")
   const [charCount, setCharCount] = useState(0)
+  const [similarEntries, setSimilarEntries] = useState<SimilarEntry[]>([])
   const editorRef = useRef<HTMLDivElement>(null)
   const initialized = useRef(false)
   const initialTagIds = useRef<string[]>([])
+  const similarTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => { fetch("/api/tags").then(r => r.json()).then(d => { if (d.ok) setAllTags(d.data) }) }, [])
+
+  // 标题相似检测（防抖 1 秒）
+  useEffect(() => {
+    if (similarTimer.current) clearTimeout(similarTimer.current)
+    if (!title.trim() || title.trim().length < 3) {
+      setSimilarEntries([])
+      return
+    }
+    similarTimer.current = setTimeout(() => {
+      fetch(`/api/entries?similarTitle=${encodeURIComponent(title.trim())}`)
+        .then(r => r.json())
+        .then(d => {
+          if (d.ok && d.data.similar) {
+            // 排除当前正在编辑的心得
+            setSimilarEntries(d.data.similar.filter((e: SimilarEntry) => e.id !== entryId))
+          }
+        })
+        .catch(() => {})
+    }, 1000)
+    return () => { if (similarTimer.current) clearTimeout(similarTimer.current) }
+  }, [title, entryId])
 
   useEffect(() => {
     if (entryId && !initialized.current && editorRef.current) {
@@ -173,6 +209,24 @@ export default function Editor({ entryId, isNew }: EditorProps) {
       )}
       <div className="max-w-3xl mx-auto">
         <input className="w-full text-xl font-bold outline-none px-4 pt-6 pb-2" style={{ color: focusMode ? "#eee" : titleColor, background: "transparent" }} placeholder="给这颗种子取个名字…" value={title} onChange={e => setTitle(e.target.value)} />
+        {/* 相似心得提示 */}
+        {!focusMode && similarEntries.length > 0 && (
+          <div className="px-4 pb-2">
+            <div className="flex items-start gap-2 p-2.5 rounded-lg text-xs" style={{ background: isDark ? 'rgba(255,183,77,0.1)' : '#FFF8E1', border: `1px solid ${isDark ? 'rgba(255,183,77,0.3)' : '#FFE082'}` }}>
+              <span>⚠️</span>
+              <div>
+                <p style={{ color: isDark ? '#FFB74D' : '#F57C00' }}>发现相似心得：</p>
+                {similarEntries.map(e => (
+                  <button key={e.id} onClick={() => router.push(`/entry/${e.id}/view?from=${fromPage || 'sprout'}${fromTagId ? `&tagId=${fromTagId}` : ''}`)}
+                    className="block text-left underline mt-1 truncate max-w-[280px]"
+                    style={{ color: isDark ? '#FFB74D' : '#E65100' }}>
+                    「{e.title}」({new Date(e.recordTime).toLocaleDateString('zh-CN')})
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
         {focusMode && <button onClick={() => setFocusMode(false)} className="fixed top-4 right-4 z-20 p-2 rounded-full opacity-50 hover:opacity-100" style={{ background: "rgba(255,255,255,0.1)" }}><EyeOff size={20} color="#aaa" /></button>}
         <div ref={editorRef} contentEditable suppressContentEditableWarning onPaste={handlePaste} className="w-full outline-none text-sm leading-relaxed" style={{ padding: focusMode ? "40px 24px" : "16px", minHeight: focusMode ? "60vh" : "30vh", color: focusMode ? "#ddd" : (isDark ? "#E0E0E0" : "#333") }} onInput={handleInput} data-placeholder="在这里写下你的感悟、想法或日记…" />
         {!focusMode && (
@@ -191,9 +245,54 @@ export default function Editor({ entryId, isNew }: EditorProps) {
               <input className="input-sketch flex-1 px-3 py-2 text-sm outline-none" style={{ border: `1.5px solid ${inputBorder}`, background: inputBg, color: titleColor }} placeholder="新建标签名" value={newTagName} onChange={e => setNewTagName(e.target.value)} onKeyDown={e => e.key === "Enter" && createTag()} />
               <button onClick={createTag} className="px-3 py-2 text-sm rounded-full text-white" style={{ background: "#8BC34A" }}>添加</button>
             </div>
-            <div className="flex flex-wrap gap-2">{allTags.map(tag => (
-              <button key={tag.id} onClick={() => toggleTag(tag.id)} className="px-3 py-1.5 rounded-full text-xs font-medium transition" style={{ background: selectedTags.includes(tag.id) ? "#8BC34A" : (isDark ? "#333" : "#f0f0f0"), color: selectedTags.includes(tag.id) ? "#fff" : (isDark ? "#aaa" : "#666") }}>{tag.name}</button>
-            ))}</div>
+            {/* 标签分组显示 */}
+            {(() => {
+              // 有子标签的父标签
+              const parentTags = allTags.filter(t => !t.parentId && t.children && t.children.length > 0)
+              // 没有子标签的顶级标签
+              const standaloneTags = allTags.filter(t => !t.parentId && (!t.children || t.children.length === 0))
+              // 子标签（已被归入父标签下的，不在独立区域显示）
+              const childTagIds = new Set(parentTags.flatMap(t => (t.children || []).map(c => c.id)))
+
+              return (
+                <div className="space-y-2">
+                  {/* 有子标签的父分组 */}
+                  {parentTags.map(parent => (
+                    <div key={parent.id}>
+                      <p className="text-[10px] mb-1 font-medium" style={{ color: '#999' }}>{parent.name}</p>
+                      <div className="flex flex-wrap gap-2">
+                        {(parent.children || []).map(child => {
+                          const childTag = allTags.find(t => t.id === child.id)
+                          const isSelected = selectedTags.includes(child.id)
+                          return (
+                            <button key={child.id} onClick={() => toggleTag(child.id)}
+                              className="px-3 py-1.5 rounded-full text-xs font-medium transition"
+                              style={{ background: isSelected ? "#8BC34A" : (isDark ? "#333" : "#f0f0f0"), color: isSelected ? "#fff" : (isDark ? "#aaa" : "#666") }}>
+                              {childTag?.name || child.name}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                  {/* 没有子标签的独立标签 */}
+                  {standaloneTags.length > 0 && (
+                    <div>
+                      {(parentTags.length > 0) && <p className="text-[10px] mb-1 font-medium" style={{ color: '#999' }}>其他</p>}
+                      <div className="flex flex-wrap gap-2">
+                        {standaloneTags.map(tag => (
+                          <button key={tag.id} onClick={() => toggleTag(tag.id)}
+                            className="px-3 py-1.5 rounded-full text-xs font-medium transition"
+                            style={{ background: selectedTags.includes(tag.id) ? "#8BC34A" : (isDark ? "#333" : "#f0f0f0"), color: selectedTags.includes(tag.id) ? "#fff" : (isDark ? "#aaa" : "#666") }}>
+                            {tag.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
           </div>
         )}
       </div>

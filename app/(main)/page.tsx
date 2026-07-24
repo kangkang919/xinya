@@ -17,6 +17,7 @@ interface Entry {
   isTop: boolean
   isFavorite: boolean
   isDraft: boolean
+  matchCount?: number
 }
 
 interface Summary {
@@ -236,7 +237,7 @@ export default function SproutPage() {
               autoFocus
               className="input-sketch flex-1 px-4 py-2.5 text-sm outline-none"
               style={{ border: "1.5px solid #8BC34A", background: inputBg, color: titleColor }}
-              placeholder="搜索心得标题或内容…"
+              placeholder="搜索心得（多个关键词用空格隔开）…"
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
@@ -362,6 +363,7 @@ export default function SproutPage() {
           {entries.map(entry => (
             <EntryCard key={entry.id} {...entry}
               isDark={isDark}
+              matchCount={search ? entry.matchCount : undefined}
               onToggleFavorite={handleToggleFavorite}
               onTogglePin={handleTogglePin}
               onDelete={(id, title) => setDeleteTarget({ id, title })}

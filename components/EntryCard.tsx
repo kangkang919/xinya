@@ -16,6 +16,7 @@ interface EntryCardProps {
   isTop: boolean
   isFavorite: boolean
   isDark?: boolean
+  matchCount?: number
   onToggleFavorite: (id: string) => void
   onTogglePin: (id: string) => void
   onDelete: (id: string, title: string) => void
@@ -30,7 +31,7 @@ const MOODS: Record<string, { icon: typeof Smile; color: string; label: string }
 }
 
 export function EntryCard({ id, title, contentPreview, tags, mood, recordTime,
-  isTop, isFavorite, isDark = false, onToggleFavorite, onTogglePin, onDelete }: EntryCardProps) {
+  isTop, isFavorite, isDark = false, matchCount, onToggleFavorite, onTogglePin, onDelete }: EntryCardProps) {
   const router = useRouter()
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -145,6 +146,11 @@ export function EntryCard({ id, title, contentPreview, tags, mood, recordTime,
         <span className="text-xs ml-auto" style={{ color: "#bbb" }}>
           {dateStr} {timeStr}
         </span>
+        {matchCount !== undefined && matchCount > 0 && (
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: isDark ? 'rgba(139,195,74,0.2)' : 'rgba(139,195,74,0.15)', color: '#5a8a2f' }}>
+            匹配 {matchCount} 处
+          </span>
+        )}
       </div>
     </div>
   )
