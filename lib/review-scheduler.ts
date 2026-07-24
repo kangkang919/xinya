@@ -1,7 +1,7 @@
 import { prisma } from "./prisma"
 import { generateKeyPoints } from "./template-questions"
 import { generateQuestions } from "./deepseek"
-import { devLog } from "./utils"
+import { devLog, beijingDateString } from "./utils"
 
 // 记录调用日志（保留最近30条）
 export async function logReviewCall(
@@ -44,7 +44,7 @@ interface TodayCard {
 }
 
 export async function getTodayCard(userId: string): Promise<TodayCard | null> {
-  const today = new Date().toISOString().split("T")[0]
+  const today = beijingDateString(new Date())
 
   // 检查用户是否开启拾遗
   const setting = await prisma.userSetting.findUnique({ where: { userId } })
@@ -224,7 +224,7 @@ export async function submitAnswer(
 }
 
 export async function skipToday(userId: string): Promise<void> {
-  const today = new Date().toISOString().split("T")[0]
+  const today = beijingDateString(new Date())
   await prisma.userSetting.upsert({
     where: { userId },
     update: { lastCardDate: today },

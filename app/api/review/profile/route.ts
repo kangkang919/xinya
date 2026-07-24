@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getCurrentUserId } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { beijingDateString } from "@/lib/utils"
 
 const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY
 const DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
@@ -108,11 +109,11 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ ok: true, data: null })
     }
 
-    // 计算学习天数（按answeredAt日期去重）
+    // 计算学习天数（按answeredAt日期去重，使用北京时间）
     const daysSet = new Set<string>()
     records.forEach(r => {
       if (r.answeredAt) {
-        daysSet.add(r.answeredAt.toISOString().split("T")[0])
+        daysSet.add(beijingDateString(r.answeredAt))
       }
     })
     const daysStudied = daysSet.size
@@ -122,12 +123,12 @@ export async function GET(req: NextRequest) {
     const correctCount = records.filter(r => r.correct).length
     const accuracy = totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0
 
-    // 近5日记录
+    // 近5日记录（使用北京时间）
     const recentDays: { date: string; correct: number; total: number }[] = []
     const dayMap = new Map<string, { correct: number; total: number }>()
     records.forEach(r => {
       if (r.answeredAt) {
-        const day = r.answeredAt.toISOString().split("T")[0]
+        const day = beijingDateString(r.answeredAt)
         if (!dayMap.has(day)) dayMap.set(day, { correct: 0, total: 0 })
         const stat = dayMap.get(day)!
         stat.total++

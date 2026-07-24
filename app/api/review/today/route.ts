@@ -4,7 +4,7 @@ import { getTodayCard, logReviewCall } from "@/lib/review-scheduler"
 import { generateQuestions } from "@/lib/deepseek"
 import { generateTemplateQuestions } from "@/lib/template-questions"
 import { prisma } from "@/lib/prisma"
-import { devLog } from "@/lib/utils"
+import { devLog, beijingDateString } from "@/lib/utils"
 
 async function cacheQuestions(
   userId: string,
@@ -107,8 +107,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ ok: true, data: null })
     }
 
-    // 更新 lastCardDate
-    const today = new Date().toISOString().split("T")[0]
+    // 更新 lastCardDate（使用北京时间）
+    const today = beijingDateString(new Date())
     await prisma.userSetting.upsert({
       where: { userId },
       update: { lastCardDate: today, lastQuestionId: card.questionId },
