@@ -12,7 +12,7 @@ export async function GET() {
     include: {
       _count: { select: { entries: true } },
       children: {
-        select: { id: true, name: true },
+        select: { id: true, name: true, _count: { select: { entries: true } } },
         orderBy: { name: "asc" },
       },
     },
@@ -21,14 +21,18 @@ export async function GET() {
 
   return NextResponse.json({
     ok: true,
-    data: tags.map(t => ({
-      id: t.id,
-      name: t.name,
-      parentId: t.parentId,
-      isDefault: t.isDefault,
-      entryCount: t._count.entries,
-      children: t.children.map(c => ({ id: c.id, name: c.name })),
-    })),
+    data: tags.map(t => {
+      // 父标签的心得数 = 自身心得数 + 所有子标签心得数
+      const childCounts = t.children.reduce((sum, c) => sum + c._count.entries, 0)
+      return {
+        id: t.id,
+        name: t.name,
+        parentId: t.parentId,
+        isDefault: t.isDefault,
+        entryCount: t._count.entries + childCounts,
+        children: t.children.map(c => ({ id: c.id, name: c.name })),
+      }
+    }),
   })
 }
 
