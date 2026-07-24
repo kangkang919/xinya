@@ -46,8 +46,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "标签名不能为空" }, { status: 400 })
 
   const trimmed = name.trim()
-  if (trimmed.length > 20)
-    return NextResponse.json({ ok: false, error: "标签名最多20个字" }, { status: 400 })
+  if (trimmed.length > 8)
+    return NextResponse.json({ ok: false, error: "标签名最多8个字" }, { status: 400 })
 
   const existing = await prisma.tag.findFirst({ where: { userId, name: trimmed } })
   if (existing)

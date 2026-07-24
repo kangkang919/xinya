@@ -470,6 +470,7 @@ export default function RootPage() {
                   value={newTagName}
                   onChange={e => setNewTagName(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') createTag() }}
+                  maxLength={8}
                   placeholder="标签名"
                   className="flex-1 text-xs px-2 py-1.5 rounded-lg outline-none"
                   style={{ border: `1.5px solid ${isDark ? '#555' : '#ccc'}`, background: 'transparent', color: titleColor }}

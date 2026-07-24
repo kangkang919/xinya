@@ -57,6 +57,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (!name || !name.trim()) {
       return NextResponse.json({ ok: false, error: "标签名不能为空" }, { status: 400 })
     }
+    if (name.trim().length > 8) {
+      return NextResponse.json({ ok: false, error: "标签名最多8个字" }, { status: 400 })
+    }
     updateData.name = name.trim()
   }
 
