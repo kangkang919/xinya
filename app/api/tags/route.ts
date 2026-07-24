@@ -55,18 +55,44 @@ export async function POST(req: NextRequest) {
 
   // 验证父标签存在且属于当前用户
   let finalParentId: string | null = null
+  let isFirst = false
   if (parentId) {
-    const parent = await prisma.tag.findFirst({ where: { id: parentId, userId } })
+    const parent = await prisma.tag.findFirst({
+      where: { id: parentId, userId },
+      include: { _count: { select: { children: true } } },
+    })
     if (!parent)
       return NextResponse.json({ ok: false, error: "父标签不存在" }, { status: 400 })
     // 限制最多 2 级：父标签不能再有父标签
     if (parent.parentId)
       return NextResponse.json({ ok: false, error: "最多支持两级标签" }, { status: 400 })
     finalParentId = parentId
+    // 判断是否是第一个子标签（用于迁移）
+    isFirst = parent._count.children === 0
   }
 
   const tag = await prisma.tag.create({
     data: { userId, name: trimmed, parentId: finalParentId },
   })
+
+  // 如果是父标签的第一个子标签，把直接关联父标签的心得转移到该子标签
+  if (isFirst && finalParentId) {
+    const entries = await prisma.entry.findMany({
+      where: { userId, tags: { some: { id: finalParentId } } },
+      select: { id: true },
+    })
+    for (const entry of entries) {
+      await prisma.entry.update({
+        where: { id: entry.id },
+        data: {
+          tags: {
+            disconnect: { id: finalParentId },
+            connect: { id: tag.id },
+          },
+        },
+      })
+    }
+  }
+
   return NextResponse.json({ ok: true, data: tag })
 }
