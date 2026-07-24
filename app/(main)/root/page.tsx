@@ -12,8 +12,10 @@ interface User {
 interface TagItem {
   id: string
   name: string
+  parentId: string | null
   isDefault: boolean
   entryCount: number
+  children?: { id: string; name: string }[]
 }
 
 interface ExportEntry {
@@ -82,9 +84,13 @@ export default function RootPage() {
   const [tags, setTags] = useState<TagItem[]>([])
   const [editingTagId, setEditingTagId] = useState<string | null>(null)
   const [editingName, setEditingName] = useState('')
+  const [editingParentId, setEditingParentId] = useState<string>('')
   const [deletingTagId, setDeletingTagId] = useState<string | null>(null)
   const [tagActionLoading, setTagActionLoading] = useState(false)
   const [showTags, setShowTags] = useState(false)
+  const [newTagName, setNewTagName] = useState('')
+  const [newTagParentId, setNewTagParentId] = useState('')
+  const [creatingTag, setCreatingTag] = useState(false)
 
   // 密码设置
   const [showPasswordForm, setShowPasswordForm] = useState(false)
@@ -196,6 +202,7 @@ export default function RootPage() {
   function startEditTag(tag: TagItem) {
     setEditingTagId(tag.id)
     setEditingName(tag.name)
+    setEditingParentId(tag.parentId || '')
     setDeletingTagId(null)
   }
 
@@ -203,17 +210,44 @@ export default function RootPage() {
     if (!editingName.trim() || tagActionLoading) return
     setTagActionLoading(true)
     try {
+      const body: { name: string; parentId?: string | null } = { name: editingName.trim() }
+      // 只有当 parentId 实际变化时才发送
+      const originalTag = tags.find(t => t.id === id)
+      if (editingParentId !== (originalTag?.parentId || '')) {
+        body.parentId = editingParentId || null
+      }
       const res = await fetch(`/api/tags/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: editingName.trim() }),
+        body: JSON.stringify(body),
       })
       if (res.ok) {
-        setTags(prev => prev.map(t => t.id === id ? { ...t, name: editingName.trim() } : t))
+        fetchTags() // 重新拉取以获取正确的层级
         setEditingTagId(null)
       }
     } catch (_) {}
     setTagActionLoading(false)
+  }
+
+  async function createTag() {
+    if (!newTagName.trim() || creatingTag) return
+    setCreatingTag(true)
+    try {
+      const body: { name: string; parentId?: string } = { name: newTagName.trim() }
+      if (newTagParentId) body.parentId = newTagParentId
+      const res = await fetch('/api/tags', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const data = await res.json()
+      if (data.ok) {
+        setNewTagName('')
+        setNewTagParentId('')
+        fetchTags()
+      }
+    } catch (_) {}
+    setCreatingTag(false)
   }
 
   async function deleteTag(id: string) {
@@ -428,13 +462,48 @@ export default function RootPage() {
         </button>
         {showTags && (
           <div className="mt-3">
+            {/* 新建标签区域 */}
+            <div className="mb-3 p-3 rounded-lg" style={{ background: isDark ? '#333' : '#f9f9f4', border: `1px dashed ${isDark ? '#555' : '#ddd'}` }}>
+              <p className="text-xs mb-2" style={{ color: subColor }}>新建标签</p>
+              <div className="flex items-center gap-2">
+                <input
+                  value={newTagName}
+                  onChange={e => setNewTagName(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') createTag() }}
+                  placeholder="标签名"
+                  className="flex-1 text-xs px-2 py-1.5 rounded-lg outline-none"
+                  style={{ border: `1.5px solid ${isDark ? '#555' : '#ccc'}`, background: 'transparent', color: titleColor }}
+                />
+                <select
+                  value={newTagParentId}
+                  onChange={e => setNewTagParentId(e.target.value)}
+                  className="text-xs px-2 py-1.5 rounded-lg outline-none"
+                  style={{ border: `1.5px solid ${isDark ? '#555' : '#ccc'}`, background: 'transparent', color: titleColor, maxWidth: '90px' }}
+                >
+                  <option value="">无父级</option>
+                  {tags.filter(t => !t.parentId).map(t => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={createTag}
+                  disabled={creatingTag || !newTagName.trim()}
+                  className="text-xs px-3 py-1.5 rounded-lg text-white flex-shrink-0"
+                  style={{ background: (!newTagName.trim() || creatingTag) ? '#aaa' : '#8BC34A' }}
+                >
+                  添加
+                </button>
+              </div>
+            </div>
+
             {tags.length === 0 ? (
-              <p className="text-xs text-center py-3" style={{ color: dimColor }}>还没有标签，播种心得时创建吧</p>
+              <p className="text-xs text-center py-3" style={{ color: dimColor }}>还没有标签，在上方创建吧</p>
             ) : (
-              <div className="space-y-2">
-            {tags.map(tag => (
+              <div className="space-y-1">
+            {/* 顶级标签（包括有子标签的父标签） */}
+            {tags.filter(t => !t.parentId).map(tag => (
               <div key={tag.id}>
-                {/* 正常行 */}
+                {/* 父标签正常行 */}
                 {editingTagId !== tag.id && deletingTagId !== tag.id && (
                   <div className="flex items-center justify-between py-1.5">
                     <div className="flex items-center gap-2 min-w-0">
@@ -450,27 +519,15 @@ export default function RootPage() {
                       )}
                     </div>
                     <div className="flex items-center gap-3 flex-shrink-0 ml-2">
-                      {/* 编辑 */}
-                      <button
-                        onClick={() => startEditTag(tag)}
-                        className="text-xs transition"
-                        style={{ color: dimColor }}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
-                          fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <button onClick={() => startEditTag(tag)} className="text-xs transition" style={{ color: dimColor }}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                           <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4Z" />
                         </svg>
                       </button>
-                      {/* 删除（默认标签不可删） */}
                       {!tag.isDefault && (
-                        <button
-                          onClick={() => { setDeletingTagId(tag.id); setEditingTagId(null) }}
-                          className="text-xs transition"
-                          style={{ color: '#e57373' }}
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
-                            fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <button onClick={() => { setDeletingTagId(tag.id); setEditingTagId(null) }} className="text-xs transition" style={{ color: '#e57373' }}>
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <polyline points="3 6 5 6 21 6" />
                             <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
                           </svg>
@@ -480,36 +537,34 @@ export default function RootPage() {
                   </div>
                 )}
 
-                {/* 编辑行 */}
+                {/* 父标签编辑行 */}
                 {editingTagId === tag.id && (
-                  <div className="flex items-center gap-2 py-1">
+                  <div className="flex items-center gap-2 py-1 flex-wrap">
                     <input
                       value={editingName}
                       onChange={e => setEditingName(e.target.value)}
                       onKeyDown={e => { if (e.key === 'Enter') saveTagName(tag.id); if (e.key === 'Escape') setEditingTagId(null) }}
                       className="flex-1 text-xs px-2 py-1 rounded-lg outline-none"
-                      style={{ border: '1.5px solid #8BC34A', color: titleColor, background: 'transparent' }}
+                      style={{ border: '1.5px solid #8BC34A', color: titleColor, background: 'transparent', minWidth: '80px' }}
                       autoFocus
                     />
-                    <button
-                      onClick={() => saveTagName(tag.id)}
-                      disabled={tagActionLoading}
-                      className="text-xs px-3 py-1 rounded-lg"
-                      style={{ background: '#8BC34A', color: '#fff' }}
+                    <select
+                      value={editingParentId}
+                      onChange={e => setEditingParentId(e.target.value)}
+                      className="text-xs px-2 py-1 rounded-lg outline-none"
+                      style={{ border: '1.5px solid #8BC34A', color: titleColor, background: 'transparent' }}
                     >
-                      保存
-                    </button>
-                    <button
-                      onClick={() => setEditingTagId(null)}
-                      className="text-xs px-2 py-1 rounded-lg"
-                      style={{ color: subColor, border: `1px solid ${cardBorder}` }}
-                    >
-                      取消
-                    </button>
+                      <option value="">无父级</option>
+                      {tags.filter(t => !t.parentId && t.id !== tag.id).map(t => (
+                        <option key={t.id} value={t.id}>{t.name}</option>
+                      ))}
+                    </select>
+                    <button onClick={() => saveTagName(tag.id)} disabled={tagActionLoading} className="text-xs px-3 py-1 rounded-lg" style={{ background: '#8BC34A', color: '#fff' }}>保存</button>
+                    <button onClick={() => setEditingTagId(null)} className="text-xs px-2 py-1 rounded-lg" style={{ color: subColor, border: `1px solid ${cardBorder}` }}>取消</button>
                   </div>
                 )}
 
-                {/* 删除确认行 */}
+                {/* 父标签删除确认行 */}
                 {deletingTagId === tag.id && (
                   <div className="flex items-center justify-between py-1.5 px-3 rounded-xl"
                     style={{ background: 'rgba(229,115,115,0.06)', border: '1px solid rgba(229,115,115,0.2)' }}>
@@ -517,22 +572,87 @@ export default function RootPage() {
                       「{tag.name}」叶脉将随风而散，确认移除？
                     </p>
                     <div className="flex items-center gap-2 ml-3 flex-shrink-0">
-                      <button
-                        onClick={() => deleteTag(tag.id)}
-                        disabled={tagActionLoading}
-                        className="text-xs px-3 py-1 rounded-lg"
-                        style={{ background: '#e57373', color: '#fff' }}
-                      >
-                        移除
-                      </button>
-                      <button
-                        onClick={() => setDeletingTagId(null)}
-                        className="text-xs px-2 py-1 rounded-lg"
-                        style={{ color: subColor, border: `1px solid ${cardBorder}` }}
-                      >
-                        取消
-                      </button>
+                      <button onClick={() => deleteTag(tag.id)} disabled={tagActionLoading} className="text-xs px-3 py-1 rounded-lg" style={{ background: '#e57373', color: '#fff' }}>移除</button>
+                      <button onClick={() => setDeletingTagId(null)} className="text-xs px-2 py-1 rounded-lg" style={{ color: subColor, border: `1px solid ${cardBorder}` }}>取消</button>
                     </div>
+                  </div>
+                )}
+
+                {/* 子标签列表 */}
+                {tag.children && tag.children.length > 0 && (
+                  <div className="ml-4 pl-3 space-y-1" style={{ borderLeft: `1.5px solid ${isDark ? '#444' : '#e0e0e0'}` }}>
+                    {tag.children.map(child => {
+                      const childTag = tags.find(t => t.id === child.id)
+                      if (!childTag) return null
+                      return (
+                        <div key={child.id}>
+                          {editingTagId !== child.id && deletingTagId !== child.id && (
+                            <div className="flex items-center justify-between py-1">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="text-xs px-2 py-0.5 rounded-full flex-shrink-0"
+                                  style={{ background: 'rgba(139,195,74,0.06)', color: isDark ? '#8a8' : '#6a9a4f' }}>
+                                  · {child.name}
+                                </span>
+                                <span className="text-xs flex-shrink-0" style={{ color: dimColor }}>
+                                  {childTag.entryCount} 篇
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-3 flex-shrink-0 ml-2">
+                                <button onClick={() => startEditTag(childTag)} className="text-xs transition" style={{ color: dimColor }}>
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4Z" />
+                                  </svg>
+                                </button>
+                                {!childTag.isDefault && (
+                                  <button onClick={() => { setDeletingTagId(child.id); setEditingTagId(null) }} className="text-xs transition" style={{ color: '#e57373' }}>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <polyline points="3 6 5 6 21 6" />
+                                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                                    </svg>
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                          {editingTagId === child.id && (
+                            <div className="flex items-center gap-2 py-1 flex-wrap">
+                              <input
+                                value={editingName}
+                                onChange={e => setEditingName(e.target.value)}
+                                onKeyDown={e => { if (e.key === 'Enter') saveTagName(child.id); if (e.key === 'Escape') setEditingTagId(null) }}
+                                className="flex-1 text-xs px-2 py-1 rounded-lg outline-none"
+                                style={{ border: '1.5px solid #8BC34A', color: titleColor, background: 'transparent', minWidth: '80px' }}
+                                autoFocus
+                              />
+                              <select
+                                value={editingParentId}
+                                onChange={e => setEditingParentId(e.target.value)}
+                                className="text-xs px-2 py-1 rounded-lg outline-none"
+                                style={{ border: '1.5px solid #8BC34A', color: titleColor, background: 'transparent' }}
+                              >
+                                <option value="">无父级</option>
+                                {tags.filter(t => !t.parentId && t.id !== child.id).map(t => (
+                                  <option key={t.id} value={t.id}>{t.name}</option>
+                                ))}
+                              </select>
+                              <button onClick={() => saveTagName(child.id)} disabled={tagActionLoading} className="text-xs px-3 py-1 rounded-lg" style={{ background: '#8BC34A', color: '#fff' }}>保存</button>
+                              <button onClick={() => setEditingTagId(null)} className="text-xs px-2 py-1 rounded-lg" style={{ color: subColor, border: `1px solid ${cardBorder}` }}>取消</button>
+                            </div>
+                          )}
+                          {deletingTagId === child.id && (
+                            <div className="flex items-center justify-between py-1 px-2 rounded-lg"
+                              style={{ background: 'rgba(229,115,115,0.06)', border: '1px solid rgba(229,115,115,0.15)' }}>
+                              <p className="text-xs" style={{ color: '#e57373' }}>确认移除「{child.name}」？</p>
+                              <div className="flex items-center gap-2 ml-2 flex-shrink-0">
+                                <button onClick={() => deleteTag(child.id)} disabled={tagActionLoading} className="text-xs px-2 py-0.5 rounded-lg" style={{ background: '#e57373', color: '#fff' }}>移除</button>
+                                <button onClick={() => setDeletingTagId(null)} className="text-xs px-2 py-0.5 rounded-lg" style={{ color: subColor, border: `1px solid ${cardBorder}` }}>取消</button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
                 )}
               </div>

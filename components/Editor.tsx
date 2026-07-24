@@ -46,6 +46,7 @@ export default function Editor({ entryId, isNew }: EditorProps) {
   const [focusMode, setFocusMode] = useState(false)
   const [showTagPicker, setShowTagPicker] = useState(true)
   const [newTagName, setNewTagName] = useState("")
+  const [newTagParentId, setNewTagParentId] = useState<string>("")
   const [charCount, setCharCount] = useState(0)
   const [similarEntries, setSimilarEntries] = useState<SimilarEntry[]>([])
   const editorRef = useRef<HTMLDivElement>(null)
@@ -183,9 +184,20 @@ export default function Editor({ entryId, isNew }: EditorProps) {
   async function createTag() {
     if (!newTagName.trim()) return
     try {
-      const res = await fetch("/api/tags", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: newTagName.trim() }) })
+      const body: { name: string; parentId?: string } = { name: newTagName.trim() }
+      if (newTagParentId) body.parentId = newTagParentId
+      const res = await fetch("/api/tags", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
       const data = await res.json()
-      if (data.ok) { setAllTags(prev => [...prev, data.data]); setSelectedTags(prev => [...prev, data.data.id]); setNewTagName(""); toast.success("标签已创建") } else toast.error(data.error)
+      if (data.ok) {
+        // 重新拉取标签列表以获取正确的分组
+        const tagRes = await fetch("/api/tags")
+        const tagData = await tagRes.json()
+        if (tagData.ok) setAllTags(tagData.data)
+        setSelectedTags(prev => [...prev, data.data.id])
+        setNewTagName("")
+        setNewTagParentId("")
+        toast.success("标签已创建")
+      } else toast.error(data.error)
     } catch { toast.error("创建失败") }
   }
 
@@ -243,6 +255,17 @@ export default function Editor({ entryId, isNew }: EditorProps) {
           <div className="px-4 py-3 border-t animate-fade-in" style={{ borderColor: isDark ? "#444" : "#e0e0e0" }}>
             <div className="flex items-center gap-2 mb-2">
               <input className="input-sketch flex-1 px-3 py-2 text-sm outline-none" style={{ border: `1.5px solid ${inputBorder}`, background: inputBg, color: titleColor }} placeholder="新建标签名" value={newTagName} onChange={e => setNewTagName(e.target.value)} onKeyDown={e => e.key === "Enter" && createTag()} />
+              <select
+                value={newTagParentId}
+                onChange={e => setNewTagParentId(e.target.value)}
+                className="px-2 py-2 text-xs rounded-lg outline-none"
+                style={{ border: `1.5px solid ${inputBorder}`, background: inputBg, color: titleColor, maxWidth: '100px' }}
+              >
+                <option value="">无父级</option>
+                {allTags.filter(t => !t.parentId).map(t => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
               <button onClick={createTag} className="px-3 py-2 text-sm rounded-full text-white" style={{ background: "#8BC34A" }}>添加</button>
             </div>
             {/* 标签分组显示 */}
