@@ -233,21 +233,31 @@ function LeafPageContent() {
 
   // 平铺视图拖拽排序
   function handleFlatReorder(newEntries: Entry[], tagId: string) {
-    setEntries(newEntries)
-    saveOrder(newEntries.map(e => e.id), tagId)
+    // 同步更新各心得在当前标签下的 sortOrders，使本地立即呈现新顺序
+    const updated = newEntries.map((e, i) => ({
+      ...e,
+      sortOrders: { ...(e.sortOrders || {}), [tagId]: -(i + 1) },
+    }))
+    setEntries(updated)
+    saveOrder(updated.map(e => e.id), tagId)
   }
 
   // 分组视图组内拖拽排序
   function handleGroupReorder(group: EntryGroup, newGroupEntries: Entry[]) {
+    const tagId = group.tagId === '__ungrouped__' ? selectedTag!.id : group.tagId
+    // 同步更新本组心得在该标签下的 sortOrders
+    const updatedGroupEntries = newGroupEntries.map((e, i) => ({
+      ...e,
+      sortOrders: { ...(e.sortOrders || {}), [tagId]: -(i + 1) },
+    }))
     // 重建 entries：按分组顺序拼接，本组用新顺序
     const newEntries: Entry[] = []
     for (const g of entryGroups) {
-      if (g.tagId === group.tagId) newEntries.push(...newGroupEntries)
+      if (g.tagId === group.tagId) newEntries.push(...updatedGroupEntries)
       else newEntries.push(...g.entries)
     }
     setEntries(newEntries)
-    const tagId = group.tagId === '__ungrouped__' ? selectedTag!.id : group.tagId
-    saveOrder(newGroupEntries.map(e => e.id), tagId)
+    saveOrder(updatedGroupEntries.map(e => e.id), tagId)
   }
 
   // 将心得按子标签分组（各组内按对应标签的 sortOrder 排序）
