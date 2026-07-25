@@ -2,6 +2,21 @@
 import { Suspense, useEffect, useState, useRef, useMemo } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useTheme } from "@/lib/useTheme"
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core"
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
 
 interface TagChild {
   id: string
@@ -25,6 +40,7 @@ interface Entry {
   recordTime: string
   isTop: boolean
   isFavorite: boolean
+  sortOrders?: Record<string, number>
 }
 
 interface EntryGroup {
@@ -69,6 +85,18 @@ function lightenColor(hex: string): string {
   const g = Math.min(255, parseInt(hex.slice(3, 5), 16) + 60)
   const b = Math.min(255, parseInt(hex.slice(5, 7), 16) + 60)
   return `rgb(${r},${g},${b})`
+}
+
+// 按指定标签的 sortOrder 排序心得：
+// 置顶优先；未排序（无记录，视为 0）按时间倒序排最前；已排序（负数）按 sortOrder 倒序
+function sortEntriesByTag(entries: Entry[], tagId: string): Entry[] {
+  return [...entries].sort((a, b) => {
+    if (a.isTop !== b.isTop) return a.isTop ? -1 : 1
+    const sa = a.sortOrders?.[tagId] ?? 0
+    const sb = b.sortOrders?.[tagId] ?? 0
+    if (sa !== sb) return sb - sa
+    return new Date(b.recordTime).getTime() - new Date(a.recordTime).getTime()
+  })
 }
 
 export default function LeafPage() {
@@ -194,14 +222,42 @@ function LeafPageContent() {
     })
   }
 
-  // 将心得按子标签分组
+  // 保存排序到服务端
+  function saveOrder(orderedEntryIds: string[], tagId: string) {
+    fetch('/api/entries/reorder', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tagId, orderedEntryIds }),
+    }).catch(() => {})
+  }
+
+  // 平铺视图拖拽排序
+  function handleFlatReorder(newEntries: Entry[], tagId: string) {
+    setEntries(newEntries)
+    saveOrder(newEntries.map(e => e.id), tagId)
+  }
+
+  // 分组视图组内拖拽排序
+  function handleGroupReorder(group: EntryGroup, newGroupEntries: Entry[]) {
+    // 重建 entries：按分组顺序拼接，本组用新顺序
+    const newEntries: Entry[] = []
+    for (const g of entryGroups) {
+      if (g.tagId === group.tagId) newEntries.push(...newGroupEntries)
+      else newEntries.push(...g.entries)
+    }
+    setEntries(newEntries)
+    const tagId = group.tagId === '__ungrouped__' ? selectedTag!.id : group.tagId
+    saveOrder(newGroupEntries.map(e => e.id), tagId)
+  }
+
+  // 将心得按子标签分组（各组内按对应标签的 sortOrder 排序）
   const entryGroups = useMemo((): EntryGroup[] => {
     if (!selectedTag || entries.length === 0) return []
 
     const children = selectedTag.children || []
     if (children.length === 0) {
       // 没有子标签，全部作为单组
-      return [{ tagId: selectedTag.id, tagName: selectedTag.name, entries }]
+      return [{ tagId: selectedTag.id, tagName: selectedTag.name, entries: sortEntriesByTag(entries, selectedTag.id) }]
     }
 
     const childIds = new Set(children.map(c => c.id))
@@ -224,21 +280,27 @@ function LeafPageContent() {
       }
     }
 
-    // 只保留有心得的分组
+    // 只保留有心得的分组（组内按该子标签的 sortOrder 排序）
     for (const child of children) {
       const groupEntries = grouped.get(child.id) || []
       if (groupEntries.length > 0) {
-        groups.push({ tagId: child.id, tagName: child.name, entries: groupEntries })
+        groups.push({ tagId: child.id, tagName: child.name, entries: sortEntriesByTag(groupEntries, child.id) })
       }
     }
 
-    // 未归类的放在最后
+    // 未归类的放在最后（按父标签的 sortOrder 排序）
     if (ungrouped.length > 0) {
-      groups.push({ tagId: '__ungrouped__', tagName: '未归类', entries: ungrouped })
+      groups.push({ tagId: '__ungrouped__', tagName: '未归类', entries: sortEntriesByTag(ungrouped, selectedTag.id) })
     }
 
     return groups
   }, [selectedTag, entries])
+
+  // 平铺视图数据：仅一个分组时，用该组的排序后心得
+  const flatEntries = entryGroups.length === 1 ? entryGroups[0].entries : entries
+  const flatTagId = entryGroups.length === 1
+    ? (entryGroups[0].tagId === '__ungrouped__' ? selectedTag?.id || '' : entryGroups[0].tagId)
+    : (selectedTag?.id || '')
 
   const maxCount = topLevelTags.length > 0
     ? Math.max(...topLevelTags.map(t => t.entryCount))
@@ -338,21 +400,20 @@ function LeafPageContent() {
                       </div>
                     </button>
 
-                    {/* 分组内的心得列表 */}
+                    {/* 分组内的心得列表（支持拖拽排序） */}
                     {isExpanded && (
-                      <div className="space-y-2 mt-2 ml-2">
-                        {group.entries.map(entry => (
-                          <EntryCard
-                            key={entry.id}
-                            entry={entry}
-                            isDark={isDark}
-                            cardBg={cardBg}
-                            cardBorder={cardBorder}
-                            titleColor={titleColor}
-                            selectedTag={selectedTag}
-                            router={router}
-                          />
-                        ))}
+                      <div className="mt-2 ml-2">
+                        <SortableEntryList
+                          entries={group.entries}
+                          tagId={group.tagId === '__ungrouped__' ? selectedTag!.id : group.tagId}
+                          onReorder={(newOrder: Entry[]) => handleGroupReorder(group, newOrder)}
+                          isDark={isDark}
+                          cardBg={cardBg}
+                          cardBorder={cardBorder}
+                          titleColor={titleColor}
+                          selectedTag={selectedTag}
+                          router={router}
+                        />
                       </div>
                     )}
                   </div>
@@ -360,21 +421,18 @@ function LeafPageContent() {
               })}
             </div>
           ) : (
-            // 无子标签分组：直接平铺显示
-            <div className="space-y-3">
-              {entries.map(entry => (
-                <EntryCard
-                  key={entry.id}
-                  entry={entry}
-                  isDark={isDark}
-                  cardBg={cardBg}
-                  cardBorder={cardBorder}
-                  titleColor={titleColor}
-                  selectedTag={selectedTag}
-                  router={router}
-                />
-              ))}
-            </div>
+            // 无子标签分组：直接平铺显示（支持拖拽排序）
+            <SortableEntryList
+              entries={flatEntries}
+              tagId={flatTagId}
+              onReorder={(newOrder: Entry[]) => handleFlatReorder(newOrder, flatTagId)}
+              isDark={isDark}
+              cardBg={cardBg}
+              cardBorder={cardBorder}
+              titleColor={titleColor}
+              selectedTag={selectedTag}
+              router={router}
+            />
           )}
         </div>
       )}
@@ -398,7 +456,7 @@ function EntryCard({ entry, isDark, cardBg, cardBorder, titleColor, selectedTag,
         sessionStorage.setItem('leaf_scroll', String(window.scrollY))
         router.push(`/entry/${entry.id}/view?from=leaf${selectedTag ? `&tagId=${selectedTag.id}` : ''}`)
       }}
-      className="p-4 rounded-xl cursor-pointer transition-all active:scale-[0.98]"
+      className="p-4 rounded-xl cursor-pointer transition-all active:scale-[0.98] flex-1 min-w-0"
       style={{ background: cardBg, border: `1px solid ${cardBorder}` }}
     >
       {entry.title ? (
@@ -423,5 +481,111 @@ function EntryCard({ entry, isDark, cardBg, cardBorder, titleColor, selectedTag,
         </span>
       </div>
     </div>
+  )
+}
+
+// 可拖拽的心得卡片：左侧拖拽手柄 + 心得卡片
+function SortableEntryCard({ entry, isDark, cardBg, cardBorder, titleColor, selectedTag, router }: {
+  entry: Entry
+  isDark: boolean
+  cardBg: string
+  cardBorder: string
+  titleColor: string
+  selectedTag: Tag | null
+  router: ReturnType<typeof useRouter>
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: entry.id })
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+      }}
+      className="flex items-stretch gap-1.5"
+    >
+      {/* 拖拽手柄：仅手柄可拖拽，避免与点击打开心得混淆 */}
+      <button
+        {...attributes}
+        {...listeners}
+        onClick={e => e.stopPropagation()}
+        className="shrink-0 w-7 flex items-center justify-center rounded-lg cursor-grab active:cursor-grabbing touch-none select-none"
+        style={{ color: isDragging ? '#8BC34A' : '#c4c4c4' }}
+        aria-label="拖拽排序"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+          fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+          <line x1="4" y1="7" x2="20" y2="7" />
+          <line x1="4" y1="12" x2="20" y2="12" />
+          <line x1="4" y1="17" x2="20" y2="17" />
+        </svg>
+      </button>
+      <EntryCard
+        entry={entry}
+        isDark={isDark}
+        cardBg={cardBg}
+        cardBorder={cardBorder}
+        titleColor={titleColor}
+        selectedTag={selectedTag}
+        router={router}
+      />
+    </div>
+  )
+}
+
+// 可拖拽排序的心得列表
+function SortableEntryList({ entries, tagId, onReorder, isDark, cardBg, cardBorder, titleColor, selectedTag, router }: {
+  entries: Entry[]
+  tagId: string
+  onReorder: (newEntries: Entry[]) => void
+  isDark: boolean
+  cardBg: string
+  cardBorder: string
+  titleColor: string
+  selectedTag: Tag | null
+  router: ReturnType<typeof useRouter>
+}) {
+  const sensors = useSensors(
+    // 拖动 5px 后才触发，避免与点击混淆
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  )
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const oldIndex = entries.findIndex(e => e.id === active.id)
+    const newIndex = entries.findIndex(e => e.id === over.id)
+    if (oldIndex === -1 || newIndex === -1) return
+    onReorder(arrayMove(entries, oldIndex, newIndex))
+  }
+
+  return (
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <SortableContext items={entries.map(e => e.id)} strategy={verticalListSortingStrategy}>
+        <div className="space-y-2">
+          {entries.map(entry => (
+            <SortableEntryCard
+              key={entry.id}
+              entry={entry}
+              isDark={isDark}
+              cardBg={cardBg}
+              cardBorder={cardBorder}
+              titleColor={titleColor}
+              selectedTag={selectedTag}
+              router={router}
+            />
+          ))}
+        </div>
+      </SortableContext>
+    </DndContext>
   )
 }

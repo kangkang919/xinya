@@ -23,6 +23,8 @@ export async function GET(req: NextRequest) {
   if (favorite) where.isFavorite = true
 
   // 标签筛选：支持父标签 → 查所有子标签的心得
+  // viewTagIds：当前标签视图包含的所有标签 id（父标签 + 子标签）
+  let viewTagIds: string[] = []
   if (tagId) {
     // 先查该标签是否有子标签
     const childTags = await prisma.tag.findMany({
@@ -31,10 +33,11 @@ export async function GET(req: NextRequest) {
     })
     if (childTags.length > 0) {
       // 是父标签：查该父标签 + 所有子标签下的心得
-      const allTagIds = [tagId, ...childTags.map(c => c.id)]
-      where.tags = { some: { id: { in: allTagIds } } }
+      viewTagIds = [tagId, ...childTags.map(c => c.id)]
+      where.tags = { some: { id: { in: viewTagIds } } }
     } else {
       // 是普通标签或子标签：只查该标签
+      viewTagIds = [tagId]
       where.tags = { some: { id: tagId } }
     }
   }
@@ -82,42 +85,84 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // 标签视图自定义排序模式：有 tagId 且非搜索
+  const isTagView = viewTagIds.length > 0 && searchKeywords.length === 0
+
   // 排序：搜索时按相关度（标题命中优先），否则按时间
   const orderBy: any = searchKeywords.length > 0
     ? undefined  // Prisma 不直接支持 ts_rank，用应用层排序
     : [{ isTop: "desc" }, { recordTime: "desc" }]
 
-  const [entries, total] = await Promise.all([
-    prisma.entry.findMany({
+  let resultEntries: any[]
+  let total: number
+  // entryId -> { tagId -> sortOrder }，供前端分组视图按子标签排序
+  const sortMap = new Map<string, Record<string, number>>()
+
+  if (isTagView) {
+    // 标签视图：取全部心得，应用层按 sortOrder 排序后再分页
+    const allEntries = await prisma.entry.findMany({
       where,
       include: { tags: { select: { id: true, name: true } } },
-      ...(orderBy ? { orderBy } : {}),
-      skip: (page - 1) * limit,
-      take: limit,
-    }),
-    prisma.entry.count({ where }),
-  ])
+    })
+    total = allEntries.length
 
-  // 搜索时做应用层相关度排序
-  let resultEntries = entries
-  if (searchKeywords.length > 0) {
-    type ScoredEntry = typeof entries[number] & { _score: number }
-    const scored: ScoredEntry[] = entries.map(e => {
-      let score = 0
-      const titleLower = e.title.toLowerCase()
-      const contentLower = stripHtml(e.content, 500).toLowerCase()
-      for (const kw of searchKeywords) {
-        const kwLower = kw.toLowerCase()
-        if (titleLower.includes(kwLower)) score += 3
-        if (contentLower.includes(kwLower)) score += 1
-      }
-      return { ...e, _score: score }
-    })
-    scored.sort((a, b) => {
+    // 查询这些心得在当前视图所有标签下的排序记录
+    const entryIds = allEntries.map(e => e.id)
+    const sortRecords = entryIds.length > 0
+      ? await prisma.entryTagSort.findMany({
+          where: { entryId: { in: entryIds }, tagId: { in: viewTagIds } },
+        })
+      : []
+    for (const r of sortRecords) {
+      if (!sortMap.has(r.entryId)) sortMap.set(r.entryId, {})
+      sortMap.get(r.entryId)![r.tagId] = r.sortOrder
+    }
+
+    // 排序：置顶优先；未排序（无记录）按时间倒序排最前；已排序按 sortOrder 倒序
+    resultEntries = [...allEntries].sort((a, b) => {
       if (a.isTop !== b.isTop) return a.isTop ? -1 : 1
-      return b._score - a._score
+      const sa = sortMap.get(a.id)?.[tagId] ?? 0
+      const sb = sortMap.get(b.id)?.[tagId] ?? 0
+      if (sa !== sb) return sb - sa  // 0 在最前，然后 -1、-2...
+      return b.recordTime.getTime() - a.recordTime.getTime()
     })
-    resultEntries = scored
+
+    // 手动分页
+    resultEntries = resultEntries.slice((page - 1) * limit, page * limit)
+  } else {
+    const [entries, count] = await Promise.all([
+      prisma.entry.findMany({
+        where,
+        include: { tags: { select: { id: true, name: true } } },
+        ...(orderBy ? { orderBy } : {}),
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.entry.count({ where }),
+    ])
+    resultEntries = entries
+    total = count
+
+    // 搜索时做应用层相关度排序
+    if (searchKeywords.length > 0) {
+      type ScoredEntry = typeof entries[number] & { _score: number }
+      const scored: ScoredEntry[] = entries.map(e => {
+        let score = 0
+        const titleLower = e.title.toLowerCase()
+        const contentLower = stripHtml(e.content, 500).toLowerCase()
+        for (const kw of searchKeywords) {
+          const kwLower = kw.toLowerCase()
+          if (titleLower.includes(kwLower)) score += 3
+          if (contentLower.includes(kwLower)) score += 1
+        }
+        return { ...e, _score: score }
+      })
+      scored.sort((a, b) => {
+        if (a.isTop !== b.isTop) return a.isTop ? -1 : 1
+        return b._score - a._score
+      })
+      resultEntries = scored
+    }
   }
 
   const data = resultEntries.map(e => ({
@@ -130,6 +175,8 @@ export async function GET(req: NextRequest) {
     isTop: e.isTop,
     isFavorite: e.isFavorite,
     isDraft: e.isDraft,
+    // 标签视图返回各标签下的排序记录，供前端分组排序
+    ...(isTagView ? { sortOrders: sortMap.get(e.id) || {} } : {}),
     // 搜索时返回匹配关键词数，供前端高亮
     ...(searchKeywords.length > 0 ? { matchCount: searchKeywords.filter(kw =>
       e.title.toLowerCase().includes(kw.toLowerCase()) ||

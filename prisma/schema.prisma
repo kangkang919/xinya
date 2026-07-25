@@ -47,6 +47,7 @@ model Entry {
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   tags        Tag[]     @relation("EntryTags")
   quizQuestions QuizQuestion[]
+  sortOrders  EntryTagSort[]
 
   @@index([userId, recordTime(sort: Desc)])
   @@index([userId, isTop])
@@ -66,10 +67,26 @@ model Tag {
   entries  Entry[]  @relation("EntryTags")
   parent   Tag?     @relation("TagHierarchy", fields: [parentId], references: [id])
   children Tag[]    @relation("TagHierarchy")
+  entrySortOrders EntryTagSort[]
 
   @@unique([userId, name])
   @@index([userId])
   @@index([parentId])
+}
+
+// 心得在标签视图下的自定义排序（每个标签独立排序）
+// sortOrder = 0 表示未排序（按 recordTime 倒序，排在最前）
+// sortOrder 为负数表示已手动排序（-1 最靠前，-2 次之...）
+model EntryTagSort {
+  entryId   String
+  tagId     String
+  sortOrder Int      @default(0)
+
+  entry     Entry    @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  tag       Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([entryId, tagId])
+  @@index([tagId, sortOrder])
 }
 
 model Share {

@@ -44,10 +44,26 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!title?.trim())
     return NextResponse.json({ ok: false, error: "标题不能为空" }, { status: 400 })
 
+  // 获取当前标签，用于标签变更后清理排序记录
+  const currentEntry = await prisma.entry.findFirst({
+    where: { id, userId },
+    select: { tags: { select: { id: true } } },
+  })
+  if (!currentEntry) return NextResponse.json({ ok: false, error: "未找到该心得" }, { status: 404 })
+
   let finalTagIds: string[] = tagIds || []
   if (finalTagIds.length === 0) {
     const defaultTag = await prisma.tag.findFirst({ where: { userId, isDefault: true } })
     if (defaultTag) finalTagIds = [defaultTag.id]
+  }
+
+  // 清理被移除标签的排序记录：心得对新标签而言是"新心得"，按时间倒序排列
+  const currentTagIds = currentEntry.tags.map(t => t.id)
+  const removedTagIds = currentTagIds.filter(tid => !finalTagIds.includes(tid))
+  if (removedTagIds.length > 0) {
+    await prisma.entryTagSort.deleteMany({
+      where: { entryId: id, tagId: { in: removedTagIds } },
+    })
   }
 
   const entry = await prisma.entry.update({
