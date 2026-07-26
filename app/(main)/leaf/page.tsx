@@ -178,6 +178,17 @@ function LeafPageContent() {
     }
   }, [loadingEntries])
 
+  // 恢复展开的分组状态（从心得详情返回时，保持点击前的分组展开界面）
+  useEffect(() => {
+    const saved = sessionStorage.getItem('leaf_expanded')
+    if (saved) {
+      sessionStorage.removeItem('leaf_expanded')
+      try {
+        setExpandedGroups(new Set(JSON.parse(saved)))
+      } catch {}
+    }
+  }, [])
+
   useEffect(() => {
     let scrollTimer: ReturnType<typeof setTimeout>
     const handleScroll = () => {
@@ -423,6 +434,7 @@ function LeafPageContent() {
                           titleColor={titleColor}
                           selectedTag={selectedTag}
                           router={router}
+                          expandedGroups={[...expandedGroups]}
                         />
                       </div>
                     )}
@@ -442,6 +454,7 @@ function LeafPageContent() {
               titleColor={titleColor}
               selectedTag={selectedTag}
               router={router}
+              expandedGroups={[...expandedGroups]}
             />
           )}
         </div>
@@ -451,7 +464,7 @@ function LeafPageContent() {
 }
 
 // 心得卡片子组件
-function EntryCard({ entry, isDark, cardBg, cardBorder, titleColor, selectedTag, router }: {
+function EntryCard({ entry, isDark, cardBg, cardBorder, titleColor, selectedTag, router, expandedGroups }: {
   entry: Entry
   isDark: boolean
   cardBg: string
@@ -459,11 +472,13 @@ function EntryCard({ entry, isDark, cardBg, cardBorder, titleColor, selectedTag,
   titleColor: string
   selectedTag: Tag | null
   router: ReturnType<typeof useRouter>
+  expandedGroups: string[]
 }) {
   return (
     <div
       onClick={() => {
         sessionStorage.setItem('leaf_scroll', String(window.scrollY))
+        sessionStorage.setItem('leaf_expanded', JSON.stringify(expandedGroups))
         router.push(`/entry/${entry.id}/view?from=leaf${selectedTag ? `&tagId=${selectedTag.id}` : ''}`)
       }}
       className="p-4 rounded-xl cursor-pointer transition-all active:scale-[0.98] flex-1 min-w-0"
@@ -495,7 +510,7 @@ function EntryCard({ entry, isDark, cardBg, cardBorder, titleColor, selectedTag,
 }
 
 // 可拖拽的心得卡片：左侧拖拽手柄 + 心得卡片
-function SortableEntryCard({ entry, isDark, cardBg, cardBorder, titleColor, selectedTag, router }: {
+function SortableEntryCard({ entry, isDark, cardBg, cardBorder, titleColor, selectedTag, router, expandedGroups }: {
   entry: Entry
   isDark: boolean
   cardBg: string
@@ -503,6 +518,7 @@ function SortableEntryCard({ entry, isDark, cardBg, cardBorder, titleColor, sele
   titleColor: string
   selectedTag: Tag | null
   router: ReturnType<typeof useRouter>
+  expandedGroups: string[]
 }) {
   const {
     attributes,
@@ -547,13 +563,14 @@ function SortableEntryCard({ entry, isDark, cardBg, cardBorder, titleColor, sele
         titleColor={titleColor}
         selectedTag={selectedTag}
         router={router}
+        expandedGroups={expandedGroups}
       />
     </div>
   )
 }
 
 // 可拖拽排序的心得列表
-function SortableEntryList({ entries, tagId, onReorder, isDark, cardBg, cardBorder, titleColor, selectedTag, router }: {
+function SortableEntryList({ entries, tagId, onReorder, isDark, cardBg, cardBorder, titleColor, selectedTag, router, expandedGroups }: {
   entries: Entry[]
   tagId: string
   onReorder: (newEntries: Entry[]) => void
@@ -563,6 +580,7 @@ function SortableEntryList({ entries, tagId, onReorder, isDark, cardBg, cardBord
   titleColor: string
   selectedTag: Tag | null
   router: ReturnType<typeof useRouter>
+  expandedGroups: string[]
 }) {
   const sensors = useSensors(
     // 拖动 5px 后才触发，避免与点击混淆
@@ -592,6 +610,7 @@ function SortableEntryList({ entries, tagId, onReorder, isDark, cardBg, cardBord
               titleColor={titleColor}
               selectedTag={selectedTag}
               router={router}
+              expandedGroups={expandedGroups}
             />
           ))}
         </div>
