@@ -16,6 +16,20 @@ interface MonthStats {
   total: number
 }
 
+interface InsightContent {
+  themes: string[]
+  moodTrend: string
+  growth: string
+  encouragement: string
+}
+
+interface InsightData {
+  status: "ongoing" | "insufficient" | "ready"
+  count?: number
+  threshold?: number
+  content?: InsightContent
+}
+
 const WEEKDAY_LABELS = ["一", "二", "三", "四", "五", "六", "日"]
 
 function getDaysInMonth(year: number, month: number): number {
@@ -55,6 +69,8 @@ export default function RingPage() {
   const [loading, setLoading] = useState(true)
   const [tooltip, setTooltip] = useState<{ text: string; x: number; y: number } | null>(null)
   const [entryCount, setEntryCount] = useState(0)
+  const [insight, setInsight] = useState<InsightData | null>(null)
+  const [insightLoading, setInsightLoading] = useState(false)
 
   useEffect(() => {
     setLoading(true)
@@ -66,6 +82,17 @@ export default function RingPage() {
       })
       .catch(() => {})
       .finally(() => setLoading(false))
+
+    // 获取本月洞察（三态：进行中 / 不足3篇 / 洞察内容）
+    setInsight(null)
+    setInsightLoading(true)
+    fetch(`/api/insight/monthly?year=${year}&month=${month}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.ok) setInsight(data.data)
+      })
+      .catch(() => {})
+      .finally(() => setInsightLoading(false))
 
     // 获取累计篇数
     fetch('/api/review/settings')
@@ -324,6 +351,52 @@ export default function RingPage() {
           <p className="text-xs mt-1" style={{ color: "#999" }}>日均篇数</p>
         </div>
       </div>
+
+      {/* 本月洞察 */}
+      {(insightLoading || insight) && (
+        <div className="p-4 rounded-xl mb-3" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
+          <div className="flex items-center gap-2 mb-3">
+            <span style={{ fontSize: "16px" }}>🌙</span>
+            <span className="text-sm font-semibold" style={{ color: titleColor }}>本月洞察</span>
+          </div>
+
+          {insightLoading ? (
+            <div className="text-center py-4">
+              <div className="text-2xl mb-2 animate-pulse">🌱</div>
+              <p className="text-xs" style={{ color: dimColor }}>正在凝出这个月的洞察…</p>
+            </div>
+          ) : insight?.status === "ready" && insight.content ? (
+            <div>
+              {insight.content.themes.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {insight.content.themes.map((t, i) => (
+                    <span key={i} className="text-xs px-2.5 py-1 rounded-full" style={{ background: isDark ? "rgba(139,195,74,0.18)" : "rgba(139,195,74,0.12)", color: "#8BC34A" }}>
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              )}
+              <p className="text-sm leading-relaxed mb-2" style={{ color: isDark ? "#ccc" : "#555" }}>{insight.content.moodTrend}</p>
+              <p className="text-sm leading-relaxed mb-3" style={{ color: isDark ? "#ccc" : "#555" }}>{insight.content.growth}</p>
+              <p className="text-sm italic" style={{ color: "#8BC34A" }}>「{insight.content.encouragement}」</p>
+            </div>
+          ) : insight?.status === "insufficient" ? (
+            <div className="py-1">
+              <p className="text-sm font-medium mb-1.5" style={{ color: titleColor }}>🍃 这个月，叶子还太少</p>
+              <p className="text-xs leading-relaxed" style={{ color: dimColor }}>
+                本月只留下了 {insight.count} 篇心得，还凝不出一枚完整的洞察。从下个月起，集满 {insight.threshold} 篇心得，月末 AI 便会为你回望这一段时光。
+              </p>
+            </div>
+          ) : (
+            <div className="py-1">
+              <p className="text-sm font-medium mb-1.5" style={{ color: titleColor }}>🌙 这个月还在生长</p>
+              <p className="text-xs leading-relaxed" style={{ color: dimColor }}>
+                待到月末，AI 才会为这个月凝出专属洞察。先慢慢记录，月底自有一份回望等着你。
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 累计篇数 */}
       <div className="p-4 rounded-xl" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>

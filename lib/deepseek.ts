@@ -112,3 +112,106 @@ export async function generateQuestions(
   console.error("[DeepSeek] All retries failed:", lastError)
   return { keyPoints: "", questions: [] }
 }
+
+// ========== 月度成长洞察（F5.9） ==========
+export interface MonthlyInsight {
+  themes: string[]
+  moodTrend: string
+  growth: string
+  encouragement: string
+}
+
+/**
+ * 基于当月全部心得的要点总结（keyPoints），生成月度成长洞察。
+ * 输入源为已蒸馏的 ≤150 字总结，覆盖全部篇数，token 成本极低。
+ */
+export async function generateMonthlyInsight(
+  monthLabel: string,
+  entrySummaries: { title: string; keyPoints: string }[],
+  maxRetries = 1
+): Promise<MonthlyInsight | null> {
+  const list = entrySummaries
+    .map((e, i) => `${i + 1}. 【${e.title || "无题"}】${e.keyPoints}`)
+    .join("\n")
+
+  const prompt = `你是“心芽”里的洞察分析师，一位温柔、诗意、从不评判的成长陪伴者。
+下面是用户 ${monthLabel} 记录的心得要点总结（共 ${entrySummaries.length} 篇）：
+
+${list}
+
+请你基于这些总结，为用户凝出一枚这个月的成长洞察，包含：
+1. themes：这个月反复出现的主题关键词（2-4个，每个≤4字）
+2. moodTrend：这个月整体的情绪基调与变化（1-2句，温柔观察，不说教）
+3. growth：这个月用户内心的成长或探索（1-2句，肯定式的发现）
+4. encouragement：一句诗意的鼓励（1句，像朋友写在叶脉上的话，≤30字）
+
+语气要求：温柔、克制、诗意，多用自然意象（叶、光、根、季节），不要列举数字，不要鸡汤口号，不要发散。
+
+只返回 JSON，不要其他内容：
+{
+  "themes": ["关键词1", "关键词2"],
+  "moodTrend": "...",
+  "growth": "...",
+  "encouragement": "..."
+}`
+
+  let lastError: Error | null = null
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 30000) // 30秒超时
+
+      const res = await fetch(DEEPSEEK_API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${DEEPSEEK_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: "deepseek-chat",
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.8,
+          max_tokens: 800,
+        }),
+        signal: controller.signal,
+      })
+
+      clearTimeout(timeoutId)
+
+      if (!res.ok) {
+        console.error(`[DeepSeek:Insight] API error (attempt ${attempt + 1}):`, res.status)
+        lastError = new Error(`API error: ${res.status}`)
+        continue
+      }
+
+      const data = await res.json()
+      const content = data.choices?.[0]?.message?.content || ""
+
+      const jsonMatch = content.match(/\{[\s\S]*\}/)
+      if (!jsonMatch) {
+        console.error(`[DeepSeek:Insight] No JSON found (attempt ${attempt + 1})`)
+        lastError = new Error("No JSON in response")
+        continue
+      }
+
+      const result = JSON.parse(jsonMatch[0])
+      const themes = Array.isArray(result.themes)
+        ? result.themes.map((t: string) => String(t).substring(0, 6)).slice(0, 4)
+        : []
+
+      return {
+        themes,
+        moodTrend: String(result.moodTrend || "").substring(0, 200),
+        growth: String(result.growth || "").substring(0, 200),
+        encouragement: String(result.encouragement || "").substring(0, 60),
+      }
+    } catch (e) {
+      console.error(`[DeepSeek:Insight] Error (attempt ${attempt + 1}):`, e)
+      lastError = e as Error
+    }
+  }
+
+  console.error("[DeepSeek:Insight] All retries failed:", lastError)
+  return null
+}

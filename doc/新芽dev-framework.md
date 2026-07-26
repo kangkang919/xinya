@@ -145,7 +145,7 @@ Phase 7: 产品交付     —— 部署、交付
 | F5.6 | 当月无记录时仍显示完整日历网格（非当月灰色 + 当月白底灰框），不显示空状态文案 | P0 |
 | F5.7 | 统计卡片下方增加「累计篇数」，显示用户历史总心得数 ✅ | P0 |
 | F5.8 | 「拾遗」设置入口已移至根系页（开关），心得 < 20 条时置灰提示 ✅ | P0 |
-| F5.9 | AI 洞察卡片：暂不实现，列入待办 | 待办 |
+| F5.9 | AI 月度成长洞察卡片：月末结算（北京时间跨月），当月≥3篇时基于心得 AI 总结生成主题/情绪/成长/鼓励，永久缓存于 InsightReport ✅ | P1 |
 
 #### F9: 拾遗（每日概念卡片）
 
@@ -347,7 +347,7 @@ Phase 7: 产品交付     —— 部署、交付
 | PATCH | `/api/review/settings` | 拾遗：开启/关闭设置 |
 | GET | `/api/review/settings` | 拾遗：获取设置状态 + 心得数量 |
 | GET | `/api/export` | 导出数据 |
-| GET | `/api/insights` | AI 洞察（待实现） |
+| GET | `/api/insight/monthly?year=&month=` | AI 月度洞察（三态：ongoing 进行中 / insufficient 不足3篇 / ready 洞察内容） |
 | POST | `/api/shares` | 创建分享链接（待实现） |
 | GET | `/api/shares` | 分享链接列表（待实现） |
 | DELETE | `/api/shares/[id]` | 撤销分享（待实现） |
@@ -370,7 +370,7 @@ Entry         -- 心得（userId, title, content, mood, recordTime, isTop, isFav
 Tag           -- 标签（userId, name, parentId, isDefault）支持 2 级层级
 EntryTag      -- 心得与标签多对多关系
 Share         -- 分享链接（待补充）
-Insight       -- AI 洞察（待补充）
+InsightReport -- AI 洞察报告（userId, type, periodStart, periodEnd, content Json）月度洞察缓存
 QuizQuestion  -- 拾遗题目缓存（entryId, question, type, options, answer, explanation, angle）
 QuizRecord    -- 拾遗答题记录（userId, questionId, entryId, correct, answeredAt, nextReviewAt, streak）
 UserSetting   -- 用户设置（userId, reviewEnabled, lastCardDate, lastCardQuestionId）
@@ -387,13 +387,31 @@ public/       -- 静态资源（PWA 图标、manifest.json）
 
 ### 2.6 系统提示词设计（如涉及 LLM）
 
-> AI 洞察角色待设计，当前未实现。
+#### 角色 1: 心芽拾遗出题老师（已实现）
 
-#### 角色 1: 心芽洞察分析师（待补充）
+> 见 `lib/deepseek.ts` 的 `generateQuestions`：以老师角色对单篇心得出 3 道题（单选/多选/判断），同时生成 ≤150 字要点总结（keyPoints）。
+
+#### 角色 2: 心芽洞察分析师（已实现，F5.9）
+
+> 见 `lib/deepseek.ts` 的 `generateMonthlyInsight`。输入源为当月全部心得的 AI 总结（keyPoints），月末结算后生成月度成长洞察。
 
 ```
-[System Prompt 内容待补充]
+你是“心芽”里的洞察分析师，一位温柔、诗意、从不评判的成长陪伴者。
+基于用户某月全部心得的要点总结，凝出一枚月度成长洞察，只返回 JSON：
+{
+  "themes": ["主题关键词2-4个，每个≤4字"],
+  "moodTrend": "整体情绪基调与变化（1-2句，温柔观察，不说教）",
+  "growth": "内心的成长或探索（1-2句，肯定式的发现）",
+  "encouragement": "一句诗意的鼓励（≤30字，像朋友写在叶脉上的话）"
+}
+语气：温柔、克制、诗意，多用自然意象（叶、光、根、季节），不列举数字，不喊鸡汤口号，不发散。
 ```
+
+**生成规则（F5.9）：**
+- 触发：仅已结束的自然月（北京时间跨入次月 00:00:00 后该月才结算），当前月显示“进行中”
+- 门槛：当月非草稿心得 ≥ 3 篇才生成，不足 3 篇显示温柔提示
+- 缓存：每月每用户一条，存于 `InsightReport`（type=monthly，唯一约束 userId+type+periodStart），永久不重复生成；生成失败不缓存可重试
+- 输入：优先用各心得 keyPoints，缺失时用标题+正文前 50 字兜底
 
 ---
 
@@ -633,7 +651,7 @@ xinya/
 - `Tag`
 - `EntryTag`（Prisma 自动维护中间表）
 - `Share`（待补充）
-- `Insight`（待补充）
+- `InsightReport`（AI 月度洞察缓存，已实现）
 
 **级联删除：**
 
@@ -996,6 +1014,7 @@ pm2 delete xinya && pm2 start ecosystem.config.js && pm2 save
 | 2026-07-25 | F9 拾遗时区修复：卡片弹出判断/学习画像统计统一使用北京时间（原 UTC 时间导致跨天数据错位） | 已验收 |
 | 2026-07-25 | F9.19 心得详情页右上角新增删除按钮（与编辑按钮同行），复用列表页删除规范：二次确认弹窗 + "叶子已飘落 🍂" 提示，删除后返回来源页 | 已验收 |
 | 2026-07-25 | F4.5 枝叶页返回导航增强：从心得详情返回时恢复分组展开状态 + 滚动位置，回到点击心得前的停留界面（原仅恢复标签选中） | 已验收 |
+| 2026-07-25 | F5.9 AI 月度成长洞察：年轮页新增“本月洞察”卡片，月末结算（北京时间跨月）+≥3篇门槛，基于心得 keyPoints 总结生成主题/情绪/成长/鼓励，InsightReport 永久缓存；新增 /api/insight/monthly 与 generateMonthlyInsight | 已部署 |
 
 ---
 
@@ -1009,7 +1028,7 @@ pm2 delete xinya && pm2 start ecosystem.config.js && pm2 save
 | F5 年轮页 | ~~自然月传统日历网格（F5.1~F5.6）~~ | ✅ 已验收 |
 | F5 年轮页 | ~~统计卡片下方「累计篇数」~~（F5.7） | ✅ 已验收 |
 | F5 年轮页 | ~~「拾遗」设置入口~~（F5.8）已移至根系页 | ✅ 已验收 |
-| F5 年轮页 | AI 洞察卡片（F5.9） | 待办 |
+| F5 年轮页 | ~~AI 洞察卡片（F5.9）~~ 月度成长洞察 | ✅ 已实现 |
 | F6 根系页 | 分享管理（创建链接、访客只读、有效期） | 未实现 |
 | F6 根系页 | 离线缓存设置 | 未实现 |
 | F7/F8 | ~~新用户播种引导三步流程~~ | ✅ 已实现 |
