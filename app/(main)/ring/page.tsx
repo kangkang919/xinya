@@ -389,7 +389,7 @@ export default function RingPage() {
             </div>
           ) : (
             <div className="py-1">
-              <p className="text-sm font-medium mb-1.5" style={{ color: titleColor }}>🌙 这个月还在生长</p>
+              <p className="text-sm font-medium mb-1.5" style={{ color: titleColor }}>🌱 这个月还在生长</p>
               <p className="text-xs leading-relaxed" style={{ color: dimColor }}>
                 待到月末，AI 才会为这个月凝出专属洞察。先慢慢记录，月底自有一份回望等着你。
               </p>
