@@ -171,12 +171,14 @@ function LeafPageContent() {
   }, [])
 
   useEffect(() => {
-    if (scrollRestoreRef.current !== null && !loadingEntries) {
+    // 须等心得列表加载并渲染完成（entries 就绪）后才恢复滚动，
+    // 否则页面高度不足，scrollTo 会被浏览器截断到顶部（置顶区）
+    if (scrollRestoreRef.current !== null && !loadingEntries && selectedTag && entries.length > 0) {
       const y = scrollRestoreRef.current
       scrollRestoreRef.current = null
       setTimeout(() => window.scrollTo(0, y), 50)
     }
-  }, [loadingEntries])
+  }, [loadingEntries, entries, selectedTag])
 
   // 恢复展开的分组状态（从心得详情返回时，保持点击前的分组展开界面）
   useEffect(() => {
