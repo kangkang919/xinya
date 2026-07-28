@@ -117,13 +117,23 @@ async function main() {
         console.log(`  总结: "${result.keyPoints.substring(0, 60)}..."`)
       }
 
-      // 删除旧题目和答题记录
+      // 删除旧题目和答题记录（仅删除未答过的，保留有答题历史的记录）
       const oldQuestions = await prisma.quizQuestion.findMany({ where: { entryId: entry.id } })
       if (oldQuestions.length > 0) {
         const oldIds = oldQuestions.map(q => q.id)
-        await prisma.quizRecord.deleteMany({ where: { questionId: { in: oldIds } } })
-        await prisma.quizQuestion.deleteMany({ where: { id: { in: oldIds } } })
-        console.log(`  删除旧题目: ${oldIds.length} 道`)
+        // 只删除未答题的记录，保留已答过的历史数据
+        const deletedRecords = await prisma.quizRecord.deleteMany({ where: { questionId: { in: oldIds }, answeredAt: null } })
+        // 只删除没有已答记录的旧题目
+        const answeredRecords = await prisma.quizRecord.findMany({
+          where: { questionId: { in: oldIds }, answeredAt: { not: null } },
+          select: { questionId: true },
+        })
+        const answeredQIds = new Set(answeredRecords.map(r => r.questionId))
+        const deletableIds = oldIds.filter(id => !answeredQIds.has(id))
+        if (deletableIds.length > 0) {
+          await prisma.quizQuestion.deleteMany({ where: { id: { in: deletableIds } } })
+        }
+        console.log(`  删除旧题目: ${deletableIds.length} 道（保留已答: ${answeredQIds.size} 道）`)
       }
 
       // 创建新题目和答题记录

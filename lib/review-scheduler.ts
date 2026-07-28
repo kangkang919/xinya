@@ -258,13 +258,23 @@ export async function generateAndSaveQuestions(
     })
   }
 
-  // 编辑时删除旧题目和答题记录
+  // 编辑时删除旧题目和答题记录（仅删除未答过的，保留有答题历史的记录）
   if (deleteOld) {
     const oldQuestions = await prisma.quizQuestion.findMany({ where: { entryId } })
     if (oldQuestions.length > 0) {
       const oldQuestionIds = oldQuestions.map(q => q.id)
-      await prisma.quizRecord.deleteMany({ where: { questionId: { in: oldQuestionIds } } })
-      await prisma.quizQuestion.deleteMany({ where: { id: { in: oldQuestionIds } } })
+      // 只删除未答题的记录（answeredAt 为 null），保留已答过的历史数据
+      await prisma.quizRecord.deleteMany({ where: { questionId: { in: oldQuestionIds }, answeredAt: null } })
+      // 只删除没有已答记录的旧题目（有已答记录的题目保留，避免外键断裂）
+      const answeredRecords = await prisma.quizRecord.findMany({
+        where: { questionId: { in: oldQuestionIds }, answeredAt: { not: null } },
+        select: { questionId: true },
+      })
+      const answeredQuestionIds = new Set(answeredRecords.map(r => r.questionId))
+      const deletableQuestionIds = oldQuestionIds.filter(id => !answeredQuestionIds.has(id))
+      if (deletableQuestionIds.length > 0) {
+        await prisma.quizQuestion.deleteMany({ where: { id: { in: deletableQuestionIds } } })
+      }
     }
   }
 
