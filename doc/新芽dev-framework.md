@@ -106,6 +106,7 @@ Phase 7: 产品交付     —— 部署、交付
 | F2.11 | 编辑器新建标签时支持选择父标签（下拉选择器） | P0 |
 | F2.12 | 根系页标签管理：新建标签+父标签选择+层级展示+编辑时可修改父标签 | P0 |
 | F2.13 | 创建第一个子标签时，自动迁移直接关联父标签的心得到该子标签 | P0 |
+| F2.14 | 子标签拖拽排序：枝叶页分组标题行右端手柄拖拽，Tag 表新增 sortOrder 字段持久化；未排序（0）按名称排最前，已排序（-1,-2…）依次在后；“未归类”分组固定最后不参与排序；排序同步影响编辑器/根系页子标签展示顺序 | P0 |
 
 #### F3: 萌芽页（时间轴与今日速览）
 
@@ -336,6 +337,7 @@ Phase 7: 产品交付     —— 部署、交付
 | GET | `/api/tags` | 标签列表 |
 | POST | `/api/tags` | 创建标签 |
 | PATCH | `/api/tags/[id]` | 重命名标签 |
+| PATCH | `/api/tags/reorder` | 保存子标签排序（body: parentId + orderedTagIds，sortOrder=-(index+1)） |
 | DELETE | `/api/tags/[id]` | 删除标签 |
 | GET | `/api/today-summary` | 今日速览数据 |
 | GET | `/api/monthly-stats?year=&month=` | 自然月每日心得数量统计 |
@@ -367,7 +369,7 @@ Phase 7: 产品交付     —— 部署、交付
 ```
 User          -- 用户（邮箱、密码哈希、验证码相关字段）
 Entry         -- 心得（userId, title, content, mood, recordTime, isTop, isFavorite, isDraft 已废弃）
-Tag           -- 标签（userId, name, parentId, isDefault）支持 2 级层级
+Tag           -- 标签（userId, name, parentId, isDefault, sortOrder）支持 2 级层级；sortOrder：0=未排序按名称，负数=手动排序
 EntryTag      -- 心得与标签多对多关系
 Share         -- 分享链接（待补充）
 InsightReport -- AI 洞察报告（userId, type, periodStart, periodEnd, content Json）月度洞察缓存
@@ -1055,6 +1057,7 @@ pm2 delete xinya && pm2 start ecosystem.config.js && pm2 save
 | 2026-07-28 | F9 拾遗数据安全修复：重生成题目时仅删除未答记录，保留已答历史；新增附录A-0规则7/8/9（时区/删除安全/Schema变更） | 已修复 |
 | 2026-07-28 | F4.5 枝叶页滚动位置恢复修复：滚动恢复须等心得列表加载渲染完成（entries 就绪）后才执行，修复原恢复时机过早（页面高度不足被截断到顶部）导致返回后停在置顶区的问题 | 已验收 |
 | 2026-07-28 | F4.5 枝叶页滚动位置保存修复：滚动位置仅在点击心得瞬间保存，删除持续监听+卸载时覆写逻辑（跳转瞬间浏览器滚动重置导致保存值被 0 覆盖，返回后仍停在置顶区） | 已验收 |
+| 2026-07-28 | F2.14 子标签拖拽排序：枝叶页分组标题行右端手柄拖拽，Tag 表新增 sortOrder 字段（纯增量 SQL 迁移，先 pg_dump 备份后执行，50 条标签数据验证完好），新增 PATCH /api/tags/reorder；未归类分组固定最后不参与排序 | 已部署 |
 | 2026-07-28 | F5.9 本月洞察卡片图标微调："这个月还在生长"（当月进行中状态）前图标由 🌙 换为 🌱 萌芽图标，与全站萌芽风格统一；卡片标题"🌙 本月洞察"保留不变 | 已验收 |
 
 ---
