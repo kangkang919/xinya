@@ -13,7 +13,8 @@ export async function GET() {
       _count: { select: { entries: true } },
       children: {
         select: { id: true, name: true, _count: { select: { entries: true } } },
-        orderBy: { name: "asc" },
+        // 与心得排序约定一致：未排序（0）按名称排最前，已手动排序（-1,-2…）依次在后
+        orderBy: [{ sortOrder: "desc" }, { name: "asc" }],
       },
     },
     orderBy: [{ isDefault: "desc" }, { name: "asc" }],

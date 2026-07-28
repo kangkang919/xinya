@@ -61,6 +61,8 @@ model Tag {
   name      String
   parentId  String?
   isDefault Boolean  @default(false)
+  // 子标签在父标签下的自定义排序：0=未排序（按名称），负数=已手动排序（-1 最靠前）
+  sortOrder Int      @default(0)
   createdAt DateTime @default(now())
 
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)

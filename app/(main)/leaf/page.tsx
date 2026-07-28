@@ -260,6 +260,38 @@ function LeafPageContent() {
     saveOrder(updatedGroupEntries.map(e => e.id), tagId)
   }
 
+  // 分组（子标签）拖拽排序：本地立即生效 + 持久化
+  const groupSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  )
+
+  function handleGroupDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id || !selectedTag) return
+    // “未归类”分组固定在最后，不参与排序
+    if (active.id === '__ungrouped__' || over.id === '__ungrouped__') return
+    const ids = entryGroups.map(g => g.tagId)
+    const oldIndex = ids.indexOf(String(active.id))
+    const newIndex = ids.indexOf(String(over.id))
+    if (oldIndex === -1 || newIndex === -1) return
+    const orderedChildIds = arrayMove(ids, oldIndex, newIndex).filter(id => id !== '__ungrouped__')
+    // 本地立即生效：按新顺序重排 selectedTag.children（entryGroups 随之重算）
+    const idToChild = new Map(selectedTag.children.map(c => [c.id, c]))
+    const reordered = orderedChildIds
+      .map(id => idToChild.get(id))
+      .filter((c): c is TagChild => !!c)
+    const rest = selectedTag.children.filter(c => !orderedChildIds.includes(c.id))
+    const newTag = { ...selectedTag, children: [...reordered, ...rest] }
+    setSelectedTag(newTag)
+    setTags(prev => prev.map(t => (t.id === newTag.id ? newTag : t)))
+    // 持久化到服务端
+    fetch('/api/tags/reorder', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ parentId: selectedTag.id, orderedTagIds: orderedChildIds }),
+    }).catch(() => {})
+  }
+
   // 将心得按子标签分组（各组内按对应标签的 sortOrder 排序）
   const entryGroups = useMemo((): EntryGroup[] => {
     if (!selectedTag || entries.length === 0) return []
@@ -377,60 +409,45 @@ function LeafPageContent() {
               <p className="text-sm" style={{ color: '#bbb' }}>还没有这个标签的心得</p>
             </div>
           ) : entryGroups.length > 1 ? (
-            // 有子标签分组：可折叠/展开
-            <div className="space-y-3">
-              {entryGroups.map(group => {
-                const isExpanded = expandedGroups.has(group.tagId)
-                const isUngrouped = group.tagId === '__ungrouped__'
-                return (
-                  <div key={group.tagId}>
-                    {/* 分组标题 */}
-                    <button
-                      onClick={() => toggleGroup(group.tagId)}
-                      className="w-full flex items-center justify-between py-2 px-1 rounded-lg transition"
-                      style={{ background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }}
-                    >
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="text-xs transition-transform"
-                          style={{
-                            display: 'inline-block',
-                            transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
-                            color: '#8BC34A',
-                          }}
-                        >
-                          ▶
-                        </span>
-                        <span className="text-sm font-medium" style={{ color: titleColor }}>
-                          {isUngrouped ? '📎 ' : '🏷️ '}{group.tagName}
-                        </span>
-                        <span className="text-xs" style={{ color: '#999' }}>
-                          {group.entries.length} 篇
-                        </span>
-                      </div>
-                    </button>
-
-                    {/* 分组内的心得列表（支持拖拽排序） */}
-                    {isExpanded && (
-                      <div className="mt-2 ml-2">
-                        <SortableEntryList
-                          entries={group.entries}
-                          tagId={group.tagId === '__ungrouped__' ? selectedTag!.id : group.tagId}
-                          onReorder={(newOrder: Entry[]) => handleGroupReorder(group, newOrder)}
-                          isDark={isDark}
-                          cardBg={cardBg}
-                          cardBorder={cardBorder}
-                          titleColor={titleColor}
-                          selectedTag={selectedTag}
-                          router={router}
-                          expandedGroups={[...expandedGroups]}
-                        />
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
+            // 有子标签分组：可折叠/展开，分组支持拖拽排序（手柄在标题行右端）
+            <DndContext sensors={groupSensors} collisionDetection={closestCenter} onDragEnd={handleGroupDragEnd}>
+              <SortableContext items={entryGroups.map(g => g.tagId)} strategy={verticalListSortingStrategy}>
+                <div className="space-y-3">
+                  {entryGroups.map(group => {
+                    const isExpanded = expandedGroups.has(group.tagId)
+                    const isUngrouped = group.tagId === '__ungrouped__'
+                    return (
+                      <SortableGroupSection
+                        key={group.tagId}
+                        group={group}
+                        isExpanded={isExpanded}
+                        isUngrouped={isUngrouped}
+                        onToggle={() => toggleGroup(group.tagId)}
+                        isDark={isDark}
+                        titleColor={titleColor}
+                      >
+                        {isExpanded && (
+                          <div className="mt-2 ml-2">
+                            <SortableEntryList
+                              entries={group.entries}
+                              tagId={group.tagId === '__ungrouped__' ? selectedTag!.id : group.tagId}
+                              onReorder={(newOrder: Entry[]) => handleGroupReorder(group, newOrder)}
+                              isDark={isDark}
+                              cardBg={cardBg}
+                              cardBorder={cardBorder}
+                              titleColor={titleColor}
+                              selectedTag={selectedTag}
+                              router={router}
+                              expandedGroups={[...expandedGroups]}
+                            />
+                          </div>
+                        )}
+                      </SortableGroupSection>
+                    )
+                  })}
+                </div>
+              </SortableContext>
+            </DndContext>
           ) : (
             // 无子标签分组：直接平铺显示（支持拖拽排序）
             <SortableEntryList
@@ -448,6 +465,80 @@ function LeafPageContent() {
           )}
         </div>
       )}
+    </div>
+  )
+}
+
+// 可拖拽排序的子标签分组：标题行右端为拖拽手柄（“未归类”固定不可拖）
+function SortableGroupSection({ group, isExpanded, isUngrouped, onToggle, isDark, titleColor, children }: {
+  group: EntryGroup
+  isExpanded: boolean
+  isUngrouped: boolean
+  onToggle: () => void
+  isDark: boolean
+  titleColor: string
+  children: React.ReactNode
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: group.tagId, disabled: isUngrouped })
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+      }}
+    >
+      {/* 分组标题：左侧点击展开/折叠，右端拖拽手柄 */}
+      <div
+        className="w-full flex items-center justify-between py-2 px-1 rounded-lg transition"
+        style={{ background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }}
+      >
+        <button onClick={onToggle} className="flex-1 flex items-center gap-2 min-w-0">
+          <span
+            className="text-xs transition-transform"
+            style={{
+              display: 'inline-block',
+              transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+              color: '#8BC34A',
+            }}
+          >
+            ▶
+          </span>
+          <span className="text-sm font-medium" style={{ color: titleColor }}>
+            {isUngrouped ? '📎 ' : '🏷️ '}{group.tagName}
+          </span>
+          <span className="text-xs" style={{ color: '#999' }}>
+            {group.entries.length} 篇
+          </span>
+        </button>
+        {!isUngrouped && (
+          <button
+            {...attributes}
+            {...listeners}
+            onClick={e => e.stopPropagation()}
+            className="shrink-0 w-7 flex items-center justify-center rounded-lg cursor-grab active:cursor-grabbing touch-none select-none"
+            style={{ color: isDragging ? '#8BC34A' : '#c4c4c4' }}
+            aria-label="拖拽分组排序"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+              fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <line x1="4" y1="7" x2="20" y2="7" />
+              <line x1="4" y1="12" x2="20" y2="12" />
+              <line x1="4" y1="17" x2="20" y2="17" />
+            </svg>
+          </button>
+        )}
+      </div>
+      {children}
     </div>
   )
 }
