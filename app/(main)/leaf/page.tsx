@@ -191,21 +191,8 @@ function LeafPageContent() {
     }
   }, [])
 
-  useEffect(() => {
-    let scrollTimer: ReturnType<typeof setTimeout>
-    const handleScroll = () => {
-      clearTimeout(scrollTimer)
-      scrollTimer = setTimeout(() => {
-        sessionStorage.setItem('leaf_scroll', String(window.scrollY))
-      }, 150)
-    }
-    window.addEventListener('scroll', handleScroll, { passive: true })
-    return () => {
-      window.removeEventListener('scroll', handleScroll)
-      clearTimeout(scrollTimer)
-      sessionStorage.setItem('leaf_scroll', String(window.scrollY))
-    }
-  }, [])
+  // 滚动位置仅在点击心得的瞬间保存（见 EntryCard onClick），
+  // 不再持续监听滚动/卸载时覆写，避免跳转瞬间滚动重置导致保存值被 0 覆盖
 
   function selectTag(tag: Tag) {
     if (selectedTag?.id === tag.id) {
