@@ -25,7 +25,7 @@ export async function generateQuestions(
 心得内容：${entryContent.substring(0, 1000)}
 
 要求：
-1. 题干≤30字，简洁明了
+1. 题干简洁明了：单选/多选题≤30字；判断题为完整陈述句，≤50字。题干必须是完整的句子，禁止半句截断
 2. 题型自动适配：概念辨析→单选，关系匹配→多选，对比→判断
 3. 选项数量：单选/多选4个选项，判断题只有2个选项（正确/错误）
 4. 答案用选项索引表示（单选[0]，多选[0,2]，判断[0]为对[1]为错）
@@ -92,7 +92,7 @@ export async function generateQuestions(
 
       const result = JSON.parse(jsonMatch[0])
       const questions = (result.questions || []).map((q: any) => ({
-        question: q.question?.substring(0, 30) || "",
+        question: q.question?.substring(0, 100) || "", // 100字安全上限（仅防异常超长，不再30字硬截断致断句）
         type: ["single", "multiple", "truefalse"].includes(q.type) ? q.type : "single",
         options: Array.isArray(q.options) ? q.options.slice(0, 4) : [],
         answer: Array.isArray(q.answer) ? q.answer : [0],
