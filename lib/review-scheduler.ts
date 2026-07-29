@@ -1,4 +1,5 @@
 import { prisma } from "./prisma"
+import { Prisma } from "@prisma/client"
 import { generateKeyPoints } from "./template-questions"
 import { generateQuestions } from "./deepseek"
 import { devLog, beijingDateString } from "./utils"
@@ -230,6 +231,31 @@ export async function skipToday(userId: string): Promise<void> {
     update: { lastCardDate: today },
     create: { userId, lastCardDate: today },
   })
+}
+
+/**
+ * 重置学习画像（重新播种）：不删除任何数据，仅将答题记录恢复为初始状态
+ * - QuizRecord：清空 answeredAt/userAnswer，correct/streak 归零，answerCount 回到默认值，nextReviewAt 设为当前时间
+ * - QuizQuestion 题目缓存保留，无需重新调 AI 出题
+ * - UserSetting：清空 lastCardDate/lastQuestionId，使当天萌芽页可再次弹出卡片
+ */
+export async function resetProfile(userId: string): Promise<number> {
+  const result = await prisma.quizRecord.updateMany({
+    where: { userId },
+    data: {
+      correct: false,
+      userAnswer: Prisma.DbNull,
+      answerCount: 1,
+      answeredAt: null,
+      nextReviewAt: new Date(),
+      streak: 0,
+    },
+  })
+  await prisma.userSetting.updateMany({
+    where: { userId },
+    data: { lastCardDate: null, lastQuestionId: null },
+  })
+  return result.count
 }
 
 /**

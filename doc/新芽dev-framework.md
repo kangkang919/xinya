@@ -11,10 +11,14 @@
 | **产品名称** | 心芽 |
 | **产品定位** | 面向个人的私有化心得记录应用，支持四页面架构（萌芽/枝叶/年轮/根系） |
 | **核心能力** | 富文本记录 → 标签组织 → 数据统计 → 可控分享 → AI洞察 |
-| **技术栈** | Next.js 14 App Router + React + TypeScript + Tailwind CSS + Prisma + PostgreSQL + DeepSeek（AI） |
-| **前端方案** | 响应式网页（PC/手机统一），手绘自然风格，2套主题（春日萌芽/墨色幽微），PWA支持“添加到主屏幕” |
+| **技术栈** | Next.js 16.2.9 App Router + React 19.2.4 + TypeScript 5 + Tailwind CSS v4 + Prisma 6.19.3 + PostgreSQL + DeepSeek（AI） |
+| **前端方案** | 响应式网页（PC/手机统一），手绘自然风格，2套主题（春日萌芽/墨色幽微），PWA支持"添加到主屏幕" |
+| **代码仓库** | GitHub（origin，主仓库）+ Gitee（gitee，镜像仓库），标准 Git 命令行工作流，手动双推，无 CI/CD |
+| **部署方式** | 阿里云 ECS + PM2 进程管理（单实例，512MB 内存上限），服务器手动执行 deploy.sh |
 | **代码规模预估** | 后端约 ? 行 / 前端约 ? 行（待补充） |
 | **开发周期预估** | ?（待补充） |
+| **Node.js 要求** | ≥18.18.0 |
+| **默认端口** | 3000（开发 localhost:3000） |
 
 ---
 
@@ -171,6 +175,7 @@ Phase 7: 产品交付     —— 部署、交付
 | F9.17 | 学习画像：根系页展示学习天数/答题总数（累计答题次数）/准确率/近5日进度条/薄弱领域（红）/掌握良好（绿），DeepSeek API 分析 ✅ | P0 |
 | F9.18 | 心得详情页返回逻辑：通过 URL from 参数区分来源（萌芽页/AI弹窗→返回萌芽首页，枝叶页→返回枝叶页保留标签选中状态） ✅ | P0 |
 | F9.19 | 心得详情页右上角删除按钮（与编辑按钮同行）：复用列表页删除规范——二次确认弹窗（"确定要让这片叶子飘落吗？"）+ 删除成功提示"叶子已飘落 🍂"，删除后自动返回来源页 ✅ | P0 |
+| F9.20 | 学习画像重置（重新播种）：画像卡片标题行右侧"重新播种"按钮（仅有画像数据时显示），确认弹窗后 POST /api/review/reset：答题记录恢复初始态（不删除任何数据，题目缓存保留），清空 lastCardDate 使当天萌芽页可再次弹题，后续按正常调度逻辑出题 | P0 |
 
 #### F9 数据模型
 
@@ -297,7 +302,7 @@ Phase 7: 产品交付     —— 部署、交付
 ```
 ┌──────────────────────────────────────────────────┐
 │                    前端                            │
-│  Next.js 14 App Router + React + TypeScript      │
+│  Next.js 16 App Router + React 19 + TypeScript      │
 │  Tailwind CSS + 手绘自然风格 + PWA                 │
 └──────────────────────┬───────────────────────────┘
                        │ REST API (JSON)
@@ -367,16 +372,20 @@ Phase 7: 产品交付     —— 部署、交付
 #### 关系数据库表
 
 ```
-User          -- 用户（邮箱、密码哈希、验证码相关字段）
-Entry         -- 心得（userId, title, content, mood, recordTime, isTop, isFavorite, isDraft 已废弃）
-Tag           -- 标签（userId, name, parentId, isDefault, sortOrder）支持 2 级层级；sortOrder：0=未排序按名称，负数=手动排序
-EntryTag      -- 心得与标签多对多关系
-Share         -- 分享链接（待补充）
-InsightReport -- AI 洞察报告（userId, type, periodStart, periodEnd, content Json）月度洞察缓存
-QuizQuestion  -- 拾遗题目缓存（entryId, question, type, options, answer, explanation, angle）
-QuizRecord    -- 拾遗答题记录（userId, questionId, entryId, correct, answeredAt, nextReviewAt, streak）
-UserSetting   -- 用户设置（userId, reviewEnabled, lastCardDate, lastCardQuestionId）
-MagicLink     -- Magic Link token（email, token, expiresAt, used）
+User           -- 用户（邮箱、密码哈希、主题、验证状态、openTimes）
+Entry          -- 心得（userId, title, content, keyPoints, mood, recordTime, isTop, isFavorite）
+Tag            -- 标签（userId, name, parentId, isDefault, sortOrder）支持 2 级层级；sortOrder：0=未排序按名称，负数=手动排序
+EntryTagSort   -- 心得在标签视图下的自定义排序（entryId+tagId 联合主键，每标签独立排序）
+Share          -- 分享链接（token, expiresAt, scope, tagIds, isActive）
+AiInsight      -- AI 洞察卡片（userId, content, triggerCount, isRead）
+InsightReport  -- AI 洞察报告（userId, type, periodStart, periodEnd, content Json）月度洞察缓存
+GrowthLog      -- 成长日志（userId?, version, title, content, logDate）
+EmailToken     -- 邮箱验证/重置令牌（userId, token, type, expiresAt, used）
+MagicLink      -- Magic Link token（email, token, expiresAt, used）
+QuizQuestion   -- 拾遗题目缓存（entryId, question, type, options, answer, explanation, angle）
+QuizRecord     -- 拾遗答题记录（userId, questionId, entryId, correct, answeredAt, nextReviewAt, streak）
+UserSetting    -- 用户设置（userId, reviewEnabled, lastCardDate, lastQuestionId）
+ReviewCallLog  -- 复习调用日志（userId, entryId?, step, success, questionCount, errorMsg）
 ```
 
 #### 其他存储
@@ -831,13 +840,61 @@ xinya/
 └── types/
 ```
 
-### 7.2 环境配置
+### 7.2 Git 工作流与代码仓库
+
+**远程仓库配置：**
+
+| 远程名 | 平台 | 地址 | 角色 |
+|--------|------|------|------|
+| `origin` | GitHub | `https://github.com/kangkang919/xinya.git` | 主仓库 |
+| `gitee` | Gitee | `https://gitee.com/kangkang919/xinya.git` | 镜像仓库 |
+
+**分支：** `main`（当前主分支），`master`（旧分支，已停用）
+
+**标准 Git 工作流（无 CI/CD）：**
+
+```
+本地开发（Mac）
+    ↓ git add / git commit
+git push origin main   → GitHub
+git push gitee main    → Gitee（手动双推）
+    ↓
+服务器（阿里云 ECS）
+    ↓ 手动执行 deploy.sh
+npm install → prisma migrate deploy → npm run build → PM2 启动
+```
+
+**关键特点：**
+- 没有 GitHub Actions 或其他 CI/CD
+- 没有使用 GitHub API 直推代码
+- GitHub 和 Gitee 需要手动分别推送（双 remote）
+- 部署通过 deploy.sh 脚本在服务器上手动执行
+
+### 7.3 PM2 进程管理配置
+
+```js
+// ecosystem.config.js
+{
+  name: 'xinya',
+  script: 'node',
+  args: '--env-file=/www/wwwroot/xinya/.env.production node_modules/.bin/next start -p 3000',
+  cwd: '/www/wwwroot/xinya',
+  instances: 1,
+  autorestart: true,
+  max_memory_restart: '512M',
+}
+```
+
+### 7.4 环境配置
 
 **配置模板 (.env.example)：**
 
 ```ini
 # 数据库
 DATABASE_URL=postgresql://user:pass@host:port/db
+
+# JWT 认证
+JWT_SECRET=随机字符串
 
 # 邮件 SMTP
 SMTP_HOST=smtp.qq.com
@@ -846,32 +903,48 @@ SMTP_PASS=your_auth_code
 
 # AI
 DEEPSEEK_API_KEY=your_key
-DEEPSEEK_BASE_URL=https://api.deepseek.com/v1
 
-# 部署
-PORT=3000
+# 网站地址
+NEXT_PUBLIC_BASE_URL=http://localhost:3000
 ```
 
-### 7.3 部署脚本
+**环境变量说明：**
+
+| 变量 | 用途 |
+|------|------|
+| `DATABASE_URL` | PostgreSQL 连接串 |
+| `JWT_SECRET` | JWT 签名密钥 |
+| `SMTP_USER` / `SMTP_PASS` | QQ 邮箱 SMTP 发信 |
+| `NEXT_PUBLIC_BASE_URL` | 网站访问地址 |
+| `DEEPSEEK_API_KEY` | DeepSeek AI 接口密钥 |
+
+本地开发用 `.env`，生产部署用 `.env.production`，模板参考 `.env.example`。
+
+### 7.5 部署脚本
 
 ```bash
-# 服务器部署命令
-cd /www/wwwroot/xinya && git pull && npm run build && pm2 restart xinya
+# 服务器部署命令（deploy.sh）
+cd /www/wwwroot/xinya
+npm install
+npx prisma generate        # postinstall 钩子也会自动执行
+npx prisma migrate deploy   # 生产安全迁移
+npm run build
+pm2 delete xinya && pm2 start ecosystem.config.js && pm2 save
 ```
 
-### 7.4 首次安装流程
+### 7.6 首次安装流程
 
 ```
 Step 1: 安装 Node.js 18+
-Step 2: git clone 仓库
-Step 3: npm install
+Step 2: git clone 仓库（GitHub 或 Gitee）
+Step 3: npm install（自动执行 prisma generate）
 Step 4: 配置 .env
 Step 5: npx prisma migrate dev
 Step 6: npm run build
 Step 7: pm2 start ecosystem.config.js
 ```
 
-### 7.5 数据持久化说明
+### 7.7 数据持久化说明
 
 | 数据类型 | 存储位置 | 说明 |
 |---------|---------|------|
@@ -881,7 +954,7 @@ Step 7: pm2 start ecosystem.config.js
 
 > **备份建议：** 备份 PostgreSQL 数据库 + public/ 自定义资源。
 
-### 7.6 已知限制
+### 7.8 已知限制
 
 | 限制 | 说明 |
 |------|------|
@@ -1054,11 +1127,13 @@ pm2 delete xinya && pm2 start ecosystem.config.js && pm2 save
 | 2026-07-25 | F9.19 心得详情页右上角新增删除按钮（与编辑按钮同行），复用列表页删除规范：二次确认弹窗 + "叶子已飘落 🍂" 提示，删除后返回来源页 | 已验收 |
 | 2026-07-25 | F4.5 枝叶页返回导航增强：从心得详情返回时恢复分组展开状态 + 滚动位置，回到点击心得前的停留界面（原仅恢复标签选中） | 已验收 |
 | 2026-07-25 | F5.9 AI 月度成长洞察：年轮页新增“本月洞察”卡片，月末结算（北京时间跨月）+≥3篇门槛，基于心得 keyPoints 总结生成主题/情绪/成长/鼓励，InsightReport 永久缓存；新增 /api/insight/monthly 与 generateMonthlyInsight | 已验收 |
+| 2026-07-28 | F9.20 学习画像重置（重新播种）：画像卡片标题行右侧新增“重新播种”按钮 + 确认弹窗（复用 DeleteDialog 通用化）+ POST /api/review/reset（仅重置不删除：QuizRecord 恢复初始态、题目缓存保留、清空 lastCardDate 当天可再弹题） | 待验收 |
 | 2026-07-28 | F9 拾遗数据安全修复：重生成题目时仅删除未答记录，保留已答历史；新增附录A-0规则7/8/9（时区/删除安全/Schema变更） | 已修复 |
 | 2026-07-28 | F4.5 枝叶页滚动位置恢复修复：滚动恢复须等心得列表加载渲染完成（entries 就绪）后才执行，修复原恢复时机过早（页面高度不足被截断到顶部）导致返回后停在置顶区的问题 | 已验收 |
 | 2026-07-28 | F4.5 枝叶页滚动位置保存修复：滚动位置仅在点击心得瞬间保存，删除持续监听+卸载时覆写逻辑（跳转瞬间浏览器滚动重置导致保存值被 0 覆盖，返回后仍停在置顶区） | 已验收 |
 | 2026-07-28 | F2.14 子标签拖拽排序：枝叶页分组标题行右端手柄拖拽，Tag 表新增 sortOrder 字段（纯增量 SQL 迁移，先 pg_dump 备份后执行，50 条标签数据验证完好），新增 PATCH /api/tags/reorder；未归类分组固定最后不参与排序 | 已验收 |
 | 2026-07-28 | F5.9 本月洞察卡片图标微调："这个月还在生长"（当月进行中状态）前图标由 🌙 换为 🌱 萌芽图标，与全站萌芽风格统一；卡片标题"🌙 本月洞察"保留不变 | 已验收 |
+| 2026-07-24 | 约束文档技术架构信息全面更新：技术栈版本号校准（Next.js 16.2.9、React 19.2.4、Tailwind v4、Prisma 6.19.3、TypeScript 5）、新增代码仓库/Git工作流/部署方式/Node.js要求/默认端口等项目概况字段、技术架构图版本更新、数据模型补全14张表（新增 EntryTagSort/AiInsight/GrowthLog/EmailToken/ReviewCallLog）、Phase 7 新增 Git 工作流与代码仓库章节 + PM2 配置章节 + 环境变量说明表 + 部署脚本详细步骤 | 已确认 |
 
 ---
 

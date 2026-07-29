@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { toMarkdown, downloadBlob } from "@/lib/export-utils"
+import { DeleteDialog } from "@/components/DeleteDialog"
 
 interface User {
   email: string
@@ -114,6 +115,11 @@ export default function RootPage() {
     weakAreas: { tag: string; accuracy: number; count: number }[]
     strongAreas: { tag: string; accuracy: number; count: number }[]
   } | null>(null)
+
+  // 重新播种（重置学习画像）
+  const [showResetDialog, setShowResetDialog] = useState(false)
+  const [resetLoading, setResetLoading] = useState(false)
+  const [resetTip, setResetTip] = useState(false)
 
   // 数据导出
   const [exporting, setExporting] = useState(false)
@@ -266,6 +272,22 @@ export default function RootPage() {
   async function logout() {
     await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {})
     router.push('/login')
+  }
+
+  async function handleResetProfile() {
+    if (resetLoading) return
+    setResetLoading(true)
+    try {
+      const res = await fetch('/api/review/reset', { method: 'POST' })
+      const data = await res.json()
+      if (data.ok) {
+        setShowResetDialog(false)
+        setProfile(null) // 画像已清零，答题后重新生长
+        setResetTip(true)
+        setTimeout(() => setResetTip(false), 3000)
+      }
+    } catch (_) {}
+    setResetLoading(false)
   }
 
   async function handleExport() {
@@ -691,7 +713,16 @@ export default function RootPage() {
       {/* 学习画像 */}
       {profile && (
         <div className="p-4 rounded-xl mb-4" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
-          <p className="text-xs mb-3" style={{ color: dimColor }}>📊 拾遗学习画像</p>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs" style={{ color: dimColor }}>📊 拾遗学习画像</p>
+            <button
+              onClick={() => setShowResetDialog(true)}
+              className="text-xs transition"
+              style={{ color: dimColor, textDecoration: 'underline', textUnderlineOffset: '3px' }}
+            >
+              重新播种
+            </button>
+          </div>
 
           {/* 概览统计 */}
           <div className="grid grid-cols-3 gap-2 mb-4">
@@ -856,6 +887,27 @@ export default function RootPage() {
       >
         退出登录
       </button>
+
+      {/* 重新播种确认弹窗 */}
+      <DeleteDialog
+        open={showResetDialog}
+        heading="重新播种"
+        description="过往的答题痕迹将如落叶归根，化作春泥。学习画像将清零，今天会重新为你出一道题。确认要重新开始吗？"
+        confirmText="确认播种"
+        loadingText="播种中…"
+        confirmColor="#8BC34A"
+        loading={resetLoading}
+        onConfirm={handleResetProfile}
+        onCancel={() => setShowResetDialog(false)}
+      />
+
+      {/* 重新播种成功提示 */}
+      {resetTip && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full text-xs text-white animate-fade-in"
+          style={{ background: 'rgba(0,0,0,0.75)', whiteSpace: 'nowrap' }}>
+          已重新播种，去萌芽页领取今日的第一道题吧 🌱
+        </div>
+      )}
     </div>
   )
 }
