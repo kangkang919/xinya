@@ -1135,6 +1135,7 @@ pm2 delete xinya && pm2 start ecosystem.config.js && pm2 save
 | 2026-07-28 | F2.14 子标签拖拽排序：枝叶页分组标题行右端手柄拖拽，Tag 表新增 sortOrder 字段（纯增量 SQL 迁移，先 pg_dump 备份后执行，50 条标签数据验证完好），新增 PATCH /api/tags/reorder；未归类分组固定最后不参与排序 | 已验收 |
 | 2026-07-28 | F5.9 本月洞察卡片图标微调："这个月还在生长"（当月进行中状态）前图标由 🌙 换为 🌱 萌芽图标，与全站萌芽风格统一；卡片标题"🌙 本月洞察"保留不变 | 已验收 |
 | 2026-07-24 | 约束文档技术架构信息全面更新：技术栈版本号校准（Next.js 16.2.9、React 19.2.4、Tailwind v4、Prisma 6.19.3、TypeScript 5）、新增代码仓库/Git工作流/部署方式/Node.js要求/默认端口等项目概况字段、技术架构图版本更新、数据模型补全14张表（新增 EntryTagSort/AiInsight/GrowthLog/EmailToken/ReviewCallLog）、Phase 7 新增 Git 工作流与代码仓库章节 + PM2 配置章节 + 环境变量说明表 + 部署脚本详细步骤 | 已确认 |
+| 2026-07-29 | 密钥泄露安全事件处置闭环：数据库密码重置（宝塔 root 终端 ALTER USER，新密码仅字母+数字）、JWT_SECRET 轮换（64位）、SMTP 授权码轮换；服务器 .env.production 与本地 .env/.env.production 全部同步并验证；删除零引用的 SILICONFLOW_API_KEY 配置，DEEPSEEK_API_KEY 同步到本地；删除含旧密钥的 doc/.env.production.备份；邮箱邀请账号旧密码曾泄露于 Git 历史，重置待办（使用前必须先重置）；新增《双项目密钥凭证地图.md》知识留档（不含真实密钥值） | 已验收 |
 
 ---
 
