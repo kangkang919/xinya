@@ -1058,6 +1058,30 @@ pm2 delete xinya && pm2 start ecosystem.config.js && pm2 save
 3. **迁移后必须验证**：检查关键表数据量（`SELECT count(*) FROM "QuizRecord" WHERE "answeredAt" IS NOT NULL`）
 4. **生产环境部署流程**：备份 → 审查迁移SQL → 执行迁移 → 验证数据 → 部署代码
 
+### 规则 10：配置审计清单——Code Review 之外必须单独执行
+
+**背景（2026-07-29）：** 两次全面 Code Review 均未发现双项目的密钥隐患（萌宠 JWT 公开默认值、本项目 `doc/.env.production.备份` 曾进公开仓库历史提交）。根因：Code Review 只审查“当前源码快照”一个维度，而敏感配置风险横跨四个维度，必须联合对账才能判定。
+
+**四维对账表**：每一项密钥/凭证都必须逐行回答以下四个问题，任何一格答不上来即为审计不通过：
+
+| 密钥项 | ①源码怎么读它 | ②本地 .env 配了没 | ③服务器 .env.production 配了没 | ④进过 Git 历史没 |
+|---|---|---|---|---|
+| `JWT_SECRET`（JWT 签名） | 仅环境变量，缺失即 throw（lib/auth.ts） | 必须有 | 必须有 | 不得出现 |
+| `DATABASE_URL`（含数据库密码） | 仅环境变量（Prisma） | 必须有（隔 SSH 隧道） | 必须有 | 不得出现 |
+| SMTP 授权码 | 仅环境变量（lib/mailer.ts） | 可选 | 必须有 | 不得出现 |
+| `DEEPSEEK_API_KEY` | 仅环境变量（lib/deepseek.ts） | 可选 | 必须有 | 不得出现 |
+| （新增密钥时在此表加行） | — | — | — | — |
+
+**硬规则**：
+1. 签名/凭证类密钥**一律不得在代码中设默认值**；缺失时必须显式失败（拒绝启动/throw），禁止静默退回任何硬编码值。启动失败是显式可见的故障，静默降级是无声的安全事故。
+2. 依赖“打印警告让人去看”的安全提示视为无效机制——警告会淹没在日志里，必须改为强制机制。
+3. 第④维用 `git log --all --name-only -- "*.env*"` 核查历史提交，不能只看当前工作区（当前干净≠历史干净）；一旦发现历史泄露，处置方式是**轮换密钥**，而非仅删除文件（历史提交中仍可被任何人翻出）。
+
+**触发时机**（三选一命中即执行全表对账）：
+- 新增任何密钥/凭证配置时
+- 部署到新环境（新服务器/换电脑）时
+- 每次 Code Review 时**额外单独跑一遍**（Code Review 本身覆盖不了②③④维）
+
 ---
 
 ## 附录 A：变更记录
@@ -1136,6 +1160,7 @@ pm2 delete xinya && pm2 start ecosystem.config.js && pm2 save
 | 2026-07-28 | F5.9 本月洞察卡片图标微调："这个月还在生长"（当月进行中状态）前图标由 🌙 换为 🌱 萌芽图标，与全站萌芽风格统一；卡片标题"🌙 本月洞察"保留不变 | 已验收 |
 | 2026-07-24 | 约束文档技术架构信息全面更新：技术栈版本号校准（Next.js 16.2.9、React 19.2.4、Tailwind v4、Prisma 6.19.3、TypeScript 5）、新增代码仓库/Git工作流/部署方式/Node.js要求/默认端口等项目概况字段、技术架构图版本更新、数据模型补全14张表（新增 EntryTagSort/AiInsight/GrowthLog/EmailToken/ReviewCallLog）、Phase 7 新增 Git 工作流与代码仓库章节 + PM2 配置章节 + 环境变量说明表 + 部署脚本详细步骤 | 已确认 |
 | 2026-07-29 | 密钥泄露安全事件处置闭环：数据库密码重置（宝塔 root 终端 ALTER USER，新密码仅字母+数字）、JWT_SECRET 轮换（64位）、SMTP 授权码轮换；服务器 .env.production 与本地 .env/.env.production 全部同步并验证；删除零引用的 SILICONFLOW_API_KEY 配置，DEEPSEEK_API_KEY 同步到本地；删除含旧密钥的 doc/.env.production.备份；邮箱邀请账号旧密码曾泄露于 Git 历史，重置待办（使用前必须先重置）；新增《双项目密钥凭证地图.md》知识留档（不含真实密钥值） | 已验收 |
+| 2026-07-29 | 新增附录 A-0 规则 10：配置审计清单——复盘发现两次全面 Code Review 均未查出双项目密钥隐患，根因是敏感配置风险横跨源码/本地环境/服务器环境/Git 历史四维，Code Review 只覆盖第一维；确立四维对账表（JWT_SECRET/DATABASE_URL/SMTP/DEEPSEEK_API_KEY）+ 三个触发时机；与萌宠范式文档 §6.4 同步新增 | 已确认 |
 
 ---
 
