@@ -152,6 +152,7 @@ export default function SharePanel({
 
       {/* 正文 */}
       <div
+        className="share-content"
         style={{
           fontSize: "14px",
           lineHeight: 1.7,
@@ -160,6 +161,13 @@ export default function SharePanel({
         }}
         dangerouslySetInnerHTML={{ __html: entryContent || "" }}
       />
+
+      {/* 恢复 Tailwind reset 清除的列表符号，确保 html2canvas 截图可见 */}
+      <style>{`
+        .share-content ul { list-style: disc; padding-left: 1.5em; margin: 0.5em 0; }
+        .share-content ol { list-style: decimal; padding-left: 1.5em; margin: 0.5em 0; }
+        .share-content li { margin: 0.2em 0; }
+      `}</style>
 
       {/* 底部分隔 + Logo */}
       <div
