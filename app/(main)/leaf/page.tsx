@@ -144,7 +144,7 @@ function LeafPageContent() {
               setSelectedTag(tag)
               if (!tagChanged) {
                 setLoadingEntries(true)
-                fetch(`/api/entries?tagId=${tag.id}&limit=50`)
+                fetch(`/api/entries?tagId=${tag.id}`)
                   .then(r => r.json())
                   .then(data => {
                     if (data.ok) setEntries(data.data.entries || [])
@@ -204,7 +204,7 @@ function LeafPageContent() {
     setSelectedTag(tag)
     setExpandedGroups(new Set())
     setLoadingEntries(true)
-    fetch(`/api/entries?tagId=${tag.id}&limit=50`)
+    fetch(`/api/entries?tagId=${tag.id}`)
       .then(r => r.json())
       .then(data => {
         if (data.ok) setEntries(data.data.entries || [])

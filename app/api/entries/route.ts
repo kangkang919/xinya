@@ -5,6 +5,7 @@ import { generateAndSaveQuestions } from "@/lib/review-scheduler"
 import { stripHtml } from "@/lib/utils"
 
 // GET /api/entries?search=&favorite=&tagId=&from=&to=&page=1&limit=20&similarTitle=
+// 注意：tagId 标签视图为全量返回（不做分页截断），page/limit 仅对搜索/筛选视图生效
 export async function GET(req: NextRequest) {
   const userId = await getCurrentUserId()
   if (!userId) return NextResponse.json({ ok: false }, { status: 401 })
@@ -127,8 +128,8 @@ export async function GET(req: NextRequest) {
       return b.recordTime.getTime() - a.recordTime.getTime()
     })
 
-    // 手动分页
-    resultEntries = resultEntries.slice((page - 1) * limit, page * limit)
+    // 标签视图不做分页截断：枝叶页需展示该标签下全部心得，
+    // 原 slice(0, limit) 会导致超过 50 篇的父标签丢失旧心得
   } else {
     const [entries, count] = await Promise.all([
       prisma.entry.findMany({
