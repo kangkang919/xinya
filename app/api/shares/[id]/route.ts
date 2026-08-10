@@ -25,10 +25,9 @@ export async function DELETE(
       return NextResponse.json({ ok: false, error: "分享链接不存在" }, { status: 404 })
     }
 
-    // 设置为不活跃（软删除）
-    await prisma.share.update({
+    // 真正删除记录
+    await prisma.share.delete({
       where: { id },
-      data: { isActive: false },
     })
 
     return NextResponse.json({ ok: true })
