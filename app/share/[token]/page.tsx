@@ -46,57 +46,6 @@ function stripHtml(html: string, maxLen: number = 100): string {
   return text.length > maxLen ? text.slice(0, maxLen) + "…" : text
 }
 
-// 时间轴视图
-function TimelineView({ 
-  entries, 
-  onEntryClick 
-}: { 
-  entries: ShareEntry[]
-  onEntryClick: (entry: ShareEntry) => void 
-}) {
-  return (
-    <div className="space-y-3">
-      {entries.map(entry => (
-        <div
-          key={entry.id}
-          onClick={() => onEntryClick(entry)}
-          className="p-4 rounded-xl cursor-pointer transition-all hover:shadow-md"
-          style={{ 
-            background: "#fff", 
-            border: "1px solid #E8E8E0" 
-          }}
-        >
-          <div className="flex items-start justify-between mb-1.5">
-            <h3 className="text-[15px] font-semibold flex-1" style={{ color: "#333" }}>
-              {entry.title}
-            </h3>
-            {entry.mood && <span className="text-lg ml-2">{entry.mood}</span>}
-          </div>
-          <p className="text-[13px] leading-relaxed mb-2.5 line-clamp-2" style={{ color: "#666" }}>
-            {stripHtml(entry.content)}
-          </p>
-          <div className="flex items-center justify-between">
-            <div className="flex gap-1.5">
-              {entry.tags.map(tag => (
-                <span
-                  key={tag.id}
-                  className="text-[11px] px-2 py-0.5 rounded-full"
-                  style={{ background: "#F0F5E8", color: "#5a8a2f" }}
-                >
-                  {tag.name}
-                </span>
-              ))}
-            </div>
-            <span className="text-[11px]" style={{ color: "#999" }}>
-              {formatTimeAgo(entry.recordTime)}
-            </span>
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
-
 // 标签视图
 function TagsView({ 
   tags, 
@@ -444,9 +393,7 @@ function SharePageContent() {
   const [error, setError] = useState<string | null>(null)
   const [isExpired, setIsExpired] = useState(false)
   const [shareData, setShareData] = useState<ShareData | null>(null)
-  const [view, setView] = useState<"timeline" | "tags">("timeline")
   const [selectedEntry, setSelectedEntry] = useState<ShareEntry | null>(null)
-  const [transitioning, setTransitioning] = useState(false)
   const [scrollRestored, setScrollRestored] = useState(false)
 
   useEffect(() => {
@@ -487,15 +434,6 @@ function SharePageContent() {
       setScrollRestored(false)
     }
   }, [selectedEntry, scrollRestored])
-
-  const handleViewSwitch = (newView: "timeline" | "tags") => {
-    if (newView === view) return
-    setTransitioning(true)
-    setTimeout(() => {
-      setView(newView)
-      setTransitioning(false)
-    }, 150)
-  }
 
   const handleEntryClick = (entry: ShareEntry) => {
     // 保存当前滚动位置
@@ -549,64 +487,27 @@ function SharePageContent() {
       <div className="px-5 pt-5 pb-3" style={{ borderBottom: "1px solid #E8E8E0", background: "#fff" }}>
         <div className="flex items-center justify-between mb-1">
           <h1 className="text-lg font-semibold" style={{ color: "#333" }}>
-            {shareData.owner.split("@")[0]}的心芽花园 🌱
+            {shareData.owner.split("@")[0]}的心芽花园 
           </h1>
           <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ color: "#999", background: "#F5F5F0", border: "1px solid #E8E8E0" }}>
             只读
           </span>
         </div>
-        <p className="text-xs italic mb-3" style={{ color: "#999" }}>
+        <p className="text-xs italic" style={{ color: "#999" }}>
           记录内心的每一次萌发
         </p>
-
-        {/* 视图切换 */}
-        <div className="flex rounded-xl p-0.5" style={{ background: "#F5F5F0" }}>
-          <button
-            onClick={() => handleViewSwitch("timeline")}
-            className="flex-1 py-2 rounded-lg text-[13px] font-medium transition-all"
-            style={{
-              background: view === "timeline" ? "#fff" : "transparent",
-              color: view === "timeline" ? "#558B2F" : "#666",
-              boxShadow: view === "timeline" ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
-            }}
-          >
-            🌿 时间轴
-          </button>
-          <button
-            onClick={() => handleViewSwitch("tags")}
-            className="flex-1 py-2 rounded-lg text-[13px] font-medium transition-all"
-            style={{
-              background: view === "tags" ? "#fff" : "transparent",
-              color: view === "tags" ? "#558B2F" : "#666",
-              boxShadow: view === "tags" ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
-            }}
-          >
-            🏷️ 标签
-          </button>
-        </div>
       </div>
 
       {/* 内容区 */}
       <div 
         ref={contentRef}
         className="flex-1 overflow-y-auto px-4 py-3"
-        style={{ 
-          opacity: transitioning ? 0 : 1, 
-          transition: "opacity 0.15s ease" 
-        }}
       >
-        {view === "timeline" ? (
-          <TimelineView 
-            entries={shareData.entries} 
-            onEntryClick={handleEntryClick} 
-          />
-        ) : (
-          <TagsView 
-            tags={shareData.tags} 
-            entries={shareData.entries} 
-            onEntryClick={handleEntryClick} 
-          />
-        )}
+        <TagsView 
+          tags={shareData.tags} 
+          entries={shareData.entries} 
+          onEntryClick={handleEntryClick} 
+        />
       </div>
 
       {/* 底部引导 */}

@@ -109,6 +109,23 @@ export async function GET(
     }
 
     // 构造返回数据
+    // 计算每个标签的心得数量（父标签包括所有子标签下的心得）
+    const tagEntryCounts = new Map<string, number>()
+    for (const tag of visibleTags) {
+      // 找出该标签及其所有子标签的 ID
+      const relatedTagIds = new Set<string>([tag.id])
+      for (const otherTag of visibleTags) {
+        if (otherTag.parentId === tag.id) {
+          relatedTagIds.add(otherTag.id)
+        }
+      }
+      // 计算关联的心得数量
+      const count = entries.filter(e => 
+        e.tags.some(t => relatedTagIds.has(t.id))
+      ).length
+      tagEntryCounts.set(tag.id, count)
+    }
+
     const shareData = {
       owner: share.user.email,
       scope: share.scope,
@@ -117,7 +134,7 @@ export async function GET(
         id: t.id,
         name: t.name,
         parentId: t.parentId,
-        entryCount: entries.filter(e => e.tags.some(tag => tag.id === t.id)).length,
+        entryCount: tagEntryCounts.get(t.id) || 0,
       })),
       entries: entries.map(e => ({
         id: e.id,
