@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Suspense } from "react"
 
@@ -107,137 +107,235 @@ function TagsView({
   entries: ShareEntry[]
   onEntryClick: (entry: ShareEntry) => void 
 }) {
-  const [selectedTagId, setSelectedTagId] = useState<string | null>(null)
-  const [expandedParent, setExpandedParent] = useState<string | null>(null)
+  const [selectedTag, setSelectedTag] = useState<ShareTag | null>(null)
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
 
-  // 顶级标签
-  const topTags = tags.filter(t => !t.parentId)
+  // 顶级标签（按心得数量从多到少排序）
+  const topTags = tags.filter(t => !t.parentId).sort((a, b) => b.entryCount - a.entryCount)
   
   // 根据标签大小计算气泡尺寸
+  const maxCount = topTags.length > 0 ? Math.max(...topTags.map(t => t.entryCount)) : 0
   const getTagSize = (count: number) => {
-    if (count >= 10) return { width: 140, height: 48, fontSize: 15 }
-    if (count >= 5) return { width: 110, height: 40, fontSize: 13 }
-    return { width: 90, height: 34, fontSize: 12 }
+    if (maxCount === 0) return { fontSize: 12, padding: '6px 12px' }
+    const ratio = count / maxCount
+    const fontSize = Math.round(12 + ratio * 8)
+    return {
+      fontSize,
+      padding: fontSize >= 16 ? '10px 18px' : '6px 12px',
+    }
   }
 
-  // 选中标签下的心得
-  const filteredEntries = selectedTagId
-    ? entries.filter(e => e.tags.some(t => t.id === selectedTagId))
-    : []
+  // 选中标签下的子标签
+  const childTags = selectedTag ? tags.filter(t => t.parentId === selectedTag.id) : []
+  
+  // 按子标签分组心得
+  const entryGroups = (() => {
+    if (!selectedTag || entries.length === 0) return []
+    
+    if (childTags.length === 0) {
+      // 没有子标签，全部作为单组
+      const groupEntries = entries.filter(e => e.tags.some(t => t.id === selectedTag.id))
+      return [{ tagId: selectedTag.id, tagName: selectedTag.name, entries: groupEntries }]
+    }
+    
+    const childIds = new Set(childTags.map(c => c.id))
+    const groups: { tagId: string; tagName: string; entries: ShareEntry[] }[] = []
+    const grouped = new Map<string, ShareEntry[]>()
+    
+    // 初始化子标签分组
+    for (const child of childTags) {
+      grouped.set(child.id, [])
+    }
+    // 未归类（只挂在父标签、不在任何子标签下的心得）
+    const ungrouped: ShareEntry[] = []
+    
+    for (const entry of entries) {
+      const entryChildTag = entry.tags.find(t => childIds.has(t.id))
+      if (entryChildTag) {
+        grouped.get(entryChildTag.id)!.push(entry)
+      } else if (entry.tags.some(t => t.id === selectedTag.id)) {
+        ungrouped.push(entry)
+      }
+    }
+    
+    // 只保留有心得的分组
+    for (const child of childTags) {
+      const groupEntries = grouped.get(child.id) || []
+      if (groupEntries.length > 0) {
+        groups.push({ tagId: child.id, tagName: child.name, entries: groupEntries })
+      }
+    }
+    
+    // 未归类的放在最后
+    if (ungrouped.length > 0) {
+      groups.push({ tagId: '__ungrouped__', tagName: '未归类', entries: ungrouped })
+    }
+    
+    return groups
+  })()
 
-  const selectedTag = tags.find(t => t.id === selectedTagId)
+  function selectTag(tag: ShareTag) {
+    if (selectedTag?.id === tag.id) {
+      setSelectedTag(null)
+      setExpandedGroups(new Set())
+      return
+    }
+    setSelectedTag(tag)
+    // 默认展开所有分组
+    setExpandedGroups(new Set(entryGroups.map(g => g.tagId)))
+  }
+
+  function toggleGroup(tagId: string) {
+    setExpandedGroups(prev => {
+      const next = new Set(prev)
+      if (next.has(tagId)) next.delete(tagId)
+      else next.add(tagId)
+      return next
+    })
+  }
 
   return (
     <div>
       {/* 标签云 */}
-      <div className="flex flex-wrap gap-2 items-center justify-center py-3">
-        {topTags.map(tag => {
+      <div className="flex flex-wrap gap-2 mb-4">
+        {topTags.map((tag, i) => {
           const size = getTagSize(tag.entryCount)
-          const isSelected = selectedTagId === tag.id
-          const isExpanded = expandedParent === tag.id
-          const hasChildren = tags.some(t => t.parentId === tag.id)
+          const isSelected = selectedTag?.id === tag.id
+          const colors = [
+            { border: '#8BC34A', text: '#5a8a2f', bg: 'rgba(139,195,74,0.12)' },
+            { border: '#42A5F5', text: '#2b7ac2', bg: 'rgba(66,165,245,0.12)' },
+            { border: '#FF8C42', text: '#c46a20', bg: 'rgba(255,140,66,0.12)' },
+            { border: '#e57373', text: '#c44545', bg: 'rgba(229,115,115,0.12)' },
+            { border: '#BA68C8', text: '#7b3fa0', bg: 'rgba(186,104,200,0.12)' },
+          ]
+          const c = colors[i % colors.length]
           
           return (
-            <div key={tag.id} className="relative">
-              <button
-                onClick={() => {
-                  if (hasChildren) {
-                    setExpandedParent(isExpanded ? null : tag.id)
-                  }
-                  setSelectedTagId(isSelected ? null : tag.id)
-                }}
-                className="rounded-full flex items-center justify-center transition-all"
-                style={{
-                  width: size.width,
-                  height: size.height,
-                  fontSize: size.fontSize,
-                  fontWeight: 500,
-                  background: isSelected ? "#8BC34A" : "#F0F5E8",
-                  color: isSelected ? "#fff" : "#333",
-                  border: isSelected ? "2px solid #558B2F" : "1.5px dashed #E8E8E0",
-                }}
-              >
-                {tag.name}
-                {hasChildren && (
-                  <span className="ml-1 text-[10px]">
-                    {isExpanded ? "▾" : "▸"}
-                  </span>
-                )}
-              </button>
-              
-              {/* 子标签 */}
-              {hasChildren && isExpanded && (
-                <div className="absolute top-full left-0 mt-1 flex flex-wrap gap-1.5 z-10">
-                  {tags
-                    .filter(t => t.parentId === tag.id)
-                    .map(child => {
-                      const childSelected = selectedTagId === child.id
-                      return (
-                        <button
-                          key={child.id}
-                          onClick={() => setSelectedTagId(childSelected ? null : child.id)}
-                          className="rounded-full text-xs px-3 py-1.5 transition-all"
-                          style={{
-                            background: childSelected ? "#C5E1A5" : "#fff",
-                            color: "#333",
-                            border: childSelected ? "2px solid #8BC34A" : "1.5px dashed #E8E8E0",
-                          }}
-                        >
-                          ↳ {child.name}
-                        </button>
-                      )
-                    })}
-                </div>
+            <button
+              key={tag.id}
+              onClick={() => selectTag(tag)}
+              style={{
+                background: isSelected ? c.border : c.bg,
+                border: `2px solid ${c.border}`,
+                color: isSelected ? '#fff' : c.text,
+                fontSize: `${size.fontSize}px`,
+                padding: size.padding,
+                fontWeight: size.fontSize >= 16 ? 'bold' : 'normal',
+                borderRadius: '999px',
+                transition: '0.2s',
+              }}
+            >
+              {tag.name}
+              {tag.entryCount > 0 && (
+                <span className="ml-1 opacity-60 text-xs">{tag.entryCount}</span>
               )}
-            </div>
+            </button>
           )
         })}
       </div>
 
       {/* 选中标签下的心得列表 */}
-      {selectedTagId && selectedTag && (
-        <div className="mt-4 pt-4" style={{ borderTop: "1px solid #E8E8E0" }}>
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm font-semibold" style={{ color: "#333" }}>
-              {selectedTag.name}
-            </span>
-            <span className="text-xs" style={{ color: "#999" }}>
-              {filteredEntries.length} 篇心得
-            </span>
-          </div>
-          <div className="space-y-3">
-            {filteredEntries.map(entry => (
-              <div
-                key={entry.id}
-                onClick={() => onEntryClick(entry)}
-                className="p-4 rounded-xl cursor-pointer transition-all hover:shadow-md"
-                style={{ background: "#fff", border: "1px solid #E8E8E0" }}
-              >
-                <div className="flex items-start justify-between mb-1.5">
-                  <h3 className="text-[15px] font-semibold flex-1" style={{ color: "#333" }}>
-                    {entry.title}
-                  </h3>
-                  {entry.mood && <span className="text-lg ml-2">{entry.mood}</span>}
+      {selectedTag && (
+        <div>
+          <p className="text-xs mb-3" style={{ color: '#999' }}>
+            「{selectedTag.name}」共 {selectedTag.entryCount} 篇
+          </p>
+          
+          {entryGroups.length === 0 ? (
+            <p className="text-center py-6 text-sm" style={{ color: '#bbb' }}>该标签下暂无心得</p>
+          ) : entryGroups.length === 1 ? (
+            // 单组：直接显示心得列表
+            <div className="space-y-3">
+              {entryGroups[0].entries.map(entry => (
+                <div
+                  key={entry.id}
+                  onClick={() => onEntryClick(entry)}
+                  className="p-4 rounded-xl cursor-pointer transition-all hover:shadow-md"
+                  style={{ background: "#fff", border: "1px solid #E8E8E0" }}
+                >
+                  <div className="flex items-start justify-between mb-1.5">
+                    <h3 className="text-[15px] font-semibold flex-1" style={{ color: "#333" }}>
+                      {entry.title}
+                    </h3>
+                    {entry.mood && <span className="text-lg ml-2">{entry.mood}</span>}
+                  </div>
+                  <p className="text-[13px] leading-relaxed mb-2 line-clamp-2" style={{ color: "#666" }}>
+                    {stripHtml(entry.content)}
+                  </p>
+                  <span className="text-[11px]" style={{ color: "#999" }}>
+                    {formatTimeAgo(entry.recordTime)}
+                  </span>
                 </div>
-                <p className="text-[13px] leading-relaxed mb-2 line-clamp-2" style={{ color: "#666" }}>
-                  {stripHtml(entry.content)}
-                </p>
-                <span className="text-[11px]" style={{ color: "#999" }}>
-                  {formatTimeAgo(entry.recordTime)}
-                </span>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            // 多组：分组显示
+            <div className="space-y-4">
+              {entryGroups.map(group => {
+                const isExpanded = expandedGroups.has(group.tagId)
+                return (
+                  <div key={group.tagId}>
+                    <button
+                      onClick={() => toggleGroup(group.tagId)}
+                      className="w-full flex items-center justify-between py-2 px-3 rounded-lg mb-2"
+                      style={{ background: "#F5F5F0", border: "1px solid #E8E8E0" }}
+                    >
+                      <span className="text-sm font-medium" style={{ color: "#333" }}>
+                        {group.tagName}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs" style={{ color: "#999" }}>
+                          {group.entries.length} 篇
+                        </span>
+                        <svg
+                          width="16" height="16" viewBox="0 0 24 24"
+                          fill="none" stroke="#999" strokeWidth="2"
+                          style={{
+                            transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                            transition: '0.2s'
+                          }}
+                        >
+                          <path d="m6 9 6 6 6-6" />
+                        </svg>
+                      </div>
+                    </button>
+                    {isExpanded && (
+                      <div className="space-y-3">
+                        {group.entries.map(entry => (
+                          <div
+                            key={entry.id}
+                            onClick={() => onEntryClick(entry)}
+                            className="p-4 rounded-xl cursor-pointer transition-all hover:shadow-md"
+                            style={{ background: "#fff", border: "1px solid #E8E8E0" }}
+                          >
+                            <div className="flex items-start justify-between mb-1.5">
+                              <h3 className="text-[15px] font-semibold flex-1" style={{ color: "#333" }}>
+                                {entry.title}
+                              </h3>
+                              {entry.mood && <span className="text-lg ml-2">{entry.mood}</span>}
+                            </div>
+                            <p className="text-[13px] leading-relaxed mb-2 line-clamp-2" style={{ color: "#666" }}>
+                              {stripHtml(entry.content)}
+                            </p>
+                            <span className="text-[11px]" style={{ color: "#999" }}>
+                              {formatTimeAgo(entry.recordTime)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       )}
 
-      {!selectedTagId && (
+      {!selectedTag && (
         <div className="text-center py-8">
           <p className="text-[13px]" style={{ color: "#999" }}>
             👆 点击标签查看心得
-          </p>
-          <p className="text-xs mt-1" style={{ color: "#bbb" }}>
-            带 ▸ 的标签可展开查看子标签
           </p>
         </div>
       )}
@@ -340,6 +438,7 @@ function SharePageContent() {
   const params = useParams()
   const router = useRouter()
   const token = (params.token as string) || ""
+  const contentRef = useRef<HTMLDivElement>(null)
   
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -348,6 +447,7 @@ function SharePageContent() {
   const [view, setView] = useState<"timeline" | "tags">("timeline")
   const [selectedEntry, setSelectedEntry] = useState<ShareEntry | null>(null)
   const [transitioning, setTransitioning] = useState(false)
+  const [scrollRestored, setScrollRestored] = useState(false)
 
   useEffect(() => {
     if (!token) {
@@ -373,6 +473,21 @@ function SharePageContent() {
       .finally(() => setLoading(false))
   }, [token])
 
+  // 恢复滚动位置（从心得详情返回时）
+  useEffect(() => {
+    if (scrollRestored && contentRef.current) {
+      const saved = sessionStorage.getItem('share_scroll')
+      if (saved) {
+        sessionStorage.removeItem('share_scroll')
+        const y = parseInt(saved, 10)
+        setTimeout(() => {
+          contentRef.current?.scrollTo(0, y)
+        }, 50)
+      }
+      setScrollRestored(false)
+    }
+  }, [selectedEntry, scrollRestored])
+
   const handleViewSwitch = (newView: "timeline" | "tags") => {
     if (newView === view) return
     setTransitioning(true)
@@ -380,6 +495,19 @@ function SharePageContent() {
       setView(newView)
       setTransitioning(false)
     }, 150)
+  }
+
+  const handleEntryClick = (entry: ShareEntry) => {
+    // 保存当前滚动位置
+    if (contentRef.current) {
+      sessionStorage.setItem('share_scroll', String(contentRef.current.scrollTop))
+    }
+    setSelectedEntry(entry)
+  }
+
+  const handleBack = () => {
+    setSelectedEntry(null)
+    setScrollRestored(true)
   }
 
   if (loading) {
@@ -409,7 +537,7 @@ function SharePageContent() {
       <div className="h-screen flex flex-col" style={{ background: "#FAFAF5" }}>
         <EntryDetail 
           entry={selectedEntry} 
-          onBack={() => setSelectedEntry(null)} 
+          onBack={handleBack} 
         />
       </div>
     )
@@ -460,6 +588,7 @@ function SharePageContent() {
 
       {/* 内容区 */}
       <div 
+        ref={contentRef}
         className="flex-1 overflow-y-auto px-4 py-3"
         style={{ 
           opacity: transitioning ? 0 : 1, 
@@ -469,13 +598,13 @@ function SharePageContent() {
         {view === "timeline" ? (
           <TimelineView 
             entries={shareData.entries} 
-            onEntryClick={setSelectedEntry} 
+            onEntryClick={handleEntryClick} 
           />
         ) : (
           <TagsView 
             tags={shareData.tags} 
             entries={shareData.entries} 
-            onEntryClick={setSelectedEntry} 
+            onEntryClick={handleEntryClick} 
           />
         )}
       </div>
