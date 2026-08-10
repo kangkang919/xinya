@@ -995,10 +995,14 @@ export default function RootPage() {
                         if (data.ok) {
                           setShowCreateShare(false)
                           setShareTip('')
+                          // 重置表单状态
+                          setShareExpiresIn(7)
+                          setShareScope('all')
+                          setShareTagIds([])
                           fetchShares()
                           // 复制链接
                           navigator.clipboard.writeText(data.data.url).catch(() => {})
-                          setShareTip('链接已创建并复制 🌿')
+                          setShareTip('链接已创建并复制 ')
                           setTimeout(() => setShareTip(''), 3000)
                         } else {
                           setShareTip(data.error || '创建失败')
@@ -1084,14 +1088,15 @@ export default function RootPage() {
                                 onClick={async () => {
                                   try {
                                     await fetch(`/api/shares/${share.id}`, { method: 'DELETE' })
-                                    setShares(prev => prev.map(s => s.id === share.id ? { ...s, isActive: false } : s))
+                                    // 从列表中彻底移除
+                                    setShares(prev => prev.filter(s => s.id !== share.id))
                                   } catch (_) {}
                                   setDeletingShareId(null)
                                 }}
                                 className="px-3 py-1.5 rounded-lg text-xs text-white"
                                 style={{ background: '#e57373' }}
                               >
-                                确认撤销
+                                确认删除
                               </button>
                               <button
                                 onClick={() => setDeletingShareId(null)}
