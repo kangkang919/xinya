@@ -394,7 +394,6 @@ function SharePageContent() {
   const [isExpired, setIsExpired] = useState(false)
   const [shareData, setShareData] = useState<ShareData | null>(null)
   const [selectedEntry, setSelectedEntry] = useState<ShareEntry | null>(null)
-  const [scrollRestored, setScrollRestored] = useState(false)
 
   useEffect(() => {
     if (!token) {
@@ -422,18 +421,17 @@ function SharePageContent() {
 
   // 恢复滚动位置（从心得详情返回时）
   useEffect(() => {
-    if (scrollRestored && contentRef.current) {
+    if (!selectedEntry && contentRef.current) {
       const saved = sessionStorage.getItem('share_scroll')
       if (saved) {
         sessionStorage.removeItem('share_scroll')
         const y = parseInt(saved, 10)
         setTimeout(() => {
           contentRef.current?.scrollTo(0, y)
-        }, 50)
+        }, 100)
       }
-      setScrollRestored(false)
     }
-  }, [selectedEntry, scrollRestored])
+  }, [selectedEntry])
 
   const handleEntryClick = (entry: ShareEntry) => {
     // 保存当前滚动位置
@@ -445,7 +443,6 @@ function SharePageContent() {
 
   const handleBack = () => {
     setSelectedEntry(null)
-    setScrollRestored(true)
   }
 
   if (loading) {
