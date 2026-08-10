@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server"
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
-  const authPages = ["/login", "/register", "/verify-email", "/forgot-password", "/reset-password", "/onboard", "/showcase"]
+  const authPages = ["/login", "/register", "/verify-email", "/forgot-password", "/reset-password", "/onboard", "/showcase", "/share"]
   const isAuthPage = authPages.some(p => pathname.startsWith(p))
 
   if (pathname.startsWith("/api/") || pathname.startsWith("/_next/")) {

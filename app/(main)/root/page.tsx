@@ -125,6 +125,30 @@ export default function RootPage() {
   const [exporting, setExporting] = useState(false)
   const [exportTip, setExportTip] = useState(false)
 
+  // 分享管理
+  const [showShareSection, setShowShareSection] = useState(false)
+  const [shares, setShares] = useState<{
+    id: string
+    token: string
+    url: string
+    scope: string
+    tagIds: string[]
+    tagNames: string[]
+    isActive: boolean
+    isExpired: boolean
+    daysRemaining: number
+    expiresAt: string
+    createdAt: string
+  }[]>([])
+  const [sharesLoading, setSharesLoading] = useState(false)
+  const [showCreateShare, setShowCreateShare] = useState(false)
+  const [shareExpiresIn, setShareExpiresIn] = useState(7)
+  const [shareScope, setShareScope] = useState<'all' | 'tags'>('all')
+  const [shareTagIds, setShareTagIds] = useState<string[]>([])
+  const [creatingShare, setCreatingShare] = useState(false)
+  const [shareTip, setShareTip] = useState('')
+  const [deletingShareId, setDeletingShareId] = useState<string | null>(null)
+
   useEffect(() => {
     const localTheme = localStorage.getItem('xinya-theme')
 
@@ -184,6 +208,17 @@ export default function RootPage() {
         if (data.ok && Array.isArray(data.data)) setTags(data.data)
       })
       .catch(() => {})
+  }
+
+  function fetchShares() {
+    setSharesLoading(true)
+    fetch('/api/shares')
+      .then(r => r.json())
+      .then(data => {
+        if (data.ok && Array.isArray(data.data)) setShares(data.data)
+      })
+      .catch(() => {})
+      .finally(() => setSharesLoading(false))
   }
 
   async function changeTheme(themeKey: string) {
@@ -821,6 +856,285 @@ export default function RootPage() {
         >
           {exporting ? '导出中...' : '导出为 Markdown'}
         </button>
+      </div>
+
+      {/* 分享管理 */}
+      <div className="p-4 rounded-xl mb-4" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
+        <button
+          className="w-full flex items-center justify-between"
+          onClick={() => {
+            setShowShareSection(!showShareSection)
+            if (!showShareSection) fetchShares()
+          }}
+        >
+          <p className="text-xs" style={{ color: subColor }}>📤 分享管理</p>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+            fill="none" stroke={subColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+            style={{ transform: showShareSection ? 'rotate(180deg)' : 'rotate(0deg)', transition: '0.3s' }}>
+            <path d="m6 9 6 6 6-6" />
+          </svg>
+        </button>
+        {showShareSection && (
+          <div className="mt-3">
+            {/* 创建分享按钮 */}
+            {!showCreateShare && (
+              <button
+                onClick={() => setShowCreateShare(true)}
+                className="w-full py-2.5 rounded-xl text-sm font-medium mb-3 transition"
+                style={{
+                  background: 'rgba(139,195,74,0.08)',
+                  color: '#5a8a2f',
+                  border: '1px solid rgba(139,195,74,0.3)',
+                }}
+              >
+                + 创建分享链接
+              </button>
+            )}
+
+            {/* 创建分享表单 */}
+            {showCreateShare && (
+              <div className="p-3 rounded-lg mb-3" style={{ background: isDark ? '#333' : '#f9f9f4', border: `1px dashed ${isDark ? '#555' : '#ddd'}` }}>
+                <p className="text-xs mb-2" style={{ color: subColor }}>创建分享链接</p>
+                
+                {/* 有效期选择 */}
+                <div className="mb-2">
+                  <p className="text-xs mb-1" style={{ color: dimColor }}>有效期</p>
+                  <div className="flex gap-2">
+                    {[7, 30, 90].map(days => (
+                      <button
+                        key={days}
+                        onClick={() => setShareExpiresIn(days)}
+                        className="flex-1 py-1.5 rounded-lg text-xs transition"
+                        style={{
+                          background: shareExpiresIn === days ? '#8BC34A' : (isDark ? '#444' : '#fff'),
+                          color: shareExpiresIn === days ? '#fff' : titleColor,
+                          border: `1px solid ${shareExpiresIn === days ? '#8BC34A' : (isDark ? '#555' : '#ddd')}`,
+                        }}
+                      >
+                        {days}天
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 分享范围 */}
+                <div className="mb-3">
+                  <p className="text-xs mb-1" style={{ color: dimColor }}>分享范围</p>
+                  <div className="flex gap-2 mb-2">
+                    <button
+                      onClick={() => { setShareScope('all'); setShareTagIds([]) }}
+                      className="flex-1 py-1.5 rounded-lg text-xs transition"
+                      style={{
+                        background: shareScope === 'all' ? '#8BC34A' : (isDark ? '#444' : '#fff'),
+                        color: shareScope === 'all' ? '#fff' : titleColor,
+                        border: `1px solid ${shareScope === 'all' ? '#8BC34A' : (isDark ? '#555' : '#ddd')}`,
+                      }}
+                    >
+                      全部心得
+                    </button>
+                    <button
+                      onClick={() => setShareScope('tags')}
+                      className="flex-1 py-1.5 rounded-lg text-xs transition"
+                      style={{
+                        background: shareScope === 'tags' ? '#8BC34A' : (isDark ? '#444' : '#fff'),
+                        color: shareScope === 'tags' ? '#fff' : titleColor,
+                        border: `1px solid ${shareScope === 'tags' ? '#8BC34A' : (isDark ? '#555' : '#ddd')}`,
+                      }}
+                    >
+                      指定标签
+                    </button>
+                  </div>
+                  {shareScope === 'tags' && (
+                    <div className="flex flex-wrap gap-1.5 p-2 rounded-lg" style={{ background: isDark ? '#2a2a2a' : '#fff', border: `1px solid ${isDark ? '#555' : '#eee'}` }}>
+                      {tags.filter(t => !t.parentId).map(tag => (
+                        <button
+                          key={tag.id}
+                          onClick={() => {
+                            setShareTagIds(prev => 
+                              prev.includes(tag.id) 
+                                ? prev.filter(id => id !== tag.id)
+                                : [...prev, tag.id]
+                            )
+                          }}
+                          className="text-xs px-2 py-1 rounded-full transition"
+                          style={{
+                            background: shareTagIds.includes(tag.id) ? '#8BC34A' : 'transparent',
+                            color: shareTagIds.includes(tag.id) ? '#fff' : titleColor,
+                            border: `1px solid ${shareTagIds.includes(tag.id) ? '#8BC34A' : (isDark ? '#555' : '#ddd')}`,
+                          }}
+                        >
+                          {tag.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* 操作按钮 */}
+                <div className="flex gap-2">
+                  <button
+                    onClick={async () => {
+                      if (creatingShare) return
+                      if (shareScope === 'tags' && shareTagIds.length === 0) {
+                        setShareTip('请至少选择一个标签')
+                        return
+                      }
+                      setCreatingShare(true)
+                      setShareTip('')
+                      try {
+                        const res = await fetch('/api/shares', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            expiresInDays: shareExpiresIn,
+                            scope: shareScope,
+                            tagIds: shareTagIds,
+                          }),
+                        })
+                        const data = await res.json()
+                        if (data.ok) {
+                          setShowCreateShare(false)
+                          setShareTip('')
+                          fetchShares()
+                          // 复制链接
+                          navigator.clipboard.writeText(data.data.url).catch(() => {})
+                          setShareTip('链接已创建并复制 🌿')
+                          setTimeout(() => setShareTip(''), 3000)
+                        } else {
+                          setShareTip(data.error || '创建失败')
+                        }
+                      } catch (_) {
+                        setShareTip('网络错误')
+                      }
+                      setCreatingShare(false)
+                    }}
+                    disabled={creatingShare}
+                    className="flex-1 py-2 rounded-lg text-xs font-medium text-white transition"
+                    style={{ background: creatingShare ? '#aaa' : '#8BC34A' }}
+                  >
+                    {creatingShare ? '创建中…' : '确认创建'}
+                  </button>
+                  <button
+                    onClick={() => { setShowCreateShare(false); setShareTip('') }}
+                    className="px-4 py-2 rounded-lg text-xs transition"
+                    style={{ color: subColor, border: `1px solid ${cardBorder}` }}
+                  >
+                    取消
+                  </button>
+                </div>
+                {shareTip && (
+                  <p className="text-xs mt-2" style={{ color: shareTip.includes('已') ? '#8BC34A' : '#e57373' }}>
+                    {shareTip}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* 分享链接列表 */}
+            {sharesLoading ? (
+              <p className="text-xs text-center py-3" style={{ color: dimColor }}>加载中…</p>
+            ) : shares.length === 0 ? (
+              <p className="text-xs text-center py-3" style={{ color: dimColor }}>还没有分享链接</p>
+            ) : (
+              <div className="space-y-2">
+                {shares.map(share => (
+                  <div
+                    key={share.id}
+                    className="p-3 rounded-lg"
+                    style={{ 
+                      background: isDark ? '#333' : '#fafafa', 
+                      border: `1px solid ${share.isActive ? (isDark ? '#555' : '#eee') : (isDark ? '#444' : '#f0f0f0')}`,
+                      opacity: share.isActive ? 1 : 0.6,
+                    }}
+                  >
+                    <div className="flex items-start justify-between mb-1.5">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium truncate" style={{ color: titleColor }}>
+                          {share.scope === 'all' ? '全部心得' : share.tagNames.join('、')}
+                        </p>
+                        <p className="text-[11px] mt-0.5" style={{ color: dimColor }}>
+                          创建于 {new Date(share.createdAt).toLocaleDateString('zh-CN')} · 
+                          {share.isActive 
+                            ? `剩余 ${share.daysRemaining} 天`
+                            : share.isExpired ? '已过期' : '已撤销'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 mt-2">
+                      {share.isActive ? (
+                        <>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(share.url).catch(() => {})
+                              setShareTip('链接已复制 🌿')
+                              setTimeout(() => setShareTip(''), 2000)
+                            }}
+                            className="flex-1 py-1.5 rounded-lg text-xs transition"
+                            style={{ 
+                              background: 'rgba(139,195,74,0.1)', 
+                              color: '#5a8a2f',
+                              border: '1px solid rgba(139,195,74,0.2)',
+                            }}
+                          >
+                            复制链接
+                          </button>
+                          {deletingShareId === share.id ? (
+                            <>
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    await fetch(`/api/shares/${share.id}`, { method: 'DELETE' })
+                                    setShares(prev => prev.map(s => s.id === share.id ? { ...s, isActive: false } : s))
+                                  } catch (_) {}
+                                  setDeletingShareId(null)
+                                }}
+                                className="px-3 py-1.5 rounded-lg text-xs text-white"
+                                style={{ background: '#e57373' }}
+                              >
+                                确认撤销
+                              </button>
+                              <button
+                                onClick={() => setDeletingShareId(null)}
+                                className="px-2 py-1.5 rounded-lg text-xs"
+                                style={{ color: subColor, border: `1px solid ${cardBorder}` }}
+                              >
+                                取消
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              onClick={() => setDeletingShareId(share.id)}
+                              className="px-3 py-1.5 rounded-lg text-xs transition"
+                              style={{ color: '#e57373', border: '1px solid rgba(229,115,115,0.3)' }}
+                            >
+                              撤销
+                            </button>
+                          )}
+                        </>
+                      ) : (
+                        <button
+                          onClick={async () => {
+                            try {
+                              await fetch(`/api/shares/${share.id}`, { method: 'DELETE' })
+                              setShares(prev => prev.filter(s => s.id !== share.id))
+                            } catch (_) {}
+                          }}
+                          className="flex-1 py-1.5 rounded-lg text-xs transition"
+                          style={{ color: dimColor, border: `1px solid ${cardBorder}` }}
+                        >
+                          删除
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {shareTip && !showCreateShare && (
+              <p className="text-xs mt-2 text-center" style={{ color: '#8BC34A' }}>{shareTip}</p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* 版本 & 开打次数 */}
