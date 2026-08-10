@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useSearchParams, useRouter } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import { Suspense } from "react"
 
 interface ShareEntry {
@@ -337,9 +337,9 @@ function ExpiredPage() {
 
 // 主页面
 function SharePageContent() {
-  const searchParams = useSearchParams()
+  const params = useParams()
   const router = useRouter()
-  const token = searchParams.get("token") || ""
+  const token = (params.token as string) || ""
   
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
