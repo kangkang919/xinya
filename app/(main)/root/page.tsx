@@ -3,7 +3,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { toMarkdown, downloadBlob } from "@/lib/export-utils"
 import { DeleteDialog } from "@/components/DeleteDialog"
-import { Sprout, Link } from "lucide-react"
+import { Sprout, Link, User as UserIcon, RotateCcw, Tags, Palette, Download, Info, ChevronDown } from "lucide-react"
 
 interface User {
   email: string
@@ -414,10 +414,16 @@ export default function RootPage() {
       </div>
       <p className="text-xs mb-5" style={{ color: dimColor }}>此处是你的根，安静而深厚</p>
 
-      {/* 账号 */}
-      <div className="p-4 rounded-xl mb-4" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-xs" style={{ color: subColor }}>账号</p>
+      {/* ═══ 组1：身份与安全 ═══ */}
+      <p className="text-[11px] mb-2" style={{ color: dimColor, letterSpacing: '2px' }}>身份与安全</p>
+
+      {/* 账户信息 */}
+      <div className="p-4 rounded-xl mb-3" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <UserIcon size={14} strokeWidth={2} style={{ color: '#8BC34A' }} />
+            <span className="text-sm font-medium" style={{ color: titleColor }}>账户信息</span>
+          </div>
           <button
             onClick={() => { setShowPasswordForm(!showPasswordForm); setPasswordError(''); setPasswordTip('') }}
             className="text-xs"
@@ -426,9 +432,12 @@ export default function RootPage() {
             {showPasswordForm ? '收起' : '设置密码'}
           </button>
         </div>
-        <p className="text-sm font-medium" style={{ color: titleColor }}>
+        <p className="text-sm font-medium mt-2.5" style={{ color: titleColor }}>
           {user?.email ?? '—'}
         </p>
+        {!showPasswordForm && (
+          <p className="text-[11px] mt-1" style={{ color: dimColor }}>设置后可使用密码登录</p>
+        )}
 
         {showPasswordForm && (
           <div className="mt-3 pt-3" style={{ borderTop: `1px solid ${isDark ? '#444' : '#f0f0f0'}` }}>
@@ -470,10 +479,147 @@ export default function RootPage() {
         )}
       </div>
 
+
+      {/* ═══ 组2：学习与成长 ═══ */}
+      <div className="flex items-center gap-2 my-5">
+        <div className="flex-1 h-px" style={{ background: cardBorder }} />
+        <span className="text-[11px]" style={{ color: dimColor, letterSpacing: '2px' }}>学习与成长</span>
+        <div className="flex-1 h-px" style={{ background: cardBorder }} />
+      </div>
+
+      {/* 拾遗 */}
+      <div className="p-4 rounded-xl mb-3" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <RotateCcw size={14} strokeWidth={2} style={{ color: '#8BC34A' }} />
+            <span className="text-sm font-medium" style={{ color: titleColor }}>拾遗</span>
+          </div>
+          <button
+            onClick={toggleReview}
+            disabled={reviewLoading || entryCount < 20}
+            className="px-4 py-1.5 rounded-full text-xs font-medium transition"
+            style={{
+              background: reviewEnabled ? '#8BC34A' : (isDark ? '#333' : '#f0f0f0'),
+              color: reviewEnabled ? '#fff' : (entryCount < 20 ? '#999' : (isDark ? '#aaa' : '#666')),
+              opacity: entryCount < 20 ? 0.5 : 1,
+            }}
+          >
+            {reviewEnabled ? '已开启' : '开启'}
+          </button>
+        </div>
+      </div>
+
+      {/* 学习画像 */}
+      {profile && (
+        <div className="p-4 rounded-xl mb-3" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Sprout size={14} strokeWidth={2} style={{ color: '#8BC34A' }} />
+              <span className="text-sm font-medium" style={{ color: titleColor }}>学习画像</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowResetDialog(true)}
+                className="text-xs transition"
+                style={{ color: dimColor, textDecoration: 'underline', textUnderlineOffset: '3px' }}
+              >
+                重新播种
+              </button>
+              <ChevronDown size={16} style={{ color: subColor, transform: 'rotate(180deg)', transition: '0.3s' }} />
+            </div>
+          </div>
+
+          {/* 概览统计 */}
+          <div className="grid grid-cols-3 gap-2 mb-4">
+            <div className="text-center p-2 rounded-lg" style={{ background: isDark ? '#333' : '#f9f9f9' }}>
+              <p className="text-lg font-bold" style={{ color: '#8BC34A' }}>{profile.daysStudied}</p>
+              <p className="text-xs" style={{ color: dimColor }}>学习天数</p>
+            </div>
+            <div className="text-center p-2 rounded-lg" style={{ background: isDark ? '#333' : '#f9f9f9' }}>
+              <p className="text-lg font-bold" style={{ color: '#2196F3' }}>{profile.totalQuestions}</p>
+              <p className="text-xs" style={{ color: dimColor }}>答题总数</p>
+            </div>
+            <div className="text-center p-2 rounded-lg" style={{ background: isDark ? '#333' : '#f9f9f9' }}>
+              <p className="text-lg font-bold" style={{ color: '#FF8C42' }}>{profile.accuracy}%</p>
+              <p className="text-xs" style={{ color: dimColor }}>准确率</p>
+            </div>
+          </div>
+
+          {/* 近5日记录 */}
+          {profile.recentDays.length > 0 && (
+            <div className="mb-4">
+              <p className="text-xs mb-2" style={{ color: dimColor }}>近5日答题</p>
+              <div className="space-y-1.5">
+                {profile.recentDays.map((d, i) => (
+                  <div key={i} className="flex items-center justify-between">
+                    <span className="text-xs" style={{ color: titleColor }}>{d.date}</span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-16 h-1.5 rounded-full" style={{ background: isDark ? '#444' : '#eee' }}>
+                        <div
+                          className="h-full rounded-full"
+                          style={{
+                            width: `${(d.correct / d.total) * 100}%`,
+                            background: d.correct === d.total ? '#8BC34A' : '#FF8C42',
+                          }}
+                        />
+                      </div>
+                      <span className="text-xs" style={{ color: dimColor }}>{d.correct}/{d.total}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 薄弱领域 */}
+          {profile.weakAreas.length > 0 && (
+            <div className="mb-3">
+              <p className="text-xs mb-2" style={{ color: '#e57373' }}>⚠ 薄弱领域</p>
+              <div className="space-y-1.5">
+                {profile.weakAreas.map((a, i) => (
+                  <div key={i} className="flex items-center justify-between px-3 py-1.5 rounded-lg"
+                    style={{ background: 'rgba(229,115,115,0.08)', border: '1px solid rgba(229,115,115,0.2)' }}>
+                    <span className="text-xs" style={{ color: '#C62828' }}>#{a.tag}</span>
+                    <span className="text-xs" style={{ color: '#e57373' }}>准确率 {a.accuracy}% · {a.count}题</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 掌握良好 */}
+          {profile.strongAreas.length > 0 && (
+            <div>
+              <p className="text-xs mb-2" style={{ color: '#8BC34A' }}>✓ 掌握良好</p>
+              <div className="space-y-1.5">
+                {profile.strongAreas.map((a, i) => (
+                  <div key={i} className="flex items-center justify-between px-3 py-1.5 rounded-lg"
+                    style={{ background: 'rgba(139,195,74,0.08)', border: '1px solid rgba(139,195,74,0.2)' }}>
+                    <span className="text-xs" style={{ color: '#2E7D32' }}>#{a.tag}</span>
+                    <span className="text-xs" style={{ color: '#8BC34A' }}>准确率 {a.accuracy}% · {a.count}题</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ═══ 组3：内容管理 ═══ */}
+      <div className="flex items-center gap-2 my-5">
+        <div className="flex-1 h-px" style={{ background: cardBorder }} />
+        <span className="text-[11px]" style={{ color: dimColor, letterSpacing: '2px' }}>内容管理</span>
+        <div className="flex-1 h-px" style={{ background: cardBorder }} />
+      </div>
+
       {/* 主题风格 */}
-      <div className="p-4 rounded-xl mb-4" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
+      <div className="rounded-xl mb-3" style={{ background: cardBg, border: `1px solid ${cardBorder}`, padding: 0 }}>
+        <div className="p-4">
         <div className="flex items-center justify-between mb-3">
-          <p className="text-xs" style={{ color: subColor }}>主题风格</p>
+          <div className="flex items-center gap-1.5">
+            <Palette size={14} strokeWidth={2} style={{ color: '#8BC34A' }} />
+            <span className="text-sm font-medium" style={{ color: titleColor }}>主题风格</span>
+          </div>
           {savedTip && (
             <span className="text-xs" style={{ color: '#8BC34A' }}>✓ 已切换</span>
           )}
@@ -503,20 +649,22 @@ export default function RootPage() {
             )
           })}
         </div>
-      </div>
+        </div>
 
-      {/* 标签管理 */}
-      <div className="p-4 rounded-xl mb-4" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
-        <button
-          className="w-full flex items-center justify-between"
-          onClick={() => setShowTags(!showTags)}
-        >
-          <p className="text-xs" style={{ color: subColor }}>标签管理</p>
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-            fill="none" stroke={subColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-            style={{ transform: showTags ? 'rotate(180deg)' : 'rotate(0deg)', transition: '0.3s' }}>
-            <path d="m6 9 6 6 6-6" />
-          </svg>
+        {/* 分隔线 */}
+        <div className="mx-4 h-px" style={{ background: isDark ? '#444' : '#f0f0f0' }} />
+
+        {/* 标签管理 */}
+        <div className="p-4">
+          <button
+            className="w-full flex items-center justify-between"
+            onClick={() => setShowTags(!showTags)}
+          >
+          <div className="flex items-center gap-1.5">
+            <Tags size={14} strokeWidth={2} style={{ color: '#8BC34A' }} />
+            <span className="text-sm font-medium" style={{ color: titleColor }}>标签管理</span>
+          </div>
+          <ChevronDown size={16} style={{ color: subColor, transform: showTags ? 'rotate(180deg)' : 'rotate(0deg)', transition: '0.3s' }} />
         </button>
         {showTags && (
           <div className="mt-3">
@@ -722,127 +870,16 @@ export default function RootPage() {
         )}
       </div>
 
-      {/* 拾遗设置 */}
-      <div className="p-4 rounded-xl mb-4" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium" style={{ color: titleColor }}>拾遗</p>
-            <p className="text-xs mt-1" style={{ color: dimColor }}>
-              {entryCount < 20 ? `积${20 - entryCount}篇学思，唤AI循循温故（AI知识回顾）` : '沐每日甘霖，令薄弱处生根（AI知识回顾）'}
-            </p>
-          </div>
-          <button
-            onClick={toggleReview}
-            disabled={reviewLoading || entryCount < 20}
-            className="px-4 py-1.5 rounded-full text-xs font-medium transition"
-            style={{
-              background: reviewEnabled ? '#8BC34A' : (isDark ? '#333' : '#f0f0f0'),
-              color: reviewEnabled ? '#fff' : (entryCount < 20 ? '#999' : (isDark ? '#aaa' : '#666')),
-              opacity: entryCount < 20 ? 0.5 : 1,
-            }}
-          >
-            {reviewEnabled ? '已开启' : '开启'}
-          </button>
-        </div>
-      </div>
+        {/* 分隔线 */}
+        <div className="mx-4 h-px" style={{ background: isDark ? '#444' : '#f0f0f0' }} />
 
-      {/* 学习画像 */}
-      {profile && (
-        <div className="p-4 rounded-xl mb-4" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
+        {/* 数据导出 */}
+        <div className="p-4">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-1.5">
-              <Sprout size={14} strokeWidth={2} style={{ color: '#8BC34A' }} />
-              <span style={{ color: dimColor }}>拾遗学习画像</span>
-            </div>
-            <button
-              onClick={() => setShowResetDialog(true)}
-              className="text-xs transition"
-              style={{ color: dimColor, textDecoration: 'underline', textUnderlineOffset: '3px' }}
-            >
-              重新播种
-            </button>
+              <Download size={14} strokeWidth={2} style={{ color: '#8BC34A' }} />
+            <span className="text-sm font-medium" style={{ color: titleColor }}>导出心得</span>
           </div>
-
-          {/* 概览统计 */}
-          <div className="grid grid-cols-3 gap-2 mb-4">
-            <div className="text-center p-2 rounded-lg" style={{ background: isDark ? '#333' : '#f9f9f9' }}>
-              <p className="text-lg font-bold" style={{ color: '#8BC34A' }}>{profile.daysStudied}</p>
-              <p className="text-xs" style={{ color: dimColor }}>学习天数</p>
-            </div>
-            <div className="text-center p-2 rounded-lg" style={{ background: isDark ? '#333' : '#f9f9f9' }}>
-              <p className="text-lg font-bold" style={{ color: '#2196F3' }}>{profile.totalQuestions}</p>
-              <p className="text-xs" style={{ color: dimColor }}>答题总数</p>
-            </div>
-            <div className="text-center p-2 rounded-lg" style={{ background: isDark ? '#333' : '#f9f9f9' }}>
-              <p className="text-lg font-bold" style={{ color: '#FF8C42' }}>{profile.accuracy}%</p>
-              <p className="text-xs" style={{ color: dimColor }}>准确率</p>
-            </div>
-          </div>
-
-          {/* 近5日记录 */}
-          {profile.recentDays.length > 0 && (
-            <div className="mb-4">
-              <p className="text-xs mb-2" style={{ color: dimColor }}>近5日答题</p>
-              <div className="space-y-1.5">
-                {profile.recentDays.map((d, i) => (
-                  <div key={i} className="flex items-center justify-between">
-                    <span className="text-xs" style={{ color: titleColor }}>{d.date}</span>
-                    <div className="flex items-center gap-2">
-                      <div className="w-16 h-1.5 rounded-full" style={{ background: isDark ? '#444' : '#eee' }}>
-                        <div
-                          className="h-full rounded-full"
-                          style={{
-                            width: `${(d.correct / d.total) * 100}%`,
-                            background: d.correct === d.total ? '#8BC34A' : '#FF8C42',
-                          }}
-                        />
-                      </div>
-                      <span className="text-xs" style={{ color: dimColor }}>{d.correct}/{d.total}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* 薄弱领域 */}
-          {profile.weakAreas.length > 0 && (
-            <div className="mb-3">
-              <p className="text-xs mb-2" style={{ color: '#e57373' }}>⚠ 薄弱领域</p>
-              <div className="space-y-1.5">
-                {profile.weakAreas.map((a, i) => (
-                  <div key={i} className="flex items-center justify-between px-3 py-1.5 rounded-lg"
-                    style={{ background: 'rgba(229,115,115,0.08)', border: '1px solid rgba(229,115,115,0.2)' }}>
-                    <span className="text-xs" style={{ color: '#C62828' }}>#{a.tag}</span>
-                    <span className="text-xs" style={{ color: '#e57373' }}>准确率 {a.accuracy}% · {a.count}题</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* 掌握良好 */}
-          {profile.strongAreas.length > 0 && (
-            <div>
-              <p className="text-xs mb-2" style={{ color: '#8BC34A' }}>✓ 掌握良好</p>
-              <div className="space-y-1.5">
-                {profile.strongAreas.map((a, i) => (
-                  <div key={i} className="flex items-center justify-between px-3 py-1.5 rounded-lg"
-                    style={{ background: 'rgba(139,195,74,0.08)', border: '1px solid rgba(139,195,74,0.2)' }}>
-                    <span className="text-xs" style={{ color: '#2E7D32' }}>#{a.tag}</span>
-                    <span className="text-xs" style={{ color: '#8BC34A' }}>准确率 {a.accuracy}% · {a.count}题</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* 数据导出 */}
-      <div className="p-4 rounded-xl mb-4" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-xs" style={{ color: dimColor }}>导出心得</p>
           {exportTip && (
             <span className="text-xs" style={{ color: '#8BC34A' }}>✓ 已开始下载</span>
           )}
@@ -860,10 +897,11 @@ export default function RootPage() {
         >
           {exporting ? '导出中...' : '导出为 Markdown'}
         </button>
+        </div>
       </div>
 
       {/* 分享管理 */}
-      <div className="p-4 rounded-xl mb-4" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
+      <div className="p-4 rounded-xl mb-3" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
         <button
           className="w-full flex items-center justify-between"
           onClick={() => {
@@ -873,13 +911,9 @@ export default function RootPage() {
         >
           <div className="flex items-center gap-1.5">
             <Link size={14} strokeWidth={2} style={{ color: '#8BC34A' }} />
-            <span style={{ color: subColor }}>分享管理</span>
+            <span className="text-sm font-medium" style={{ color: titleColor }}>分享管理</span>
           </div>
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-            fill="none" stroke={subColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-            style={{ transform: showShareSection ? 'rotate(180deg)' : 'rotate(0deg)', transition: '0.3s' }}>
-            <path d="m6 9 6 6 6-6" />
-          </svg>
+          <ChevronDown size={16} style={{ color: subColor, transform: showShareSection ? 'rotate(180deg)' : 'rotate(0deg)', transition: '0.3s' }} />
         </button>
         {showShareSection && (
           <div className="mt-3">
@@ -1149,26 +1183,23 @@ export default function RootPage() {
         )}
       </div>
 
-      {/* 版本 & 开打次数 */}
-      <div className="p-4 rounded-xl mb-4" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
+      {/* ═══ 组4：关于 ═══ */}
+      <div className="flex items-center gap-2 my-5">
+        <div className="flex-1 h-px" style={{ background: cardBorder }} />
+        <span className="text-[11px]" style={{ color: dimColor, letterSpacing: '2px' }}>关于</span>
+        <div className="flex-1 h-px" style={{ background: cardBorder }} />
+      </div>
+
+      <div className="p-4 rounded-xl mb-3" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
         <button
           className="w-full flex items-center justify-between"
           onClick={() => setShowChangelog(!showChangelog)}
         >
-          <div className="flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
-              fill="none" stroke={subColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" />
-              <path d="M12 16v-4" />
-              <path d="M12 8h.01" />
-            </svg>
-            <span className="text-sm" style={{ color: isDark ? '#aaa' : '#666' }}>版本更新</span>
+          <div className="flex items-center gap-1.5">
+            <Info size={14} strokeWidth={2} style={{ color: '#8BC34A' }} />
+            <span className="text-sm font-medium" style={{ color: titleColor }}>版本更新</span>
           </div>
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-            fill="none" stroke={subColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-            style={{ transform: showChangelog ? 'rotate(180deg)' : 'rotate(0deg)', transition: '0.3s' }}>
-            <path d="m6 9 6 6 6-6" />
-          </svg>
+          <ChevronDown size={16} style={{ color: subColor, transform: showChangelog ? 'rotate(180deg)' : 'rotate(0deg)', transition: '0.3s' }} />
         </button>
 
         {showChangelog && (
@@ -1199,10 +1230,12 @@ export default function RootPage() {
           </div>
         )}
 
-        <div className="mt-3 pt-3 flex justify-between" style={{ borderTop: `1px solid ${isDark ? '#444' : '#f0f0f0'}` }}>
-          <span className="text-sm" style={{ color: isDark ? '#aaa' : '#666' }}>累计打开</span>
-          <span className="text-sm" style={{ color: titleColor }}>{user?.openTimes ?? '—'} 次</span>
-        </div>
+      </div>
+
+      {/* 累计打开 */}
+      <div className="p-4 rounded-xl mb-3 flex justify-between" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
+        <span className="text-sm font-medium" style={{ color: titleColor }}>累计打开</span>
+        <span className="text-sm" style={{ color: titleColor }}>{user?.openTimes ?? '—'} 次</span>
       </div>
 
       {/* 退出登录 */}

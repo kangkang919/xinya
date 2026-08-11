@@ -1,6 +1,7 @@
 ﻿"use client"
 import { useEffect, useState } from "react"
 import { useTheme } from "@/lib/useTheme"
+import { Moon, BarChart3 } from "lucide-react"
 
 interface DayData {
   day: number
@@ -355,9 +356,9 @@ export default function RingPage() {
       {/* 本月洞察 */}
       {(insightLoading || insight) && (
         <div className="p-4 rounded-xl mb-3" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
-          <div className="flex items-center gap-2 mb-3">
-            <span style={{ fontSize: "16px" }}>🌙</span>
-            <span className="text-sm font-semibold" style={{ color: titleColor }}>本月洞察</span>
+          <div className="flex items-center gap-1.5 mb-3">
+            <Moon size={14} strokeWidth={2} style={{ color: '#8BC34A' }} />
+            <span className="text-sm font-medium" style={{ color: titleColor }}>本月洞察</span>
           </div>
 
           {insightLoading ? (
@@ -401,7 +402,10 @@ export default function RingPage() {
       {/* 累计篇数 */}
       <div className="p-4 rounded-xl" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
         <div className="flex items-center justify-between">
-          <span className="text-sm" style={{ color: isDark ? '#aaa' : '#666' }}>累计篇数</span>
+          <div className="flex items-center gap-1.5">
+            <BarChart3 size={14} strokeWidth={2} style={{ color: '#8BC34A' }} />
+            <span className="text-sm font-medium" style={{ color: titleColor }}>累计篇数</span>
+          </div>
           <span className="text-lg font-bold" style={{ color: titleColor }}>{entryCount}</span>
         </div>
       </div>
