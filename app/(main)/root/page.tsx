@@ -3,6 +3,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { toMarkdown, downloadBlob } from "@/lib/export-utils"
 import { DeleteDialog } from "@/components/DeleteDialog"
+import { Sprout, Link } from "lucide-react"
 
 interface User {
   email: string
@@ -749,7 +750,10 @@ export default function RootPage() {
       {profile && (
         <div className="p-4 rounded-xl mb-4" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
           <div className="flex items-center justify-between mb-3">
-            <p className="text-xs" style={{ color: dimColor }}>📊 拾遗学习画像</p>
+            <div className="flex items-center gap-1.5">
+              <Sprout size={14} strokeWidth={2} style={{ color: '#8BC34A' }} />
+              <span style={{ color: dimColor }}>拾遗学习画像</span>
+            </div>
             <button
               onClick={() => setShowResetDialog(true)}
               className="text-xs transition"
@@ -867,7 +871,10 @@ export default function RootPage() {
             if (!showShareSection) fetchShares()
           }}
         >
-          <p className="text-xs" style={{ color: subColor }}>📤 分享管理</p>
+          <div className="flex items-center gap-1.5">
+            <Link size={14} strokeWidth={2} style={{ color: '#8BC34A' }} />
+            <span style={{ color: subColor }}>分享管理</span>
+          </div>
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
             fill="none" stroke={subColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
             style={{ transform: showShareSection ? 'rotate(180deg)' : 'rotate(0deg)', transition: '0.3s' }}>
