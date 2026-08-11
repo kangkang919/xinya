@@ -112,18 +112,30 @@ export async function GET(
     // 计算每个标签的心得数量（父标签包括所有子标签下的心得）
     const tagEntryCounts = new Map<string, number>()
     for (const tag of visibleTags) {
-      // 找出该标签及其所有子标签的 ID
       const relatedTagIds = new Set<string>([tag.id])
       for (const otherTag of visibleTags) {
         if (otherTag.parentId === tag.id) {
           relatedTagIds.add(otherTag.id)
         }
       }
-      // 计算关联的心得数量
       const count = entries.filter(e => 
         e.tags.some(t => relatedTagIds.has(t.id))
       ).length
       tagEntryCounts.set(tag.id, count)
+    }
+
+    // 查询所有相关标签下的排序记录（包括子标签）
+    const allVisibleTagIds = visibleTags.map(t => t.id)
+    const entryIds = entries.map(e => e.id)
+    const sortRecords = entryIds.length > 0
+      ? await prisma.entryTagSort.findMany({
+          where: { entryId: { in: entryIds }, tagId: { in: allVisibleTagIds } },
+        })
+      : []
+    const sortMap = new Map<string, Record<string, number>>()
+    for (const r of sortRecords) {
+      if (!sortMap.has(r.entryId)) sortMap.set(r.entryId, {})
+      sortMap.get(r.entryId)![r.tagId] = r.sortOrder
     }
 
     const shareData = {
@@ -142,6 +154,8 @@ export async function GET(
         content: e.content,
         mood: e.mood,
         recordTime: e.recordTime.toISOString(),
+        isTop: e.isTop,
+        sortOrders: sortMap.get(e.id) || {},
         tags: e.tags.map(t => ({ id: t.id, name: t.name })),
       })),
     }

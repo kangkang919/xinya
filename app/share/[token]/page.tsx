@@ -10,6 +10,8 @@ interface ShareEntry {
   content: string
   mood: string | null
   recordTime: string
+  isTop: boolean
+  sortOrders: Record<string, number>
   tags: { id: string; name: string }[]
 }
 
@@ -59,23 +61,6 @@ function TagsView({
   const [selectedTag, setSelectedTag] = useState<ShareTag | null>(null)
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
 
-  // 恢复状态（从心得详情返回时）
-  useEffect(() => {
-    const handleRestore = (event: Event) => {
-      const customEvent = event as CustomEvent
-      const state = customEvent.detail
-      if (state.selectedTagId) {
-        const tag = tags.find(t => t.id === state.selectedTagId)
-        if (tag) {
-          setSelectedTag(tag)
-          setExpandedGroups(new Set(state.expandedGroups || []))
-        }
-      }
-    }
-    window.addEventListener('share-restore-tag-state', handleRestore)
-    return () => window.removeEventListener('share-restore-tag-state', handleRestore)
-  }, [tags])
-
   // 顶级标签（按心得数量从多到少排序）
   const topTags = tags.filter(t => !t.parentId).sort((a, b) => b.entryCount - a.entryCount)
   
@@ -91,16 +76,29 @@ function TagsView({
     }
   }
 
+  // 按指定标签的 sortOrder 排序心得（与枝叶页一致）
+  function sortEntriesByTag(entries: ShareEntry[], tagId: string): ShareEntry[] {
+    return [...entries].sort((a, b) => {
+      if (a.isTop !== b.isTop) return a.isTop ? -1 : 1
+      const sa = a.sortOrders?.[tagId] ?? 0
+      const sb = b.sortOrders?.[tagId] ?? 0
+      if (sa !== sb) return sb - sa
+      return new Date(b.recordTime).getTime() - new Date(a.recordTime).getTime()
+    })
+  }
+
   // 选中标签下的子标签
   const childTags = selectedTag ? tags.filter(t => t.parentId === selectedTag.id) : []
   
-  // 按子标签分组心得
+  // 按子标签分组心得（带排序）
   const entryGroups = (() => {
     if (!selectedTag || entries.length === 0) return []
     
     if (childTags.length === 0) {
-      // 没有子标签，全部作为单组
-      const groupEntries = entries.filter(e => e.tags.some(t => t.id === selectedTag.id))
+      const groupEntries = sortEntriesByTag(
+        entries.filter(e => e.tags.some(t => t.id === selectedTag.id)),
+        selectedTag.id
+      )
       return [{ tagId: selectedTag.id, tagName: selectedTag.name, entries: groupEntries }]
     }
     
@@ -108,11 +106,9 @@ function TagsView({
     const groups: { tagId: string; tagName: string; entries: ShareEntry[] }[] = []
     const grouped = new Map<string, ShareEntry[]>()
     
-    // 初始化子标签分组
     for (const child of childTags) {
       grouped.set(child.id, [])
     }
-    // 未归类（只挂在父标签、不在任何子标签下的心得）
     const ungrouped: ShareEntry[] = []
     
     for (const entry of entries) {
@@ -124,17 +120,15 @@ function TagsView({
       }
     }
     
-    // 只保留有心得的分组
     for (const child of childTags) {
-      const groupEntries = grouped.get(child.id) || []
+      const groupEntries = sortEntriesByTag(grouped.get(child.id) || [], child.id)
       if (groupEntries.length > 0) {
         groups.push({ tagId: child.id, tagName: child.name, entries: groupEntries })
       }
     }
     
-    // 未归类的放在最后
     if (ungrouped.length > 0) {
-      groups.push({ tagId: '__ungrouped__', tagName: '未归类', entries: ungrouped })
+      groups.push({ tagId: '__ungrouped__', tagName: '未归类', entries: sortEntriesByTag(ungrouped, selectedTag.id) })
     }
     
     return groups
@@ -144,18 +138,11 @@ function TagsView({
     if (selectedTag?.id === tag.id) {
       setSelectedTag(null)
       setExpandedGroups(new Set())
-      sessionStorage.removeItem('share_tag_state')
       return
     }
     setSelectedTag(tag)
     // 默认展开所有分组
-    const newExpanded = new Set(entryGroups.map(g => g.tagId))
-    setExpandedGroups(newExpanded)
-    // 保存状态
-    sessionStorage.setItem('share_tag_state', JSON.stringify({
-      selectedTagId: tag.id,
-      expandedGroups: Array.from(newExpanded),
-    }))
+    setExpandedGroups(new Set(entryGroups.map(g => g.tagId)))
   }
 
   function toggleGroup(tagId: string) {
@@ -163,11 +150,6 @@ function TagsView({
       const next = new Set(prev)
       if (next.has(tagId)) next.delete(tagId)
       else next.add(tagId)
-      // 保存状态
-      sessionStorage.setItem('share_tag_state', JSON.stringify({
-        selectedTagId: selectedTag?.id,
-        expandedGroups: Array.from(next),
-      }))
       return next
     })
   }
@@ -448,20 +430,6 @@ function SharePageContent() {
       .finally(() => setLoading(false))
   }, [token])
 
-  // 恢复滚动位置（从心得详情返回时）
-  useEffect(() => {
-    if (!selectedEntry && contentRef.current) {
-      const saved = sessionStorage.getItem('share_scroll')
-      if (saved) {
-        sessionStorage.removeItem('share_scroll')
-        const y = parseInt(saved, 10)
-        setTimeout(() => {
-          contentRef.current?.scrollTo(0, y)
-        }, 100)
-      }
-    }
-  }, [selectedEntry])
-
   const handleEntryClick = (entry: ShareEntry) => {
     // 保存当前滚动位置
     if (contentRef.current) {
@@ -472,15 +440,14 @@ function SharePageContent() {
 
   const handleBack = () => {
     setSelectedEntry(null)
-    // 恢复 TagsView 的状态
-    const savedTagState = sessionStorage.getItem('share_tag_state')
-    if (savedTagState) {
-      try {
-        const state = JSON.parse(savedTagState)
-        // 通过自定义事件通知 TagsView 恢复状态
-        window.dispatchEvent(new CustomEvent('share-restore-tag-state', { detail: state }))
-      } catch {}
-    }
+    // 恢复滚动位置
+    setTimeout(() => {
+      const saved = sessionStorage.getItem('share_scroll')
+      if (saved && contentRef.current) {
+        sessionStorage.removeItem('share_scroll')
+        contentRef.current.scrollTo(0, parseInt(saved, 10))
+      }
+    }, 50)
   }
 
   if (loading) {
@@ -504,54 +471,55 @@ function SharePageContent() {
 
   if (!shareData) return null
 
-  // 心得详情视图
-  if (selectedEntry) {
-    return (
-      <div className="h-screen flex flex-col" style={{ background: "#FAFAF5" }}>
-        <EntryDetail 
-          entry={selectedEntry} 
-          onBack={handleBack} 
-        />
-      </div>
-    )
-  }
-
   return (
-    <div className="h-screen flex flex-col" style={{ background: "#FAFAF5" }}>
-      {/* 顶部区域 */}
-      <div className="px-5 pt-5 pb-3" style={{ borderBottom: "1px solid #E8E8E0", background: "#fff" }}>
-        <div className="flex items-center justify-between mb-1">
-          <h1 className="text-lg font-semibold" style={{ color: "#333" }}>
-            {shareData.owner.split("@")[0]}的心芽花园 
-          </h1>
-          <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ color: "#999", background: "#F5F5F0", border: "1px solid #E8E8E0" }}>
-            只读
-          </span>
+    <div className="h-screen flex flex-col relative" style={{ background: "#FAFAF5" }}>
+      {/* 主视图 */}
+      <div className="flex flex-col h-full">
+        {/* 顶部区域 */}
+        <div className="px-5 pt-5 pb-3" style={{ borderBottom: "1px solid #E8E8E0", background: "#fff" }}>
+          <div className="flex items-center justify-between mb-1">
+            <h1 className="text-lg font-semibold" style={{ color: "#333" }}>
+              {shareData.owner.split("@")[0]}的心芽花园 
+            </h1>
+            <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ color: "#999", background: "#F5F5F0", border: "1px solid #E8E8E0" }}>
+              只读
+            </span>
+          </div>
+          <p className="text-xs italic" style={{ color: "#999" }}>
+            记录内心的每一次萌发
+          </p>
         </div>
-        <p className="text-xs italic" style={{ color: "#999" }}>
-          记录内心的每一次萌发
-        </p>
+
+        {/* 内容区 */}
+        <div 
+          ref={contentRef}
+          className="flex-1 overflow-y-auto px-4 py-3"
+        >
+          <TagsView 
+            tags={shareData.tags} 
+            entries={shareData.entries} 
+            onEntryClick={handleEntryClick} 
+          />
+        </div>
+
+        {/* 底部引导 */}
+        <div className="px-5 py-3 text-center" style={{ borderTop: "1px solid #E8E8E0", background: "#fff" }}>
+          <p className="text-xs mb-1" style={{ color: "#999" }}>觉得好用？</p>
+          <a href="/login" className="text-sm font-medium" style={{ color: "#8BC34A" }}>
+            创建自己的心芽账户 →
+          </a>
+        </div>
       </div>
 
-      {/* 内容区 */}
-      <div 
-        ref={contentRef}
-        className="flex-1 overflow-y-auto px-4 py-3"
-      >
-        <TagsView 
-          tags={shareData.tags} 
-          entries={shareData.entries} 
-          onEntryClick={handleEntryClick} 
-        />
-      </div>
-
-      {/* 底部引导 */}
-      <div className="px-5 py-3 text-center" style={{ borderTop: "1px solid #E8E8E0", background: "#fff" }}>
-        <p className="text-xs mb-1" style={{ color: "#999" }}>觉得好用？</p>
-        <a href="/login" className="text-sm font-medium" style={{ color: "#8BC34A" }}>
-          创建自己的心芽账户 →
-        </a>
-      </div>
+      {/* 心得详情叠加层 */}
+      {selectedEntry && (
+        <div className="absolute inset-0 z-50 flex flex-col" style={{ background: "#FAFAF5" }}>
+          <EntryDetail 
+            entry={selectedEntry} 
+            onBack={handleBack} 
+          />
+        </div>
+      )}
 
       {/* 富文本样式 */}
       <style jsx>{`
