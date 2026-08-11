@@ -1189,6 +1189,7 @@ pm2 delete xinya && pm2 start ecosystem.config.js && pm2 save
 | 2026-08-02 | 枝叶页标签视图心得截断修复：标签视图（tagId）API 原为全量取出后内存排序再 slice(0,50) 截断，导致超过 50 篇的父标签丢失旧心得（如「AI与大模型」64 篇只返回 50 篇）；修复：标签视图去掉 slice 截断，全量返回排序后结果；枝叶页请求去掉 limit=50 参数；萌芽页搜索/筛选分页不受影响 | 已验收 |
 | 2026-08-10 | F6.1+F6.2 分享管理+访客只读页面：根系页新增分享管理区块（创建链接+列表+撤销），支持有效期选择（7/30/90天）+范围选择（全部心得/指定标签），链接自动复制到剪贴板；新增访客只读页面 /share/[token]，支持时间轴/标签双视图切换，标签视图支持父子标签展开，心得详情只读，强制春日萌芽主题，无底部导航；新增 API：POST/GET /api/shares、DELETE /api/shares/[id]、GET /api/share/[token]；middleware 放行 /share 路径 | 已验收 |
 | 2026-08-11 | 根系页+年轮页 UI 风格统一重设计：① 根系页所有区块标题统一为 14px Lucide 绿色描边图标(#8BC34A) + text-sm font-medium titleColor；② 功能分组排序：身份与安全→学习与成长→内容管理→关于，组间 my-5 分隔线标签；③ 内容管理组合并为单卡片（主题风格/标签管理/导出心得），行间分隔线；④ 拾遗(RotateCcw)、学习画像(Sprout+ChevronDown)、账户(UserIcon)、版本(Info)、累计打开独立卡片；⑤ 分享管理(Link+ChevronDown)独立可折叠卡片；⑥ 年轮页本月洞察：🌙 emoji→Moon Lucide图标，font-semibold→font-medium；⑦ 年轮页累计篇数：无图标→BarChart3 Lucide图标，颜色统一为 titleColor | 已验收 |
+| 2026-08-11 | v0.2.0 版本更新：根系页新增版本更新条目（标签层级化/心得拖拽排序/AI月度洞察/分享管理/交互增强/视觉焕新），package.json 版本号升至 0.2.0 | 已验收 |
 
 ---
 

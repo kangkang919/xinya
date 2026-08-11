@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>根系页 UI 重设计效果图 - 方案A</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #f0f0f0;
+    font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+    display: flex;
+    justify-content: center;
+    padding: 40px 20px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .phone-frame {
+    width: 390px;
+    background: #FAFAF5;
+    border-radius: 40px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+    border: 8px solid #1a1a1a;
+  }
+  .status-bar {
+    height: 44px;
+    background: #FAFAF5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+  }
+  .page-content {
+    padding: 16px 16px 100px;
+    max-width: 100%;
+  }
+
+  /* ===== 页面标题 ===== */
+  .page-header {
+    margin-bottom: 20px;
+  }
+  .page-header h1 {
+    font-size: 20px;
+    font-weight: 700;
+    color: #333;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .page-header h1 .icon-leaf {
+    color: #8BC34A;
+    font-size: 18px;
+    width: 1.4em;
+    text-align: center;
+  }
+  .page-header .subtitle {
+    font-size: 12px;
+    color: #bbb;
+    margin-top: 4px;
+  }
+
+  /* ===== 分组标签 ===== */
+  .group-label {
+    font-size: 11px;
+    color: #bbb;
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+    padding-left: 2px;
+  }
+
+  /* ===== 分组间距 ===== */
+  .group-gap { margin-top: 20px; }
+
+  /* ===== 卡片通用 ===== */
+  .card {
+    background: #fff;
+    border: 1px solid #eee;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+  .card:last-child { margin-bottom: 0; }
+
+  /* ===== 统一标题行 ===== */
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .section-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .section-title svg {
+    flex-shrink: 0;
+  }
+  .section-title span {
+    font-size: 14px;
+    font-weight: 500;
+    color: #333;
+  }
+  .right-action {
+    font-size: 12px;
+    color: #8BC34A;
+    cursor: pointer;
+    background: none;
+    border: none;
+    font-family: inherit;
+  }
+  .chevron {
+    transition: transform 0.3s;
+  }
+  .chevron.open {
+    transform: rotate(180deg);
+  }
+
+  /* ===== 合并卡片内的行分隔 ===== */
+  .merged-card {
+    padding: 0;
+  }
+  .merged-row {
+    padding: 16px;
+  }
+  .merged-row + .merged-row {
+    border-top: 1px solid #f0f0f0;
+  }
+
+  /* ===== 账号区块 ===== */
+  .account-email {
+    font-size: 14px;
+    font-weight: 500;
+    color: #333;
+    margin-top: 10px;
+  }
+  .account-hint {
+    font-size: 11px;
+    color: #999;
+    margin-top: 4px;
+  }
+
+  /* ===== 拾遗开关 ===== */
+  .review-desc {
+    font-size: 12px;
+    color: #999;
+    margin-top: 6px;
+  }
+  .toggle-btn {
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+  }
+  .toggle-on {
+    background: #8BC34A;
+    color: #fff;
+  }
+
+  /* ===== 学习画像 ===== */
+  .profile-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .stat-box {
+    text-align: center;
+    padding: 10px 8px;
+    background: #f9f9f9;
+    border-radius: 8px;
+  }
+  .stat-box .num {
+    font-size: 18px;
+    font-weight: 700;
+  }
+  .stat-box .label {
+    font-size: 11px;
+    color: #999;
+    margin-top: 2px;
+  }
+  .recent-days {
+    margin-top: 12px;
+  }
+  .recent-days .days-title {
+    font-size: 12px;
+    color: #999;
+    margin-bottom: 8px;
+  }
+  .day-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+  }
+  .day-row .date { font-size: 12px; color: #333; width: 70px; }
+  .day-bar {
+    width: 64px;
+    height: 6px;
+    background: #eee;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .day-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+  }
+  .day-row .score { font-size: 12px; color: #999; width: 36px; text-align: right; }
+
+  .area-title {
+    font-size: 12px;
+    margin-bottom: 6px;
+    margin-top: 10px;
+  }
+  .area-tag {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 12px;
+    border-radius: 8px;
+    margin-bottom: 4px;
+    font-size: 12px;
+  }
+
+  /* ===== 主题选择（内联） ===== */
+  .theme-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .theme-card {
+    padding: 12px;
+    border-radius: 12px;
+    text-align: left;
+    cursor: pointer;
+    border: 2px solid #eee;
+    background: #FAFAFA;
+  }
+  .theme-card.selected {
+    border-color: #8BC34A;
+    background: #F4FBF0;
+  }
+  .theme-card .theme-dot {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    display: inline-block;
+    vertical-align: middle;
+    margin-right: 8px;
+  }
+  .theme-card .theme-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: #333;
+    vertical-align: middle;
+  }
+  .theme-card .theme-sub {
+    font-size: 12px;
+    color: #999;
+    margin-top: 4px;
+  }
+  .theme-card .check {
+    float: right;
+    color: #8BC34A;
+    font-size: 12px;
+  }
+
+  /* ===== 导出按钮 ===== */
+  .export-btn {
+    width: 100%;
+    padding: 10px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 500;
+    background: rgba(139,195,74,0.08);
+    color: #5a8a2f;
+    border: 1px solid rgba(139,195,74,0.3);
+    cursor: pointer;
+    margin-top: 12px;
+  }
+
+  /* ===== 分组分隔 ===== */
+  .group-divider {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 20px 0 8px;
+  }
+  .group-divider::before,
+  .group-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: #e0e0e0;
+  }
+  .group-divider span {
+    font-size: 10px;
+    color: #bbb;
+    letter-spacing: 1px;
+    white-space: nowrap;
+  }
+
+  /* ===== 底部信息 ===== */
+  .open-times {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 0;
+    font-size: 14px;
+    color: #666;
+  }
+  .open-times .num { color: #333; }
+
+  /* ===== 退出按钮 ===== */
+  .logout-btn {
+    width: 100%;
+    padding: 12px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #e57373;
+    border: 1px solid rgba(229,115,115,0.2);
+    background: #fff;
+    cursor: pointer;
+    margin-top: 12px;
+  }
+
+  /* ===== 标注 ===== */
+  .design-note {
+    max-width: 390px;
+    margin: 0 auto 20px;
+    padding: 16px;
+    background: #fff;
+    border-radius: 12px;
+    font-size: 13px;
+    color: #666;
+    line-height: 1.8;
+    border: 1px solid #eee;
+  }
+  .design-note h3 {
+    font-size: 14px;
+    color: #333;
+    margin-bottom: 8px;
+  }
+  .design-note ul {
+    padding-left: 16px;
+    list-style: disc;
+  }
+  .design-note li {
+    margin-bottom: 4px;
+  }
+
+  /* ===== 合并卡片标注箭头 ===== */
+  .callout {
+    position: relative;
+    margin: 12px 0 4px;
+    padding: 8px 12px;
+    background: #FFF8E1;
+    border: 1px dashed #FFB300;
+    border-radius: 8px;
+    font-size: 11px;
+    color: #E65100;
+    line-height: 1.6;
+    max-width: 390px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .callout strong {
+    color: #BF360C;
+  }
+</style>
+</head>
+<body>
+
+<div>
+  <!-- 设计说明 -->
+  <div class="design-note">
+    <h3>🎨 根系页重设计 · 方案A（合并一卡）</h3>
+    <ul>
+      <li><b>核心改动</b>：内容管理组的 4 个功能合并为<strong>一张卡片</strong>，用分隔线划分行</li>
+      <li><b>标题统一</b>：所有区块标题 14px / font-medium / #333 / 左侧绿色 Lucide 图标</li>
+      <li><b>功能分组</b>：4 组（身份→学习→内容→关于），组间 20px 间距</li>
+      <li><b>折叠规则</b>：合并卡片内，标签和分享折叠，主题和导出始终可见</li>
+      <li><b>页面卡片数</b>：从原来 8 张 → 现在 5 张，更紧凑</li>
+    </ul>
+  </div>
+
+  <!-- 手机框架 -->
+  <div class="phone-frame">
+    <div class="status-bar">9:41</div>
+    <div class="page-content">
+
+      <!-- ===== 页面标题 ===== -->
+      <div class="page-header">
+        <h1><span class="icon-leaf">🌿</span>根系</h1>
+        <p class="subtitle">此处是你的根，安静而深厚</p>
+      </div>
+
+      <!-- ══════ 组1：身份与安全 ══════ -->
+      <div class="group-label">身份与安全</div>
+
+      <!-- 账户信息 -->
+      <div class="card">
+        <div class="section-header">
+          <div class="section-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8BC34A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <span>账户信息</span>
+          </div>
+          <button class="right-action">设置密码</button>
+        </div>
+        <p class="account-email">hello@shuxiangnote.top</p>
+        <p class="account-hint">设置后可使用密码登录</p>
+      </div>
+
+      <!-- ══════ 组2：学习与成长 ══════ -->
+      <div class="group-divider"><span>学习与成长</span></div>
+
+      <!-- 拾遗 -->
+      <div class="card">
+        <div class="section-header">
+          <div class="section-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8BC34A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9"/><path d="M21 3v9h-9"/></svg>
+            <span>拾遗</span>
+          </div>
+          <button class="toggle-btn toggle-on">已开启</button>
+        </div>
+        <p class="review-desc">沐每日甘霖，令薄弱处生根（AI知识回顾）</p>
+      </div>
+
+      <!-- 学习画像（默认展开） -->
+      <div class="card">
+        <div class="section-header">
+          <div class="section-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8BC34A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 20h10"/><path d="M10 20c5.5-2.5.8-6.4 3-10"/><path d="M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z"/><path d="M14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2z"/></svg>
+            <span>学习画像</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <button class="right-action" style="color:#999;text-decoration:underline;text-underline-offset:3px;">重新播种</button>
+            <svg class="chevron open" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+          </div>
+        </div>
+
+        <!-- 展开内容 -->
+        <div class="profile-stats">
+          <div class="stat-box">
+            <p class="num" style="color:#8BC34A">12</p>
+            <p class="label">学习天数</p>
+          </div>
+          <div class="stat-box">
+            <p class="num" style="color:#2196F3">48</p>
+            <p class="label">答题总数</p>
+          </div>
+          <div class="stat-box">
+            <p class="num" style="color:#FF8C42">78%</p>
+            <p class="label">准确率</p>
+          </div>
+        </div>
+
+        <div class="recent-days">
+          <p class="days-title">近5日答题</p>
+          <div class="day-row">
+            <span class="date">8月11日</span>
+            <div class="day-bar"><div class="day-bar-fill" style="width:100%;background:#8BC34A"></div></div>
+            <span class="score">4/4</span>
+          </div>
+          <div class="day-row">
+            <span class="date">8月10日</span>
+            <div class="day-bar"><div class="day-bar-fill" style="width:66%;background:#FF8C42"></div></div>
+            <span class="score">2/3</span>
+          </div>
+          <div class="day-row">
+            <span class="date">8月9日</span>
+            <div class="day-bar"><div class="day-bar-fill" style="width:100%;background:#8BC34A"></div></div>
+            <span class="score">3/3</span>
+          </div>
+          <div class="day-row">
+            <span class="date">8月8日</span>
+            <div class="day-bar"><div class="day-bar-fill" style="width:50%;background:#FF8C42"></div></div>
+            <span class="score">1/2</span>
+          </div>
+          <div class="day-row">
+            <span class="date">8月7日</span>
+            <div class="day-bar"><div class="day-bar-fill" style="width:100%;background:#8BC34A"></div></div>
+            <span class="score">5/5</span>
+          </div>
+        </div>
+
+        <p class="area-title" style="color:#e57373">⚠ 薄弱领域</p>
+        <div class="area-tag" style="background:rgba(229,115,115,0.08);border:1px solid rgba(229,115,115,0.2)">
+          <span style="color:#C62828">#AI与大模型</span>
+          <span style="color:#e57373">准确率 45% · 11题</span>
+        </div>
+
+        <p class="area-title" style="color:#8BC34A">✓ 掌握良好</p>
+        <div class="area-tag" style="background:rgba(139,195,74,0.08);border:1px solid rgba(139,195,74,0.2)">
+          <span style="color:#2E7D32">#读书笔记</span>
+          <span style="color:#8BC34A">准确率 92% · 13题</span>
+        </div>
+      </div>
+
+      <!-- ══════ 组3：内容管理（合并一卡） ══════ -->
+      <div class="group-divider"><span>内容管理</span></div>
+
+      <div class="callout">
+        <strong>★ 核心改动</strong>：标签管理 / 主题风格 / 导出心得 / 分享管理 合并为一张卡片，行间用分隔线分隔。标签和分享可折叠，主题和导出始终可见。
+      </div>
+
+      <div class="card merged-card">
+
+        <!-- 行1：标签管理（可折叠，默认收起） -->
+        <div class="merged-row">
+          <div class="section-header">
+            <div class="section-title">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8BC34A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2H2v10l9.29 9.29c.64.64 1.67.64 2.31 0l6.4-6.4c.64-.64.64-1.67 0-2.31L12 2z"/><path d="M7 7h.01"/></svg>
+              <span>标签管理</span>
+            </div>
+            <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+          </div>
+        </div>
+
+        <!-- 行2：主题风格（始终展开） -->
+        <div class="merged-row">
+          <div class="section-header">
+            <div class="section-title">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8BC34A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
+              <span>主题风格</span>
+            </div>
+          </div>
+          <div class="theme-grid">
+            <div class="theme-card selected">
+              <span class="check">✓</span>
+              <div>
+                <span class="theme-dot" style="background:#8BC34A"></span>
+                <span class="theme-name">春日萌芽</span>
+              </div>
+              <p class="theme-sub">嫩绿生机</p>
+            </div>
+            <div class="theme-card">
+              <div>
+                <span class="theme-dot" style="background:#6B8F3C"></span>
+                <span class="theme-name">墨色幽微</span>
+              </div>
+              <p class="theme-sub">深邃静谧</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 行3：导出心得（始终展开） -->
+        <div class="merged-row">
+          <div class="section-header">
+            <div class="section-title">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8BC34A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <span>导出心得</span>
+            </div>
+          </div>
+          <button class="export-btn">导出为 Markdown</button>
+        </div>
+
+        <!-- 行4：分享管理（可折叠，默认收起） -->
+        <div class="merged-row">
+          <div class="section-header">
+            <div class="section-title">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8BC34A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+              <span>分享管理</span>
+            </div>
+            <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ══════ 组4：关于 ══════ -->
+      <div class="group-divider"><span>关于</span></div>
+
+      <!-- 版本更新（折叠，默认收起） -->
+      <div class="card">
+        <div class="section-header">
+          <div class="section-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8BC34A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+            <span>版本更新</span>
+          </div>
+          <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        </div>
+      </div>
+
+      <!-- 累计打开（独立行） -->
+      <div class="open-times">
+        <span>累计打开</span>
+        <span class="num">128 次</span>
+      </div>
+
+      <!-- 退出登录 -->
+      <button class="logout-btn">退出登录</button>
+
+    </div>
+  </div>
+
+  <!-- 方案说明 -->
+  <div class="design-note" style="margin-top:40px;">
+    <h3>📋 方案A 设计要点</h3>
+    <ul>
+      <li><strong>合并卡片</strong>：4 个功能共用一张卡片，行间 1px 分隔线，视觉整体感强</li>
+      <li><strong>折叠节奏</strong>：折叠→展开→展开→折叠，在同一张卡片内形成"收→放→放→收"的自然韵律</li>
+      <li><strong>高频可达</strong>：主题切换和导出按钮始终可见，零点击成本</li>
+      <li><strong>低频收纳</strong>：标签编辑和分享管理内容多，折叠后保持页面清爽</li>
+      <li><strong>卡片减少</strong>：页面总卡片从 8 张 → 5 张，信息密度更合理</li>
+      <li><strong>分组间距</strong>：组间 20px（分隔标签），组内 12px（卡片间距）</li>
+    </ul>
+  </div>
+</div>
+
+</body>
+</html>
