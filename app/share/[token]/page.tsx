@@ -59,6 +59,23 @@ function TagsView({
   const [selectedTag, setSelectedTag] = useState<ShareTag | null>(null)
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
 
+  // 恢复状态（从心得详情返回时）
+  useEffect(() => {
+    const handleRestore = (event: Event) => {
+      const customEvent = event as CustomEvent
+      const state = customEvent.detail
+      if (state.selectedTagId) {
+        const tag = tags.find(t => t.id === state.selectedTagId)
+        if (tag) {
+          setSelectedTag(tag)
+          setExpandedGroups(new Set(state.expandedGroups || []))
+        }
+      }
+    }
+    window.addEventListener('share-restore-tag-state', handleRestore)
+    return () => window.removeEventListener('share-restore-tag-state', handleRestore)
+  }, [tags])
+
   // 顶级标签（按心得数量从多到少排序）
   const topTags = tags.filter(t => !t.parentId).sort((a, b) => b.entryCount - a.entryCount)
   
@@ -127,11 +144,18 @@ function TagsView({
     if (selectedTag?.id === tag.id) {
       setSelectedTag(null)
       setExpandedGroups(new Set())
+      sessionStorage.removeItem('share_tag_state')
       return
     }
     setSelectedTag(tag)
     // 默认展开所有分组
-    setExpandedGroups(new Set(entryGroups.map(g => g.tagId)))
+    const newExpanded = new Set(entryGroups.map(g => g.tagId))
+    setExpandedGroups(newExpanded)
+    // 保存状态
+    sessionStorage.setItem('share_tag_state', JSON.stringify({
+      selectedTagId: tag.id,
+      expandedGroups: Array.from(newExpanded),
+    }))
   }
 
   function toggleGroup(tagId: string) {
@@ -139,6 +163,11 @@ function TagsView({
       const next = new Set(prev)
       if (next.has(tagId)) next.delete(tagId)
       else next.add(tagId)
+      // 保存状态
+      sessionStorage.setItem('share_tag_state', JSON.stringify({
+        selectedTagId: selectedTag?.id,
+        expandedGroups: Array.from(next),
+      }))
       return next
     })
   }
@@ -443,6 +472,15 @@ function SharePageContent() {
 
   const handleBack = () => {
     setSelectedEntry(null)
+    // 恢复 TagsView 的状态
+    const savedTagState = sessionStorage.getItem('share_tag_state')
+    if (savedTagState) {
+      try {
+        const state = JSON.parse(savedTagState)
+        // 通过自定义事件通知 TagsView 恢复状态
+        window.dispatchEvent(new CustomEvent('share-restore-tag-state', { detail: state }))
+      } catch {}
+    }
   }
 
   if (loading) {
