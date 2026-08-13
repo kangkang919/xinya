@@ -23,7 +23,7 @@ interface TagItem {
 interface ExportEntry {
   title: string
   content: string
-  tags: string[]
+  tags: { name: string; parentName: string | null }[]
   createdAt: string
 }
 

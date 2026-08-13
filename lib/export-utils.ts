@@ -1,13 +1,13 @@
 interface ExportEntry {
   title: string
   content: string
-  tags: string[]
+  tags: { name: string; parentName: string | null }[]
   createdAt: string
 }
 
 export function toMarkdown(entries: ExportEntry[]): string {
   return entries.map(e => {
-    const tags = e.tags.map(t => `#${t}`).join(' ')
+    const tags = e.tags.map(t => `#${t.parentName ? t.parentName + '/' + t.name : t.name}`).join(' ')
     const date = new Date(e.createdAt).toLocaleString('zh-CN', {
       year: 'numeric', month: '2-digit', day: '2-digit',
       hour: '2-digit', minute: '2-digit'

@@ -8,7 +8,7 @@ export async function GET() {
 
   const entries = await prisma.entry.findMany({
     where: { userId, isDraft: false },
-    include: { tags: { select: { id: true, name: true } } },
+    include: { tags: { select: { id: true, name: true, parent: { select: { name: true } } } } },
     orderBy: { recordTime: "desc" },
   })
 
@@ -16,7 +16,7 @@ export async function GET() {
     id: e.id,
     title: e.title,
     content: e.content,
-    tags: e.tags.map(t => t.name),
+    tags: e.tags.map(t => ({ name: t.name, parentName: t.parent?.name ?? null })),
     mood: e.mood,
     recordTime: e.recordTime.toISOString(),
     createdAt: e.createdAt.toISOString(),
