@@ -184,8 +184,8 @@ Phase 7: 产品交付     —— 部署、交付
 **F9.21 实现说明：**
 - 脚本位置：`scripts/daily-backfill.ts`
 - 运行命令：`npm run backfill`
-- 定时任务：服务器 crontab 每天凌晨 3:00 执行（`0 3 * * * cd /www/wwwroot/xinya && npm run backfill >> /var/log/xinya-backfill.log 2>&1`）
-- 邮件通知：补全成功/失败均发送邮件至管理员邮箱
+- 定时任务：服务器 crontab 每周三、周六凌晨 3:00 执行（`0 3 * * 3,6 cd /www/wwwroot/xinya && npm run backfill >> /tmp/xinya-backfill.log 2>&1`）
+- 邮件通知：无论结果如何均发送邮件至管理员邮箱——①有补全→补全详情 ②自检正常→检查篇数 ③程序异常→故障代码和错误信息
 
 #### F9 数据模型
 

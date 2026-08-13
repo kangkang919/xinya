@@ -62,10 +62,13 @@ async function runBackfill() {
 
   const totalMissing = entriesWithoutQuestions.length + entriesWithoutKeyPoints.length
 
+  // 查询总心得数（用于邮件报告）
+  const totalEntries = await prisma.entry.count({ where: { isDraft: false } })
+
   if (totalMissing === 0) {
-    console.log("[DailyBackfill] ✅ 所有心得已有题目和要点，无需补全")
+    console.log(`[DailyBackfill] ✅ 所有心得已有题目和要点，无需补全（共检查 ${totalEntries} 篇）`)
     await prisma.$disconnect()
-    return { success: 0, failed: 0, results: [], skipped: true }
+    return { success: 0, failed: 0, results: [], totalChecked: totalEntries }
   }
 
   console.log(`[DailyBackfill] 发现 ${totalMissing} 篇需要补全的心得`)
@@ -222,30 +225,24 @@ async function runBackfill() {
   console.log(`\n[DailyBackfill] 完成！成功: ${successCount}, 失败: ${failCount}`)
   await prisma.$disconnect()
 
-  return { success: successCount, failed: failCount, results, skipped: false }
+  return { success: successCount, failed: failCount, results, totalChecked: totalEntries }
 }
 
-async function sendNotification(result: { success: number; failed: number; results: BackfillResult[]; skipped: boolean }) {
-  if (result.skipped) {
-    console.log("[DailyBackfill] 无需通知，所有心得已完整")
-    return
-  }
-
-  if (result.success === 0 && result.failed === 0) {
-    console.log("[DailyBackfill] 无需通知，没有处理任何心得")
-    return
-  }
-
+async function sendNotification(result: { success: number; failed: number; results: BackfillResult[]; totalChecked: number }) {
   const successEntries = result.results.filter(r => r.status === "success")
   const failedEntries = result.results.filter(r => r.status === "error")
+  const hasBackfill = result.success > 0 || result.failed > 0
 
-  const subject = `心芽 · 每日题目补全报告（${new Date().toLocaleDateString("zh-CN")}）`
+  const subject = hasBackfill
+    ? `心芽 · 题目补全报告（${new Date().toLocaleDateString("zh-CN")}）`
+    : `心芽 · 自检正常（${new Date().toLocaleDateString("zh-CN")}）`
 
-  const html = `
-    <div style="max-width:600px;margin:0 auto;font-family:sans-serif;padding:32px;background:#FAFAF5;border-radius:12px;">
-      <h2 style="color:#8BC34A;margin-bottom:8px;">🌱 心芽 · 每日题目补全报告</h2>
-      <p style="color:#666;font-size:14px;">执行时间：${new Date().toLocaleString("zh-CN")}</p>
-      
+  // 根据情况生成不同的邮件内容
+  let bodyHtml: string
+
+  if (hasBackfill) {
+    // 情况①：有补全操作
+    bodyHtml = `
       <div style="background:#fff;border-radius:8px;padding:20px;margin:20px 0;">
         <h3 style="color:#333;margin:0 0 12px 0;">📊 执行结果</h3>
         <p style="color:#666;font-size:14px;margin:8px 0;">
@@ -253,6 +250,9 @@ async function sendNotification(result: { success: number; failed: number; resul
         </p>
         <p style="color:#666;font-size:14px;margin:8px 0;">
           <strong style="color:#e57373;">❌ 补全失败：${result.failed} 篇</strong>
+        </p>
+        <p style="color:#999;font-size:12px;margin:8px 0;">
+          本次共检查 ${result.totalChecked} 篇心得
         </p>
       </div>
 
@@ -281,9 +281,26 @@ async function sendNotification(result: { success: number; failed: number; resul
           </ul>
         </div>
       ` : ""}
+    `
+  } else {
+    // 情况②：全部完整，自检正常
+    bodyHtml = `
+      <div style="background:#e8f5e9;border:1px solid #8BC34A;border-radius:8px;padding:20px;margin:20px 0;">
+        <h3 style="color:#2e7d32;margin:0 0 12px 0;">✅ 自检全部正常</h3>
+        <p style="color:#666;font-size:14px;margin:8px 0;">
+          共检查 <strong>${result.totalChecked}</strong> 篇心得，所有心得均已拥有测试题和 AI 总结，无需补全。
+        </p>
+      </div>
+    `
+  }
 
+  const html = `
+    <div style="max-width:600px;margin:0 auto;font-family:sans-serif;padding:32px;background:#FAFAF5;border-radius:12px;">
+      <h2 style="color:#8BC34A;margin-bottom:8px;">🌱 心芽 · 题目补全报告</h2>
+      <p style="color:#666;font-size:14px;">执行时间：${new Date().toLocaleString("zh-CN")}</p>
+      ${bodyHtml}
       <p style="color:#999;font-size:12px;margin-top:24px;">
-        此邮件由心芽系统自动发送，如需修改通知设置请联系管理员。
+        此邮件由心芽系统自动发送（每周三、周六凌晨 3:00 执行）。
       </p>
       <p style="color:#999;font-size:12px;">每一颗灵感的种子，都在此刻破土而出 🌿</p>
     </div>
@@ -302,6 +319,51 @@ async function sendNotification(result: { success: number; failed: number; resul
   }
 }
 
+// 发送故障通知邮件（程序异常时调用）
+async function sendErrorNotification(error: unknown) {
+  const errorMsg = error instanceof Error ? error.message : String(error)
+  const errorStack = error instanceof Error ? error.stack : ""
+  const subject = `心芽 · ⚠️ 题目补全程序故障（${new Date().toLocaleDateString("zh-CN")}）`
+
+  const html = `
+    <div style="max-width:600px;margin:0 auto;font-family:sans-serif;padding:32px;background:#FAFAF5;border-radius:12px;">
+      <h2 style="color:#e57373;margin-bottom:8px;">⚠️ 心芽 · 题目补全程序故障</h2>
+      <p style="color:#666;font-size:14px;">执行时间：${new Date().toLocaleString("zh-CN")}</p>
+
+      <div style="background:#fff4f4;border:1px solid #e57373;border-radius:8px;padding:20px;margin:20px 0;">
+        <h3 style="color:#e57373;margin:0 0 12px 0;">❌ 程序运行异常</h3>
+        <p style="color:#666;font-size:14px;margin:8px 0;">
+          定时补全任务执行失败，请检查服务器日志。
+        </p>
+        <div style="background:#fff;border-radius:4px;padding:12px;margin:12px 0;font-family:monospace;font-size:12px;color:#333;word-break:break-all;">
+          <strong>错误信息：</strong>${errorMsg}
+          ${errorStack ? `<br><br><strong>堆栈：</strong><pre style="white-space:pre-wrap;margin:0;">${errorStack.substring(0, 500)}</pre>` : ""}
+        </div>
+        <p style="color:#999;font-size:12px;margin:8px 0;">
+          日志位置：/tmp/xinya-backfill.log
+        </p>
+      </div>
+
+      <p style="color:#999;font-size:12px;margin-top:24px;">
+        此邮件由心芽系统自动发送。
+      </p>
+      <p style="color:#999;font-size:12px;">每一颗灵感的种子，都在此刻破土而出 🌿</p>
+    </div>
+  `
+
+  try {
+    await transporter.sendMail({
+      from: `"心芽系统" <${process.env.SMTP_USER}>`,
+      to: ADMIN_EMAIL,
+      subject,
+      html,
+    })
+    console.log(`[DailyBackfill] 📧 故障通知邮件已发送至 ${ADMIN_EMAIL}`)
+  } catch (e) {
+    console.error(`[DailyBackfill] ❌ 发送故障通知失败:`, e)
+  }
+}
+
 // 主函数
 async function main() {
   try {
@@ -310,6 +372,8 @@ async function main() {
     console.log("[DailyBackfill] 任务完成")
   } catch (e) {
     console.error("[DailyBackfill] 任务执行失败:", e)
+    // 情况③：程序异常，发送故障通知
+    await sendErrorNotification(e)
     process.exit(1)
   }
 }
