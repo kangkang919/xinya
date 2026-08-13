@@ -87,6 +87,7 @@ export async function GET(
     }
 
     // 获取相关标签（包括父子关系）
+    // 与枝叶页 /api/tags 保持一致：子标签按 sortOrder desc + name asc 排序
     const allTags = await prisma.tag.findMany({
       where: { userId: share.userId },
       select: {
@@ -94,6 +95,7 @@ export async function GET(
         name: true,
         parentId: true,
       },
+      orderBy: [{ sortOrder: "desc" }, { name: "asc" }],
     })
 
     // 过滤出分享范围内的标签
