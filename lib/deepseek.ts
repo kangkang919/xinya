@@ -113,6 +113,110 @@ export async function generateQuestions(
   return { keyPoints: "", questions: [] }
 }
 
+// ========== 题目重生（F9.22）：从不同角度生成新题 ==========
+export async function generateQuestionsWithAngle(
+  entryTitle: string,
+  entryContent: string,
+  existingQuestion: string,
+  maxRetries = 1
+): Promise<GeneratedResult> {
+  const prompt = `请根据以下心得内容，从不同角度生成一道新的复习题。
+
+心得标题：${entryTitle}
+心得内容：${entryContent.substring(0, 1000)}
+
+已有的旧题目（请避免重复或相似）：
+"${existingQuestion}"
+
+要求：
+1. 必须从与旧题不同的角度切入，考察心得中其他知识点或理解维度
+2. 题干简洁明了：单选/多选题≤30字；判断题为完整陈述句，≤50字。题干必须是完整的句子
+3. 题型自动适配：概念辨析→单选，关系匹配→多选，对比→判断
+4. 选项数量：单选/多选4个选项，判断题只有2个选项（正确/错误）
+5. 答案用选项索引表示（单选[0]，多选[0,2]，判断[0]为对[1]为错）
+6. 解析引用原文重点
+7. 不需要重新生成 keyPoints，返回空字符串即可
+
+请返回 JSON 格式：
+{
+  "keyPoints": "",
+  "questions": [
+    {
+      "question": "题干",
+      "type": "single/multiple/truefalse",
+      "options": ["选项A", "选项B", "选项C", "选项D"],
+      "answer": [0],
+      "explanation": "解析..."
+    }
+  ]
+}
+注意：判断题的options只有2个元素，如["正确", "错误"]
+
+只返回JSON，不要其他内容。`
+
+  let lastError: Error | null = null
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 30000)
+
+      const res = await fetch(DEEPSEEK_API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${DEEPSEEK_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: "deepseek-chat",
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.8,
+          max_tokens: 800,
+        }),
+        signal: controller.signal,
+      })
+
+      clearTimeout(timeoutId)
+
+      if (!res.ok) {
+        console.error(`[DeepSeek:Angle] API error (attempt ${attempt + 1}):`, res.status)
+        lastError = new Error(`API error: ${res.status}`)
+        continue
+      }
+
+      const data = await res.json()
+      const content = data.choices?.[0]?.message?.content || ""
+
+      const jsonMatch = content.match(/\{[\s\S]*\}/)
+      if (!jsonMatch) {
+        console.error(`[DeepSeek:Angle] No JSON found (attempt ${attempt + 1})`)
+        lastError = new Error("No JSON in response")
+        continue
+      }
+
+      const result = JSON.parse(jsonMatch[0])
+      const questions = (result.questions || []).map((q: any) => ({
+        question: q.question?.substring(0, 100) || "",
+        type: ["single", "multiple", "truefalse"].includes(q.type) ? q.type : "single",
+        options: Array.isArray(q.options) ? q.options.slice(0, 4) : [],
+        answer: Array.isArray(q.answer) ? q.answer : [0],
+        explanation: q.explanation || "",
+      }))
+
+      return {
+        keyPoints: result.keyPoints || "",
+        questions,
+      }
+    } catch (e) {
+      console.error(`[DeepSeek:Angle] Error (attempt ${attempt + 1}):`, e)
+      lastError = e as Error
+    }
+  }
+
+  console.error("[DeepSeek:Angle] All retries failed:", lastError)
+  return { keyPoints: "", questions: [] }
+}
+
 // ========== 月度成长洞察（F5.9） ==========
 export interface MonthlyInsight {
   themes: string[]
