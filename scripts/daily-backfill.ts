@@ -253,26 +253,11 @@ async function runRegenerate() {
   }
 
   const answeredEntryIds = correctRecords.map(r => r.entryId)
-  console.log(`[Regenerate] 发现 ${answeredEntryIds.length} 篇心得有答对记录`)
-
-  // 排除已有"未答题"记录的心得（避免堆积未做的新题）
-  const pendingRecords = await prisma.quizRecord.findMany({
-    where: { entryId: { in: answeredEntryIds }, answeredAt: null },
-    select: { entryId: true },
-    distinct: ["entryId"],
-  })
-  const pendingEntryIds = new Set(pendingRecords.map(r => r.entryId))
-
-  const eligibleEntryIds = answeredEntryIds.filter(id => !pendingEntryIds.has(id))
-  console.log(`[Regenerate] 其中 ${pendingEntryIds.size} 篇已有待答题目（跳过），${eligibleEntryIds.length} 篇需要重生`)
-
-  if (eligibleEntryIds.length === 0) {
-    return { success: 0, failed: 0, results: [] as RegenerateResult[] }
-  }
+  console.log(`[Regenerate] 发现 ${answeredEntryIds.length} 篇心得有答对记录，全部进入重生`)
 
   // 获取这些心得的详情和当前活跃题目
   const entries = await prisma.entry.findMany({
-    where: { id: { in: eligibleEntryIds } },
+    where: { id: { in: answeredEntryIds } },
     include: {
       quizQuestions: {
         orderBy: { createdAt: "desc" },
