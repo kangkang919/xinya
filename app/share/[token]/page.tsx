@@ -217,7 +217,6 @@ function TagsView({
                     <h3 className="text-[15px] font-semibold flex-1" style={{ color: "#333" }}>
                       {entry.title}
                     </h3>
-                    {entry.mood && <span className="text-lg ml-2">{entry.mood}</span>}
                   </div>
                   <p className="text-[13px] leading-relaxed mb-2 line-clamp-2" style={{ color: "#666" }}>
                     {stripHtml(entry.content)}
@@ -272,7 +271,6 @@ function TagsView({
                               <h3 className="text-[15px] font-semibold flex-1" style={{ color: "#333" }}>
                                 {entry.title}
                               </h3>
-                              {entry.mood && <span className="text-lg ml-2">{entry.mood}</span>}
                             </div>
                             <p className="text-[13px] leading-relaxed mb-2 line-clamp-2" style={{ color: "#666" }}>
                               {stripHtml(entry.content)}
@@ -333,7 +331,6 @@ function EntryDetail({
           <span className="text-xs" style={{ color: "#999" }}>
             {formatTimeAgo(entry.recordTime)}
           </span>
-          {entry.mood && <span className="text-lg">{entry.mood}</span>}
         </div>
         
         <h1 className="text-xl font-semibold mb-3 leading-snug" style={{ color: "#333" }}>
