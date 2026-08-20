@@ -42,7 +42,7 @@ echo ""
 echo "[6/6] 健康检查..."
 sleep 5
 HEALTH_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000 || echo "000")
-if echo "$HEALTH_CODE" | grep -q "200\|302\|301"; then
+if echo "$HEALTH_CODE" | grep -q "200\|302\|301\|307"; then
   echo "✅ 健康检查通过 (HTTP $HEALTH_CODE)"
   echo "$PREV_COMMIT" > .last-good-commit
   echo "已保存良好版本: $PREV_COMMIT"

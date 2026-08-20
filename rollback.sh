@@ -49,7 +49,7 @@ pm2 reload xinya
 
 sleep 3
 HEALTH_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000 || echo "000")
-if echo "$HEALTH_CODE" | grep -q "200\|302\|301"; then
+if echo "$HEALTH_CODE" | grep -q "200\|302\|301\|307"; then
   echo "✅ 回滚成功 (HTTP $HEALTH_CODE)"
 else
   echo "❌ 回滚后仍异常 (HTTP $HEALTH_CODE)，请手动检查"
