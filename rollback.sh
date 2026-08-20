@@ -5,6 +5,11 @@ echo "=============================="
 
 cd /www/wwwroot/xinya
 
+# 强制使用 .env.production 的环境变量
+set -a
+source .env.production
+set +a
+
 if [ ! -f .last-good-commit ]; then
   echo "❌ 未找到 .last-good-commit 文件，无法回滚"
   echo "请手动 git checkout <commit> 后重新部署"

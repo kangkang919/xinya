@@ -7,6 +7,11 @@ echo "=============================="
 
 cd /www/wwwroot/xinya
 
+# 强制使用 .env.production 的环境变量（避免 .env 旧密码干扰）
+set -a
+source .env.production
+set +a
+
 # 保存当前版本 commit（用于回滚）
 PREV_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 echo "当前版本: $PREV_COMMIT"
