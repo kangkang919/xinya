@@ -167,6 +167,7 @@ export default function SharePanel({
         .share-content ul { list-style: disc; padding-left: 1.5em; margin: 0.5em 0; }
         .share-content ol { list-style: decimal; padding-left: 1.5em; margin: 0.5em 0; }
         .share-content li { margin: 0.2em 0; }
+        .share-content pre { background: ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'}; border-radius: 8px; padding: 12px 16px; margin: 8px 0; font-family: 'SF Mono','Fira Code','Cascadia Code',monospace; font-size: 13px; line-height: 1.6; white-space: pre; overflow-x: auto; tab-size: 4; color: ${isDark ? '#D0D0D0' : '#444'}; }
       `}</style>
 
       {/* 底部分隔 + Logo */}

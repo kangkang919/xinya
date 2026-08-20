@@ -154,6 +154,59 @@ export default function Editor({ entryId, isNew }: EditorProps) {
     setCharCount((editor.textContent || "").replace(/\s/g, "").length)
   }
 
+  function insertCodeBlock() {
+    const editor = editorRef.current
+    if (!editor) return
+    editor.focus()
+    const sel = window.getSelection()
+    if (!sel || sel.rangeCount === 0) return
+
+    // 获取选中的文本
+    const selectedText = sel.toString()
+    const range = sel.getRangeAt(0)
+
+    if (selectedText.trim()) {
+      // 有选中内容：用 <pre> 包裹
+      const pre = document.createElement("pre")
+      pre.textContent = selectedText
+      range.deleteContents()
+      range.insertNode(pre)
+      // 在 pre 后面插入一个空段落，方便继续输入
+      const p = document.createElement("p")
+      p.innerHTML = "<br>"
+      pre.parentNode?.insertBefore(p, pre.nextSibling)
+      // 光标移到新段落
+      const r = document.createRange()
+      r.setStart(p, 0)
+      r.collapse(true)
+      sel.removeAllRanges()
+      sel.addRange(r)
+    } else {
+      // 没有选中内容：插入空代码块
+      const pre = document.createElement("pre")
+      pre.innerHTML = "<br>"
+      // 找到当前光标所在的块级元素
+      let node = range.startContainer as HTMLElement
+      if (node.nodeType === 3) node = node.parentElement as HTMLElement
+      // 向上找到 editor 的直接子元素
+      while (node && node.parentElement && node.parentElement !== editor) {
+        node = node.parentElement
+      }
+      if (node && node !== editor) {
+        node.parentNode?.insertBefore(pre, node.nextSibling)
+      } else {
+        editor.appendChild(pre)
+      }
+      // 光标移到 pre 内
+      const r = document.createRange()
+      r.setStart(pre, 0)
+      r.collapse(true)
+      sel.removeAllRanges()
+      sel.addRange(r)
+    }
+    setCharCount((editor.textContent || "").replace(/\s/g, "").length)
+  }
+
   async function handleSave() {
     if (!title.trim()) { toast.error("标题不能为空"); return }
     setSaving(true)
@@ -217,6 +270,7 @@ export default function Editor({ entryId, isNew }: EditorProps) {
           onToggleFocus={() => setFocusMode(true)}
           onExecCommand={handleExecCommand}
           onInsertList={insertList}
+          onInsertCodeBlock={insertCodeBlock}
         />
       )}
       <div className="max-w-3xl mx-auto">
@@ -325,6 +379,7 @@ export default function Editor({ entryId, isNew }: EditorProps) {
         [contenteditable] ul{list-style:disc;padding-left:1.5em;margin:0.5em 0}
         [contenteditable] ol{list-style:decimal;padding-left:1.5em;margin:0.5em 0}
         [contenteditable] li{margin:0.2em 0}
+        [contenteditable] pre{background:${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'};border-radius:8px;padding:12px 16px;margin:8px 0;font-family:'SF Mono','Fira Code','Cascadia Code',monospace;font-size:13px;line-height:1.6;white-space:pre;overflow-x:auto;tab-size:4;color:${isDark ? '#ccc' : '#333'}}
       `}</style>
     </div>
   )

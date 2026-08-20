@@ -289,6 +289,7 @@ function ViewEntryContent() {
         .view-content b, .view-content strong { font-weight: bold; }
         .view-content i, .view-content em { font-style: italic; }
         .view-content u { text-decoration: underline; }
+        .view-content pre { background: ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'}; border-radius: 8px; padding: 12px 16px; margin: 8px 0; font-family: 'SF Mono','Fira Code','Cascadia Code',monospace; font-size: 13px; line-height: 1.6; white-space: pre; overflow-x: auto; tab-size: 4; color: ${contentColor}; }
       `}</style>
     </div>
   )

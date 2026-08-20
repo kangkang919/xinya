@@ -1,6 +1,6 @@
 ﻿"use client"
 import { useState } from "react"
-import { ArrowLeft, Bold, Italic, Underline, List, ListOrdered, Palette, Tag, Focus } from "lucide-react"
+import { ArrowLeft, Bold, Italic, Underline, List, ListOrdered, Palette, Tag, Focus, Code } from "lucide-react"
 
 const COLORS = ["#333333", "#8BC34A", "#42A5F5", "#FF8C42", "#795548", "#e57373"]
 
@@ -17,11 +17,12 @@ interface EditorToolbarProps {
   onToggleFocus: () => void
   onExecCommand: (cmd: string) => void
   onInsertList: (type: "ul" | "ol") => void
+  onInsertCodeBlock: () => void
 }
 
 export default function EditorToolbar({
   isNew, saving, charCount, hasTags, showTagPicker, isDark,
-  onBack, onSave, onToggleTagPicker, onToggleFocus, onExecCommand, onInsertList
+  onBack, onSave, onToggleTagPicker, onToggleFocus, onExecCommand, onInsertList, onInsertCodeBlock
 }: EditorToolbarProps) {
   const toolbarBg = isDark ? "rgba(30,30,30,0.98)" : "rgba(250,250,245,0.98)"
   const toolbarBorder = isDark ? "#333" : "#e0e0e0"
@@ -51,6 +52,7 @@ export default function EditorToolbar({
           <button onMouseDown={e => e.preventDefault()} onClick={() => onExecCommand("underline")} className={`p-2 rounded-lg ${hoverBg}`}><Underline size={18} color={iconColor} /></button>
           <button onMouseDown={e => e.preventDefault()} onClick={() => onInsertList("ul")} className={`p-2 rounded-lg ${hoverBg}`}><List size={18} color={iconColor} /></button>
           <button onMouseDown={e => e.preventDefault()} onClick={() => onInsertList("ol")} className={`p-2 rounded-lg ${hoverBg}`}><ListOrdered size={18} color={iconColor} /></button>
+          <button onMouseDown={e => e.preventDefault()} onClick={onInsertCodeBlock} className={`p-2 rounded-lg ${hoverBg}`}><Code size={18} color={iconColor} /></button>
           <button onMouseDown={e => e.preventDefault()} onClick={openColorPicker} className={`p-2 rounded-lg ${hoverBg}`}><Palette size={18} color={iconColor} /></button>
           <div className="w-px h-5 mx-1" style={{ background: sepColor }} />
           <button onClick={onToggleTagPicker} className={`p-2 rounded-lg ${hoverBg}`}><Tag size={18} color={hasTags ? "#8BC34A" : iconColor} /></button>
