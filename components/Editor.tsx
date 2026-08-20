@@ -161,20 +161,51 @@ export default function Editor({ entryId, isNew }: EditorProps) {
     const sel = window.getSelection()
     if (!sel || sel.rangeCount === 0) return
 
-    // 获取选中的文本
     const selectedText = sel.toString()
     const range = sel.getRangeAt(0)
 
     if (selectedText.trim()) {
-      // 有选中内容：用 <pre> 包裹
+      // 收集选中范围内所有块级元素的文本
+      const fragment = range.cloneContents()
+      const tempDiv = document.createElement("div")
+      tempDiv.appendChild(fragment)
+      const fullText = tempDiv.textContent || selectedText
+
+      // 找到选中范围涉及的 editor 直接子元素（块级）
+      const blocksToRemove = new Set<HTMLElement>()
+      const walker = document.createTreeWalker(
+        editor,
+        NodeFilter.SHOW_ELEMENT,
+        {
+          acceptNode(node) {
+            const el = node as HTMLElement
+            // 只收集 editor 的直接子元素
+            if (el.parentElement === editor) return NodeFilter.FILTER_ACCEPT
+            return NodeFilter.FILTER_SKIP
+          }
+        }
+      )
+      let node = walker.nextNode() as HTMLElement | null
+      while (node) {
+        if (range.intersectsNode(node)) {
+          blocksToRemove.add(node)
+        }
+        node = walker.nextNode() as HTMLElement | null
+      }
+
+      // 删除所有涉及的块元素
+      blocksToRemove.forEach(b => b.remove())
+
+      // 在删除位置插入一个完整的 <pre>
       const pre = document.createElement("pre")
-      pre.textContent = selectedText
-      range.deleteContents()
-      range.insertNode(pre)
-      // 在 pre 后面插入一个空段落，方便继续输入
+      pre.textContent = fullText.trimEnd()
+      editor.appendChild(pre)
+
+      // 在 pre 后面插入空段落
       const p = document.createElement("p")
       p.innerHTML = "<br>"
-      pre.parentNode?.insertBefore(p, pre.nextSibling)
+      editor.appendChild(p)
+
       // 光标移到新段落
       const r = document.createRange()
       r.setStart(p, 0)
@@ -185,10 +216,8 @@ export default function Editor({ entryId, isNew }: EditorProps) {
       // 没有选中内容：插入空代码块
       const pre = document.createElement("pre")
       pre.innerHTML = "<br>"
-      // 找到当前光标所在的块级元素
       let node = range.startContainer as HTMLElement
       if (node.nodeType === 3) node = node.parentElement as HTMLElement
-      // 向上找到 editor 的直接子元素
       while (node && node.parentElement && node.parentElement !== editor) {
         node = node.parentElement
       }
@@ -197,7 +226,6 @@ export default function Editor({ entryId, isNew }: EditorProps) {
       } else {
         editor.appendChild(pre)
       }
-      // 光标移到 pre 内
       const r = document.createRange()
       r.setStart(pre, 0)
       r.collapse(true)
