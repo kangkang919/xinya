@@ -183,7 +183,7 @@ export default function Editor({ entryId, isNew }: EditorProps) {
         }
       }
 
-      if (blocksToRemove.length === 0) return
+      if (blocksToRemove.length === 0 || !firstBlock) return
 
       // 在第一个块之前插入 <pre>
       const pre = document.createElement("pre")
