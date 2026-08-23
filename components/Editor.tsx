@@ -172,39 +172,31 @@ export default function Editor({ entryId, isNew }: EditorProps) {
       const fullText = tempDiv.textContent || selectedText
 
       // 找到选中范围涉及的 editor 直接子元素（块级）
-      const blocksToRemove = new Set<HTMLElement>()
-      const walker = document.createTreeWalker(
-        editor,
-        NodeFilter.SHOW_ELEMENT,
-        {
-          acceptNode(node) {
-            const el = node as HTMLElement
-            // 只收集 editor 的直接子元素
-            if (el.parentElement === editor) return NodeFilter.FILTER_ACCEPT
-            return NodeFilter.FILTER_SKIP
-          }
+      const blocksToRemove: HTMLElement[] = []
+      let firstBlock: HTMLElement | null = null
+
+      for (let i = 0; i < editor.children.length; i++) {
+        const child = editor.children[i] as HTMLElement
+        if (range.intersectsNode(child)) {
+          blocksToRemove.push(child)
+          if (!firstBlock) firstBlock = child
         }
-      )
-      let node = walker.nextNode() as HTMLElement | null
-      while (node) {
-        if (range.intersectsNode(node)) {
-          blocksToRemove.add(node)
-        }
-        node = walker.nextNode() as HTMLElement | null
       }
+
+      if (blocksToRemove.length === 0) return
+
+      // 在第一个块之前插入 <pre>
+      const pre = document.createElement("pre")
+      pre.textContent = fullText.trimEnd()
+      firstBlock.parentNode?.insertBefore(pre, firstBlock)
 
       // 删除所有涉及的块元素
       blocksToRemove.forEach(b => b.remove())
 
-      // 在删除位置插入一个完整的 <pre>
-      const pre = document.createElement("pre")
-      pre.textContent = fullText.trimEnd()
-      editor.appendChild(pre)
-
       // 在 pre 后面插入空段落
       const p = document.createElement("p")
       p.innerHTML = "<br>"
-      editor.appendChild(p)
+      pre.parentNode?.insertBefore(p, pre.nextSibling)
 
       // 光标移到新段落
       const r = document.createRange()
