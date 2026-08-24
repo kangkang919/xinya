@@ -6,15 +6,23 @@ const turndownService = new TurndownService({
   codeBlockStyle: 'fenced',
 })
 
-// 移除空 div 产生的多余空行
-turndownService.addRule('emptyDiv', {
+// div 段落：前后加空行，空 div 忽略
+turndownService.addRule('div', {
   filter: 'div',
   replacement: (content: string, node: HTMLElement) => {
     const el = node as HTMLElement
     if (el.innerHTML.trim() === '' || el.innerHTML === '<br>') return ''
-    return content
+    return '\n\n' + content.trim() + '\n\n'
   },
 })
+
+// 后处理：修复 turndown 转换的常见问题
+function cleanMarkdown(md: string): string {
+  return md
+    .replace(/\\=/g, '=')        // 修复等号被转义（\========== → ==========）
+    .replace(/\*{4,}/g, '**')    // 修复嵌套<b>导致的多余星号（****总纲** → **总纲**）
+    .replace(/\n{3,}/g, '\n\n')  // 清理多余空行
+}
 
 interface ExportEntry {
   title: string
@@ -30,7 +38,7 @@ export function toMarkdown(entries: ExportEntry[]): string {
       year: 'numeric', month: '2-digit', day: '2-digit',
       hour: '2-digit', minute: '2-digit'
     })
-    const mdContent = turndownService.turndown(e.content || '').trim()
+    const mdContent = cleanMarkdown(turndownService.turndown(e.content || '').trim())
     return `## ${e.title}\n\n${tags}\n\n${date}\n\n${mdContent}\n\n---`
   }).join('\n\n')
 }
