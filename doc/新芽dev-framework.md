@@ -1295,6 +1295,7 @@ pm2 save
 | 2026-08-24 | F6.3 导出 Markdown 修复：原导出直接拼接数据库 HTML 内容，导致部分心得在 Markdown 预览器中原样显示 `<div>`/`<b>` 等标签；新增 turndown 库将 HTML 转为标准 Markdown 语法（加粗/列表/代码块等），所有心得导出后在任何 Markdown 软件中均可正常渲染排版；涉及文件 lib/export-utils.ts（新增 getTurndownService 懒加载 + emptyDiv 规则清理空标签），新增依赖 turndown + @types/turndown | 待验收 |
 | 2026-08-24 | F6.3 导出 Markdown 二次修复：①段落间距丢失修复（编辑器用 `<div>` 分段，turndown 默认不加空行，导致段落合并成一；修改 div 规则前后加 `\n\n`）；②等号转义修复（turndown 把 `=` 当 Markdown 特殊字符转义为 `\=`，后处理替换回 `=`）；③多余星号修复（嵌套 `<b>` 标签导致 `****总纲**`，后处理清理为 `**总纲**`）；涉及文件 lib/export-utils.ts（修改 div 规则 + 新增 cleanMarkdown 后处理函数） | 待验收 |
 | 2026-08-24 | 编辑器粘贴行为修复：原 handlePaste 逻辑检查光标是否在 `<p>` 标签内，但编辑器默认用 `<div>` 包裹段落，条件不满足导致创建新 `<p>` 标签产生前后换行；修复为直接用 `document.execCommand('insertHTML')` 在光标位置插入纯文本，不创建新块；涉及文件 components/Editor.tsx | 待验收 |
+| 2026-08-24 | 编辑器粘贴二次修复：`insertHTML` 会改变 DOM 结构和光标位置，导致代码块按钮插入位置错位（出现在文章底部）；改用 `insertText` 插入纯文本，浏览器自动处理换行和光标位置，不影响后续操作；涉及文件 components/Editor.tsx | 待验收 |
 
 ---
 
