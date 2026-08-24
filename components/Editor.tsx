@@ -108,8 +108,33 @@ export default function Editor({ entryId, isNew }: EditorProps) {
     const plainText = e.clipboardData.getData("text/plain")
     if (!plainText) return
 
-    // 用 insertText 插入纯文本，浏览器会自动处理换行和光标位置
-    document.execCommand('insertText', false, plainText)
+    const sel = window.getSelection()
+    if (!sel || sel.rangeCount === 0) return
+
+    const range = sel.getRangeAt(0)
+    range.deleteContents()
+
+    // 把换行符转成 <br>，让多行文本保持在同一个块内
+    // 这样点击 <> 按钮时只会生成一个代码块，而不是每个段落一个
+    const lines = plainText.split('\n')
+    lines.forEach((line, i) => {
+      if (line) {
+        const textNode = document.createTextNode(line)
+        range.insertNode(textNode)
+        range.setStartAfter(textNode)
+        range.setEndAfter(textNode)
+      }
+      if (i < lines.length - 1) {
+        const br = document.createElement('br')
+        range.insertNode(br)
+        range.setStartAfter(br)
+        range.setEndAfter(br)
+      }
+    })
+
+    // 恢复光标位置到末尾
+    sel.removeAllRanges()
+    sel.addRange(range)
   }, [])
 
   function handleExecCommand(cmd: string) {
