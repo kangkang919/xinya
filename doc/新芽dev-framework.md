@@ -1293,6 +1293,7 @@ pm2 save
 | 2026-08-17 | 技术架构层级定位归档：参照心得「0. 前端框架知识体系」7 层和「1. 服务端框架知识体系」8 层，新增 §2.3.1 技术架构层级定位（前端命中 5/7、服务端命中 2.5/8），记录每层命中情况及有意不引入的决策理由；§6.4 第三方服务集成表补充 AI 调用方式说明（裸调 DeepSeek、无 AI 网关、无 Agent 编排） | 已确认 |
 | 2026-08-20 | 编辑器新增代码块功能（`</>` 按钮）：解决 ASCII/Unicode 线框图在手机窄屏自动换行错位问题；选中文字后点击按钮，包裹为 `<pre>` 标签（`white-space: pre` + `overflow-x: auto` 横向滚动不换行）；涉及文件 EditorToolbar.tsx（新增 Code 图标按钮）、Editor.tsx（insertCodeBlock 函数 + TreeWalker 跨块合并修复）、view/page.tsx、SharePanel.tsx、share/[token]/page.tsx（三处 pre 样式）；部署脚本 deploy.sh/rollback.sh 增加 `.env.production` 强制加载 + 健康检查 307 状态码 | 已验收 |
 | 2026-08-24 | F6.3 导出 Markdown 修复：原导出直接拼接数据库 HTML 内容，导致部分心得在 Markdown 预览器中原样显示 `<div>`/`<b>` 等标签；新增 turndown 库将 HTML 转为标准 Markdown 语法（加粗/列表/代码块等），所有心得导出后在任何 Markdown 软件中均可正常渲染排版；涉及文件 lib/export-utils.ts（新增 getTurndownService 懒加载 + emptyDiv 规则清理空标签），新增依赖 turndown + @types/turndown | 待验收 |
+| 2026-08-24 | F6.3 导出 Markdown 二次修复：①段落间距丢失修复（编辑器用 `<div>` 分段，turndown 默认不加空行，导致段落合并成一坨；修改 div 规则前后加 `\n\n`）；②等号转义修复（turndown 把 `=` 当 Markdown 特殊字符转义为 `\=`，后处理替换回 `=`）；③多余星号修复（嵌套 `<b>` 标签导致 `****总纲**`，后处理清理为 `**总纲**`）；涉及文件 lib/export-utils.ts（修改 div 规则 + 新增 cleanMarkdown 后处理函数） | 待验收 |
 
 ---
 
