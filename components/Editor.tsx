@@ -111,36 +111,8 @@ export default function Editor({ entryId, isNew }: EditorProps) {
     // 将换行符转为 <br>，保持在一个块元素内
     const html = plainText.split('\n').map(line => line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')).join('<br>')
 
-    const sel = window.getSelection()
-    if (!sel || sel.rangeCount === 0) return
-
-    const range = sel.getRangeAt(0)
-    range.deleteContents()
-
-    // 检查当前是否在某个块元素内
-    let container = range.startContainer as HTMLElement
-    if (container.nodeType === 3) container = container.parentElement as HTMLElement
-
-    // 向上找到 editor 的直接子元素
-    while (container && container.parentElement && container.parentElement !== editorRef.current) {
-      container = container.parentElement
-    }
-
-    if (container && container !== editorRef.current && container.tagName === 'P') {
-      // 在当前 p 标签内插入 HTML（保留在同一块）
-      range.insertNode(document.createRange().createContextualFragment(html))
-    } else {
-      // 创建新的 p 标签
-      const p = document.createElement('p')
-      p.innerHTML = html
-      range.insertNode(p)
-      // 光标移到末尾
-      const newRange = document.createRange()
-      newRange.selectNodeContents(p)
-      newRange.collapse(false)
-      sel.removeAllRanges()
-      sel.addRange(newRange)
-    }
+    // 直接在光标位置插入，不创建新块
+    document.execCommand('insertHTML', false, html)
   }, [])
 
   function handleExecCommand(cmd: string) {
