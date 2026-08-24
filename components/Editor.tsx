@@ -108,11 +108,8 @@ export default function Editor({ entryId, isNew }: EditorProps) {
     const plainText = e.clipboardData.getData("text/plain")
     if (!plainText) return
 
-    // 将换行符转为 <br>，保持在一个块元素内
-    const html = plainText.split('\n').map(line => line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')).join('<br>')
-
-    // 直接在光标位置插入，不创建新块
-    document.execCommand('insertHTML', false, html)
+    // 用 insertText 插入纯文本，浏览器会自动处理换行和光标位置
+    document.execCommand('insertText', false, plainText)
   }, [])
 
   function handleExecCommand(cmd: string) {
