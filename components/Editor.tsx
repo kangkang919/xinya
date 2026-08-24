@@ -161,7 +161,22 @@ export default function Editor({ entryId, isNew }: EditorProps) {
   function insertCodeBlock() {
     const editor = editorRef.current
     if (!editor) return
+    
+    // 在 focus 之前保存光标位置
+    const savedSel = window.getSelection()
+    const savedRange = savedSel && savedSel.rangeCount > 0 ? savedSel.getRangeAt(0).cloneRange() : null
+    
     editor.focus()
+    
+    // 恢复光标位置
+    if (savedRange) {
+      const sel = window.getSelection()
+      if (sel) {
+        sel.removeAllRanges()
+        sel.addRange(savedRange)
+      }
+    }
+    
     const sel = window.getSelection()
     if (!sel || sel.rangeCount === 0) return
 
