@@ -1297,6 +1297,7 @@ pm2 save
 | 2026-08-24 | 编辑器粘贴行为修复：原 handlePaste 逻辑检查光标是否在 `<p>` 标签内，但编辑器默认用 `<div>` 包裹段落，条件不满足导致创建新 `<p>` 标签产生前后换行；修复为直接用 `document.execCommand('insertHTML')` 在光标位置插入纯文本，不创建新块；涉及文件 components/Editor.tsx | 待验收 |
 | 2026-08-24 | 编辑器粘贴二次修复：`insertHTML` 会改变 DOM 结构和光标位置，导致代码块按钮插入位置错位（出现在文章底部）；改用 `insertText` 插入纯文本，浏览器自动处理换行和光标位置，不影响后续操作；涉及文件 components/Editor.tsx | 待验收 |
 | 2026-08-24 | 代码块插入位置修复：`insertCodeBlock` 中 `editor.focus()` 会把光标重置到编辑器末尾，导致代码块插入位置错位；修复为在 focus 前保存光标位置（`cloneRange()`），focus 后恢复；涉及文件 components/Editor.tsx | 待验收 |
+| 2026-08-24 | 粘贴多行文本代码块问题修复：`insertText` 会把多行文本拆成多个独立块（每个段落一个 `<div>`），导致点击 `<>` 时生成多个代码块；修复为手动插入文本节点+`<br>`，让多行文本保持在同一个块内，点击 `<>` 只生成一个代码块；涉及文件 components/Editor.tsx | 待验收 |
 
 ---
 
