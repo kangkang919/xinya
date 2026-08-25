@@ -15,7 +15,7 @@ interface EditorToolbarProps {
   onSave: () => void
   onToggleTagPicker: () => void
   onToggleFocus: () => void
-  onExecCommand: (cmd: string) => void
+  onExecCommand: (cmd: string, value?: string) => void
   onInsertList: (type: "ul" | "ol") => void
   onInsertCodeBlock: () => void
   onSaveRange: () => void
