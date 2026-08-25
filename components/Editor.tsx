@@ -183,30 +183,30 @@ export default function Editor({ entryId, isNew }: EditorProps) {
     setCharCount((editor.textContent || "").replace(/\s/g, "").length)
   }
 
+  const savedRangeRef = useRef<Range | null>(null)
+
+  function saveRange() {
+    const sel = window.getSelection()
+    if (sel && sel.rangeCount > 0) {
+      savedRangeRef.current = sel.getRangeAt(0).cloneRange()
+    }
+  }
+
   function insertCodeBlock() {
     const editor = editorRef.current
     if (!editor) return
     
-    // 在 focus 之前保存光标位置
-    const savedSel = window.getSelection()
-    const savedRange = savedSel && savedSel.rangeCount > 0 ? savedSel.getRangeAt(0).cloneRange() : null
+    // 使用在 onMouseDown 时保存的光标位置
+    const range = savedRangeRef.current
+    if (!range) return
     
-    editor.focus()
-    
-    // 恢复光标位置
-    if (savedRange) {
-      const sel = window.getSelection()
-      if (sel) {
-        sel.removeAllRanges()
-        sel.addRange(savedRange)
-      }
-    }
-    
+    // 恢复 selection
     const sel = window.getSelection()
-    if (!sel || sel.rangeCount === 0) return
+    if (!sel) return
+    sel.removeAllRanges()
+    sel.addRange(range)
 
     const selectedText = sel.toString()
-    const range = sel.getRangeAt(0)
 
     if (selectedText.trim()) {
       // 收集选中范围内所有块级元素的文本
@@ -335,6 +335,7 @@ export default function Editor({ entryId, isNew }: EditorProps) {
           onExecCommand={handleExecCommand}
           onInsertList={insertList}
           onInsertCodeBlock={insertCodeBlock}
+          onSaveRange={saveRange}
         />
       )}
       <div className="max-w-3xl mx-auto">
