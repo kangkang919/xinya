@@ -17,6 +17,7 @@ prisma/*.db
 # 系统文件
 .DS_Store
 Thumbs.db
+tsconfig.tsbuildinfo
 
 # 部署临时文件
 .last-good-commit

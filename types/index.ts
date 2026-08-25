@@ -2,7 +2,7 @@
 export type MoodType = "happy" | "sad" | "calm" | "excited" | "worried"
 
 // 主题类型
-export type ThemeType = "spring" | "summer" | "autumn" | "winter"
+export type ThemeType = "spring" | "night"
 
 // 心得卡片（列表展示用）
 export interface EntryCard {
