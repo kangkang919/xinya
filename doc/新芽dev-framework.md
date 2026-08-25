@@ -1299,6 +1299,7 @@ pm2 save
 | 2026-08-24 | 代码块插入位置修复：`insertCodeBlock` 中 `editor.focus()` 会把光标重置到编辑器末尾，导致代码块插入位置错位；修复为在 focus 前保存光标位置（`cloneRange()`），focus 后恢复；涉及文件 components/Editor.tsx | 已验收 |
 | 2026-08-24 | 粘贴多行文本代码块问题修复：`insertText` 会把多行文本拆成多个独立块（每个段落一个 `<div>`），导致点击 `<>` 时生成多个代码块；修复为手动插入文本节点+`<br>`，让多行文本保持在同一个块内，点击 `<>` 只生成一个代码块；涉及文件 components/Editor.tsx | 已验收 |
 | 2026-08-25 | 全面 Code Review + 文件梳理：删除 9 个无用文件（根目录 3 张调试截图 login-*.png、构建产物 tsconfig.tsbuildinfo、一次性脚本 scripts/create-migration.js + backfill-questions.ts + fix-truncated-questions.ts + create-guest-accounts.js、调试接口 app/api/review/debug/route.ts）；更新 4 个文件（types/index.ts ThemeType 修正为 spring\|night、.env.example 删除废弃的 SILICONFLOW_API_KEY、.gitignore 新增 tsconfig.tsbuildinfo 忽略、README.md 替换为项目介绍）；优化 scripts/regenerate-all-summaries.ts 改用 lib/deepseek.ts 共享函数（删除 70 行重复代码） | 已验收 |
+| 2026-08-25 | 编辑器新增 4 项富文本功能：①分隔线——Obsidian 风格，输入 `---` 后按回车自动转为灰色 `<hr>` 横线（handleKeyDown 检测前一个块文本内容替换）；②删除线——工具栏 Strikethrough 按钮，execCommand strikeThrough；③标题——工具栏 Heading 按钮，execCommand formatBlock h2；④引用块——工具栏 Quote 按钮，execCommand formatBlock blockquote；涉及文件 EditorToolbar.tsx（新增 3 按钮）、Editor.tsx（handleKeyDown + handleExecCommand 支持 value 参数 + 编辑器 hr/blockquote/h2 样式）、view/page.tsx + SharePanel.tsx + share/[token]/page.tsx（三处渲染样式补充） | 待验收 |
 
 ---
 

@@ -526,6 +526,10 @@ function SharePageContent() {
         .share-content b, .share-content strong { font-weight: 600; }
         .share-content i, .share-content em { font-style: italic; }
         .share-content pre { background: rgba(0,0,0,0.04); border-radius: 8px; padding: 12px 16px; margin: 8px 0; font-family: 'SF Mono','Fira Code','Cascadia Code',monospace; font-size: 13px; line-height: 1.6; white-space: pre; overflow-x: auto; tab-size: 4; color: #444; }
+        .share-content hr { border: none; border-top: 1px solid #ccc; margin: 16px 0; }
+        .share-content blockquote { border-left: 3px solid #ccc; padding-left: 12px; margin: 8px 0; color: #888; }
+        .share-content h2 { font-size: 1.25em; font-weight: bold; margin: 12px 0 4px; }
+        .share-content s, .share-content strike, .share-content del { text-decoration: line-through; }
       `}</style>
     </div>
   )

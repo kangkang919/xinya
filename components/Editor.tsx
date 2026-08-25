@@ -137,8 +137,82 @@ export default function Editor({ entryId, isNew }: EditorProps) {
     sel.addRange(range)
   }, [])
 
-  function handleExecCommand(cmd: string) {
-    document.execCommand(cmd, false, undefined)
+  function handleExecCommand(cmd: string, value?: string) {
+    const editor = editorRef.current
+    if (editor) editor.focus()
+    if (value !== undefined) {
+      document.execCommand(cmd, false, value)
+    } else {
+      document.execCommand(cmd, false, undefined)
+    }
+  }
+
+  // Obsidian 风格分隔线：输入 --- 后按回车自动转为灰色分割线
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key !== 'Enter') return
+    const editor = editorRef.current
+    if (!editor) return
+
+    const sel = window.getSelection()
+    if (!sel || sel.rangeCount === 0) return
+
+    const range = sel.getRangeAt(0)
+    let container = range.startContainer as HTMLElement
+    if (container.nodeType === 3) container = container.parentElement as HTMLElement
+
+    // 找到当前光标所在的编辑器直接子块
+    let currentBlock: HTMLElement | null = container
+    while (currentBlock && currentBlock.parentElement !== editor) {
+      currentBlock = currentBlock.parentElement
+    }
+    if (!currentBlock || currentBlock === editor) return
+
+    // 检查前一个兄弟块（浏览器按 Enter 后，--- 文本留在前一个块中）
+    let prevBlock = currentBlock.previousElementSibling as HTMLElement | null
+    if (prevBlock && prevBlock.parentElement === editor) {
+      const text = prevBlock.textContent || ''
+      if (text.trim() === '---') {
+        e.preventDefault()
+        const hr = document.createElement('hr')
+        prevBlock.replaceWith(hr)
+        // 确保 hr 后面有可编辑块
+        if (!currentBlock.textContent?.trim()) {
+          currentBlock.innerHTML = '<br>'
+        }
+        // 光标移到 hr 后面的块
+        const r = document.createRange()
+        r.setStart(currentBlock, 0)
+        r.collapse(true)
+        sel.removeAllRanges()
+        sel.addRange(r)
+        return
+      }
+      // 也处理 --- 后面还有文字的情况（如 "hello---"）
+      const markerIdx = text.lastIndexOf('---')
+      if (markerIdx > 0) {
+        e.preventDefault()
+        const beforeText = text.substring(0, markerIdx)
+        const afterText = text.substring(markerIdx + 3)
+        prevBlock.textContent = beforeText
+        const hr = document.createElement('hr')
+        prevBlock.after(hr)
+        if (afterText) {
+          const p = document.createElement('div')
+          p.textContent = afterText
+          hr.after(p)
+        }
+        // 光标移到 hr 后面的块
+        const nextBlock = hr.nextElementSibling as HTMLElement
+        if (nextBlock) {
+          const r = document.createRange()
+          r.setStart(nextBlock, 0)
+          r.collapse(true)
+          sel.removeAllRanges()
+          sel.addRange(r)
+        }
+        return
+      }
+    }
   }
 
   function insertList(type: "ul" | "ol") {
@@ -359,7 +433,7 @@ export default function Editor({ entryId, isNew }: EditorProps) {
           </div>
         )}
         {focusMode && <button onClick={() => setFocusMode(false)} className="fixed top-4 right-4 z-20 p-2 rounded-full opacity-50 hover:opacity-100" style={{ background: "rgba(255,255,255,0.1)" }}><EyeOff size={20} color="#aaa" /></button>}
-        <div ref={editorRef} contentEditable suppressContentEditableWarning onPaste={handlePaste} className="w-full outline-none text-sm leading-relaxed" style={{ padding: focusMode ? "40px 24px" : "16px", minHeight: focusMode ? "60vh" : "30vh", color: focusMode ? "#ddd" : (isDark ? "#E0E0E0" : "#333") }} onInput={handleInput} data-placeholder="在这里写下你的感悟、想法或日记…" />
+        <div ref={editorRef} contentEditable suppressContentEditableWarning onPaste={handlePaste} onKeyDown={handleKeyDown} className="w-full outline-none text-sm leading-relaxed" style={{ padding: focusMode ? "40px 24px" : "16px", minHeight: focusMode ? "60vh" : "30vh", color: focusMode ? "#ddd" : (isDark ? "#E0E0E0" : "#333") }} onInput={handleInput} data-placeholder="在这里写下你的感悟、想法或日记…" />
         {!focusMode && (
           <div className="px-4 py-3 border-t" style={{ borderColor: isDark ? "#444" : "#e0e0e0" }}>
             <p className="text-xs mb-2" style={{ color: "#999" }}>此刻的心情</p>
@@ -445,6 +519,9 @@ export default function Editor({ entryId, isNew }: EditorProps) {
         [contenteditable] ol{list-style:decimal;padding-left:1.5em;margin:0.5em 0}
         [contenteditable] li{margin:0.2em 0}
         [contenteditable] pre{background:${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'};border-radius:8px;padding:12px 16px;margin:8px 0;font-family:'SF Mono','Fira Code','Cascadia Code',monospace;font-size:13px;line-height:1.6;white-space:pre;overflow-x:auto;tab-size:4;color:${isDark ? '#ccc' : '#333'}}
+        [contenteditable] hr{border:none;border-top:1px solid ${isDark ? '#555' : '#ccc'};margin:16px 0}
+        [contenteditable] blockquote{border-left:3px solid ${isDark ? '#555' : '#ccc'};padding-left:12px;margin:8px 0;color:${isDark ? '#999' : '#888'}}
+        [contenteditable] h2{font-size:1.25em;font-weight:bold;margin:12px 0 4px}
       `}</style>
     </div>
   )

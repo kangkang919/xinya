@@ -1,6 +1,6 @@
 ﻿"use client"
 import { useState } from "react"
-import { ArrowLeft, Bold, Italic, Underline, List, ListOrdered, Palette, Tag, Focus, Code } from "lucide-react"
+import { ArrowLeft, Bold, Italic, Underline, Strikethrough, List, ListOrdered, Palette, Tag, Focus, Code, Heading, Quote } from "lucide-react"
 
 const COLORS = ["#333333", "#8BC34A", "#42A5F5", "#FF8C42", "#795548", "#e57373"]
 
@@ -51,6 +51,9 @@ export default function EditorToolbar({
           <button onMouseDown={e => e.preventDefault()} onClick={() => onExecCommand("bold")} className={`p-2 rounded-lg ${hoverBg}`}><Bold size={18} color={iconColor} /></button>
           <button onMouseDown={e => e.preventDefault()} onClick={() => onExecCommand("italic")} className={`p-2 rounded-lg ${hoverBg}`}><Italic size={18} color={iconColor} /></button>
           <button onMouseDown={e => e.preventDefault()} onClick={() => onExecCommand("underline")} className={`p-2 rounded-lg ${hoverBg}`}><Underline size={18} color={iconColor} /></button>
+          <button onMouseDown={e => e.preventDefault()} onClick={() => onExecCommand("strikeThrough")} className={`p-2 rounded-lg ${hoverBg}`}><Strikethrough size={18} color={iconColor} /></button>
+          <button onMouseDown={e => e.preventDefault()} onClick={() => onExecCommand("formatBlock", "h2")} className={`p-2 rounded-lg ${hoverBg}`}><Heading size={18} color={iconColor} /></button>
+          <button onMouseDown={e => e.preventDefault()} onClick={() => onExecCommand("formatBlock", "blockquote")} className={`p-2 rounded-lg ${hoverBg}`}><Quote size={18} color={iconColor} /></button>
           <button onMouseDown={e => e.preventDefault()} onClick={() => onInsertList("ul")} className={`p-2 rounded-lg ${hoverBg}`}><List size={18} color={iconColor} /></button>
           <button onMouseDown={e => e.preventDefault()} onClick={() => onInsertList("ol")} className={`p-2 rounded-lg ${hoverBg}`}><ListOrdered size={18} color={iconColor} /></button>
           <button onMouseDown={() => { onSaveRange(); onInsertCodeBlock(); }} className={`p-2 rounded-lg ${hoverBg}`}><Code size={18} color={iconColor} /></button>
