@@ -6,22 +6,16 @@ const turndownService = new TurndownService({
   codeBlockStyle: 'fenced',
 })
 
-// div 段落：前后加空行，空 div 忽略
-turndownService.addRule('div', {
-  filter: 'div',
-  replacement: (content: string, node: HTMLElement) => {
-    const el = node as HTMLElement
-    if (el.innerHTML.trim() === '' || el.innerHTML === '<br>') return ''
-    return '\n\n' + content.trim() + '\n\n'
-  },
+// Tiptap 输出标准语义 HTML（<p>、<strong>、<em> 等），turndown 原生支持
+// 仅处理空段落（Tiptap 空段落为 <p></p>）
+turndownService.addRule('emptyParagraph', {
+  filter: (node) => node.nodeName === 'P' && node.textContent?.trim() === '',
+  replacement: () => '',
 })
 
-// 后处理：修复 turndown 转换的常见问题
+// 后处理：清理多余空行
 function cleanMarkdown(md: string): string {
-  return md
-    .replace(/\\=/g, '=')        // 修复等号被转义（\========== → ==========）
-    .replace(/\*{4,}/g, '**')    // 修复嵌套<b>导致的多余星号（****总纲** → **总纲**）
-    .replace(/\n{3,}/g, '\n\n')  // 清理多余空行
+  return md.replace(/\n{3,}/g, '\n\n')
 }
 
 interface ExportEntry {
