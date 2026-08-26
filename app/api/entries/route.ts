@@ -197,7 +197,24 @@ export async function GET(req: NextRequest) {
     params.push(skip, limit)
 
     const rows = await prisma.$queryRawUnsafe(sql, ...params) as any[]
-    resultEntries = rows
+
+    // 补充查询 tags（raw SQL 无法 JOIN 隐式多对多关系表）
+    const entryIds = rows.map((r: any) => r.id)
+    let tagRecords: any[] = []
+    if (entryIds.length > 0) {
+      tagRecords = await prisma.$queryRawUnsafe(
+        `SELECT et."A" AS "entryId", t."id", t."name"
+         FROM "_EntryTags" et JOIN "Tag" t ON et."B" = t."id"
+         WHERE et."A" = ANY($1::text[])`,
+        entryIds
+      ) as any[]
+    }
+    const tagsByEntry = new Map<string, { id: string; name: string }[]>()
+    for (const tr of tagRecords) {
+      if (!tagsByEntry.has(tr.entryId)) tagsByEntry.set(tr.entryId, [])
+      tagsByEntry.get(tr.entryId)!.push({ id: tr.id, name: tr.name })
+    }
+    resultEntries = rows.map((r: any) => ({ ...r, tags: tagsByEntry.get(r.id) || [] }))
 
     // 用 raw SQL 获取准确匹配总数（与搜索使用相同的全文检索条件）
     const countSql = `
