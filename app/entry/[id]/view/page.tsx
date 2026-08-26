@@ -6,6 +6,7 @@ import SharePanel from "@/components/SharePanel"
 import { DeleteDialog } from "@/components/DeleteDialog"
 import LinkPanel from "@/components/LinkPanel"
 import LinkSearchModal from "@/components/LinkSearchModal"
+import { generateRichTextStyles } from "@/lib/rich-text-styles"
 import toast from "react-hot-toast"
 
 interface Tag { id: string; name: string }
@@ -337,23 +338,15 @@ function ViewEntryContent() {
         />
       )}
 
-      {/* contentEditable 内容样式 */}
-      <style>{`
-        [dangerouslySetInnerHTML] ul, div[dangerouslySetInnerHTML] ul { list-style: disc; padding-left: 1.5em; margin: 0.5em 0; }
-        [dangerouslySetInnerHTML] ol, div[dangerouslySetInnerHTML] ol { list-style: decimal; padding-left: 1.5em; margin: 0.5em 0; }
-        [dangerouslySetInnerHTML] li, div[dangerouslySetInnerHTML] li { margin: 0.2em 0; }
-        .view-content ul { list-style: disc; padding-left: 1.5em; margin: 0.5em 0; }
-        .view-content ol { list-style: decimal; padding-left: 1.5em; margin: 0.5em 0; }
-        .view-content li { margin: 0.2em 0; }
-        .view-content b, .view-content strong { font-weight: bold; }
-        .view-content i, .view-content em { font-style: italic; }
-        .view-content u { text-decoration: underline; }
-        .view-content pre { background: ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'}; border-radius: 8px; padding: 12px 16px; margin: 8px 0; font-family: 'SF Mono','Fira Code','Cascadia Code',monospace; font-size: 13px; line-height: 1.6; white-space: pre; overflow-x: auto; tab-size: 4; color: ${contentColor}; }
-        .view-content hr { border: none; border-top: 1px solid ${isDark ? '#555' : '#ccc'}; margin: 16px 0; }
-        .view-content blockquote { border-left: 3px solid ${isDark ? '#555' : '#ccc'}; padding-left: 12px; margin: 8px 0; color: ${isDark ? '#999' : '#888'}; }
-        .view-content h2 { font-size: 1.25em; font-weight: bold; margin: 12px 0 4px; }
-        .view-content s, .view-content strike, .view-content del { text-decoration: line-through; }
-      `}</style>
+      {/* 富文本内容样式（与编辑器共享同一套样式定义） */}
+      <style>{generateRichTextStyles('.view-content', {
+        textColor: contentColor,
+        codeBg: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+        codeColor: contentColor,
+        borderColor: isDark ? '#555' : '#ccc',
+        quoteBorderColor: isDark ? '#555' : '#ccc',
+        quoteTextColor: isDark ? '#999' : '#888',
+      })}</style>
     </div>
   )
 }

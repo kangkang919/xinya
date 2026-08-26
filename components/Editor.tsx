@@ -11,6 +11,7 @@ import { Color } from "@tiptap/extension-color"
 import Placeholder from "@tiptap/extension-placeholder"
 import EditorToolbar from "./EditorToolbar"
 import { useTheme } from "@/lib/useTheme"
+import { getEditorRichTextStyles } from "@/lib/rich-text-styles"
 
 const MOODS = [
   { key: "happy", emoji: "😊", label: "开心", color: "#FFB74D" },
@@ -332,17 +333,7 @@ export default function Editor({ entryId, isNew }: EditorProps) {
       <style>{`
         .editor-wrap { color: var(--ed-color); }
         .tiptap { outline: none; font-size: 0.875rem; line-height: 1.625; color: var(--ed-color); min-height: inherit; }
-        .tiptap p { margin: 0; }
-        .tiptap > * + * { margin-top: 0; }
-        .tiptap ul { list-style: disc; padding-left: 1.5em; margin: 0.5em 0; }
-        .tiptap ol { list-style: decimal; padding-left: 1.5em; margin: 0.5em 0; }
-        .tiptap li { margin: 0.2em 0; }
-        .tiptap pre { background: var(--ed-code-bg); border-radius: 8px; padding: 12px 16px; margin: 8px 0; font-family: 'SF Mono','Fira Code','Cascadia Code',monospace; font-size: 13px; line-height: 1.6; white-space: pre; overflow-x: auto; tab-size: 4; color: var(--ed-code-color); }
-        .tiptap hr { border: none; border-top: 1px solid var(--ed-border); margin: 16px 0; }
-        .tiptap blockquote { border-left: 3px solid var(--ed-quote-border); padding-left: 12px; margin: 8px 0; color: var(--ed-quote-color); }
-        .tiptap h2 { font-size: 1.25em; font-weight: bold; margin: 12px 0 4px; }
-        .tiptap s { text-decoration: line-through; }
-        .tiptap p.is-editor-empty:first-child::before { content: attr(data-placeholder); float: left; color: #bbb; pointer-events: none; height: 0; }
+        ${getEditorRichTextStyles()}
       `}</style>
     </div>
   )

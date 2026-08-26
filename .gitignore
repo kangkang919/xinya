@@ -19,6 +19,9 @@ prisma/*.db
 Thumbs.db
 tsconfig.tsbuildinfo
 
+# 本地追踪文件（不上传）
+doc/review-tracker.json
+
 # 部署临时文件
 .last-good-commit
 

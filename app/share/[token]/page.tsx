@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Suspense } from "react"
+import { generateRichTextStyles } from "@/lib/rich-text-styles"
 
 interface ShareEntry {
   id: string
@@ -518,19 +519,15 @@ function SharePageContent() {
         </div>
       )}
 
-      {/* 富文本样式 */}
-      <style jsx>{`
-        .share-content ul { list-style: disc; padding-left: 1.5em; margin: 0.5em 0; }
-        .share-content ol { list-style: decimal; padding-left: 1.5em; margin: 0.5em 0; }
-        .share-content li { margin: 0.2em 0; }
-        .share-content b, .share-content strong { font-weight: 600; }
-        .share-content i, .share-content em { font-style: italic; }
-        .share-content pre { background: rgba(0,0,0,0.04); border-radius: 8px; padding: 12px 16px; margin: 8px 0; font-family: 'SF Mono','Fira Code','Cascadia Code',monospace; font-size: 13px; line-height: 1.6; white-space: pre; overflow-x: auto; tab-size: 4; color: #444; }
-        .share-content hr { border: none; border-top: 1px solid #ccc; margin: 16px 0; }
-        .share-content blockquote { border-left: 3px solid #ccc; padding-left: 12px; margin: 8px 0; color: #888; }
-        .share-content h2 { font-size: 1.25em; font-weight: bold; margin: 12px 0 4px; }
-        .share-content s, .share-content strike, .share-content del { text-decoration: line-through; }
-      `}</style>
+      {/* 富文本样式（与编辑器共享同一套样式定义） */}
+      <style>{generateRichTextStyles('.share-content', {
+        textColor: '#333',
+        codeBg: 'rgba(0,0,0,0.04)',
+        codeColor: '#444',
+        borderColor: '#ccc',
+        quoteBorderColor: '#ccc',
+        quoteTextColor: '#888',
+      })}</style>
     </div>
   )
 }
