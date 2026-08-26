@@ -171,9 +171,13 @@ export async function GET(req: NextRequest) {
       : ''
 
     // 用 raw SQL 执行全文搜索 + 相关度排序
+    // 注意：必须显式列出列（排除 searchVector），Prisma 无法反序列化 tsvector 类型
     const sql = `
       SELECT 
-        "Entry".*,
+        "Entry"."id", "Entry"."userId", "Entry"."title", "Entry"."content",
+        "Entry"."keyPoints", "Entry"."mood", "Entry"."recordTime",
+        "Entry"."isTop", "Entry"."isFavorite", "Entry"."isDraft",
+        "Entry"."createdAt", "Entry"."updatedAt",
         ts_rank(
           setweight(to_tsvector('simple', coalesce("Entry"."title", '')), 'A') ||
           setweight(to_tsvector('simple', coalesce("Entry"."content", '')), 'D'),
