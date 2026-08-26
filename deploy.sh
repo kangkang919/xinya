@@ -17,29 +17,33 @@ PREV_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 echo "当前版本: $PREV_COMMIT"
 
 echo ""
-echo "[1/6] 安装依赖..."
+echo "[1/7] 拉取最新代码..."
+git pull
+
+echo ""
+echo "[2/7] 安装依赖..."
 npm install
 
 echo ""
-echo "[2/6] 生成 Prisma Client..."
+echo "[3/7] 生成 Prisma Client..."
 npx prisma generate
 
 echo ""
-echo "[3/6] 执行数据库迁移..."
+echo "[4/7] 执行数据库迁移..."
 npx prisma migrate deploy
 
 echo ""
-echo "[4/6] 构建项目..."
+echo "[5/7] 构建项目..."
 npm run build
 
 echo ""
-echo "[5/6] 重启应用（PM2 零停机 reload）..."
+echo "[6/7] 重启应用（PM2 零停机 reload）..."
 npm install -g pm2 2>/dev/null || true
 pm2 startOrReload ecosystem.config.js
 pm2 save
 
 echo ""
-echo "[6/6] 健康检查..."
+echo "[7/7] 健康检查..."
 sleep 5
 HEALTH_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000 || echo "000")
 if echo "$HEALTH_CODE" | grep -q "200\|302\|301\|307"; then
