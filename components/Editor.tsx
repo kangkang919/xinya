@@ -56,6 +56,22 @@ export default function Editor({ entryId, isNew }: EditorProps) {
 
   useEffect(() => { fetch("/api/tags").then(r => r.json()).then(d => { if (d.ok) setAllTags(d.data) }) }, [])
 
+  // 持续跟踪编辑器光标位置，确保 savedRangeRef 始终保存最新有效选区
+  useEffect(() => {
+    function handleSelectionChange() {
+      const editor = editorRef.current
+      if (!editor) return
+      const sel = window.getSelection()
+      if (!sel || sel.rangeCount === 0) return
+      const anchorNode = sel.anchorNode
+      if (anchorNode && editor.contains(anchorNode)) {
+        savedRangeRef.current = sel.getRangeAt(0).cloneRange()
+      }
+    }
+    document.addEventListener('selectionchange', handleSelectionChange)
+    return () => document.removeEventListener('selectionchange', handleSelectionChange)
+  }, [])
+
   // 标题相似检测（防抖 1 秒）
   useEffect(() => {
     if (similarTimer.current) clearTimeout(similarTimer.current)
@@ -139,20 +155,69 @@ export default function Editor({ entryId, isNew }: EditorProps) {
 
   function handleExecCommand(cmd: string, value?: string) {
     const editor = editorRef.current
-    if (editor) editor.focus()
-    // 标题切换：h2 ↔ 普通段落
+    if (!editor) return
+
+    // 标题切换：h2 ↔ 普通段落（手动 DOM 操作，确保光标始终在 H2 内部）
     if (cmd === 'formatBlock' && value === 'h2') {
-      const sel = window.getSelection()
-      if (sel && sel.rangeCount > 0) {
-        let node = sel.getRangeAt(0).startContainer as HTMLElement
-        if (node.nodeType === 3) node = node.parentElement as HTMLElement
-        while (node && node !== editor && node.parentElement !== editor) node = node.parentElement as HTMLElement
-        if (node && node !== editor && node.tagName === 'H2') {
-          document.execCommand('formatBlock', false, 'p')
-          return
+      // 恢复保存的光标位置（由 selectionchange 持续跟踪）
+      const savedRange = savedRangeRef.current
+      if (savedRange) {
+        const sel = window.getSelection()
+        if (sel) {
+          sel.removeAllRanges()
+          sel.addRange(savedRange)
         }
       }
+
+      // 从光标位置向上查找编辑器直接子块
+      const sel = window.getSelection()
+      if (!sel || sel.rangeCount === 0) return
+      let container = sel.getRangeAt(0).startContainer as HTMLElement
+      if (container.nodeType === 3) container = container.parentElement as HTMLElement
+      let block: HTMLElement | null = container
+      while (block && block !== editor && block.parentElement !== editor) {
+        block = block.parentElement as HTMLElement
+      }
+
+      if (block && block !== editor) {
+        if (block.tagName === 'H2') {
+          // H2 → P：手动替换标签，光标移入新 P
+          const p = document.createElement('p')
+          p.innerHTML = block.innerHTML
+          block.replaceWith(p)
+          const r = document.createRange()
+          r.setStart(p, 0)
+          r.collapse(true)
+          sel.removeAllRanges()
+          sel.addRange(r)
+        } else {
+          // P/其他 → H2：手动替换标签，光标移入新 H2
+          const h2 = document.createElement('h2')
+          h2.innerHTML = block.innerHTML
+          block.replaceWith(h2)
+          const r = document.createRange()
+          r.setStart(h2, 0)
+          r.collapse(true)
+          sel.removeAllRanges()
+          sel.addRange(r)
+        }
+      } else {
+        // 光标不在任何子块内（在编辑器根层文本节点），用 formatBlock 兜底
+        document.execCommand('formatBlock', false, 'h2')
+        // 确保光标在新生成的 H2 内部
+        const h2 = editor.querySelector('h2')
+        if (h2 && sel) {
+          const r = document.createRange()
+          r.setStart(h2, 0)
+          r.collapse(true)
+          sel.removeAllRanges()
+          sel.addRange(r)
+        }
+      }
+      setCharCount((editor.textContent || "").replace(/\s/g, "").length)
+      return
     }
+
     if (value !== undefined) {
       document.execCommand(cmd, false, value)
     } else {
