@@ -247,7 +247,7 @@ function TabBar({ active, onChange }: { active: string; onChange: (v: string) =>
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#E8E8E3] flex items-center pb-safe z-50"
       style={{ height: "64px" }}>
-      {leftTabs.map(t => <TabBtn key={t.key} k={t.key} label={t.label} Icon={t.Icon} />)}
+      {leftTabs.map(t => <TabBtn key={t.key} k={t.key} label={t.label} Icon={t.Icon as React.ElementType} />)}
 
       {/* 中央 + 按钮 */}
       <div className="flex flex-col items-center flex-1">
@@ -258,7 +258,7 @@ function TabBar({ active, onChange }: { active: string; onChange: (v: string) =>
         </button>
       </div>
 
-      {rightTabs.map(t => <TabBtn key={t.key} k={t.key} label={t.label} Icon={t.Icon} />)}
+      {rightTabs.map(t => <TabBtn key={t.key} k={t.key} label={t.label} Icon={t.Icon as React.ElementType} />)}
     </nav>
   )
 }
