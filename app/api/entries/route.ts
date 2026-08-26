@@ -151,11 +151,14 @@ export async function GET(req: NextRequest) {
         let score = 0
         const titleLower = e.title.toLowerCase()
         const contentLower = stripHtml(e.content, 500).toLowerCase()
+        let titleMatchCount = 0
         for (const kw of searchKeywords) {
           const kwLower = kw.toLowerCase()
-          if (titleLower.includes(kwLower)) score += 3
+          if (titleLower.includes(kwLower)) { score += 3; titleMatchCount++ }
           if (contentLower.includes(kwLower)) score += 1
         }
+        // 标题包含所有关键词时额外加分，确保精确标题匹配排在最前
+        if (titleMatchCount === searchKeywords.length) score += 10
         return { ...e, _score: score }
       })
       scored.sort((a, b) => {
