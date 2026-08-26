@@ -138,9 +138,10 @@ export default function Editor({ entryId, isNew }: EditorProps) {
   }, [])
 
   function handleExecCommand(cmd: string, value?: string) {
-    // 标题切换：h2 ↔ 普通段落（不能加 editor.focus()，会重置 selection）
+    const editor = editorRef.current
+    if (editor) editor.focus()
+    // 标题切换：h2 ↔ 普通段落
     if (cmd === 'formatBlock' && value === 'h2') {
-      const editor = editorRef.current
       const sel = window.getSelection()
       if (sel && sel.rangeCount > 0) {
         let node = sel.getRangeAt(0).startContainer as HTMLElement
