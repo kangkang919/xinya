@@ -46,8 +46,8 @@ export async function GET(req: NextRequest) {
   // 多关键词搜索 + 相关度排序
   let searchKeywords: string[] = []
   if (search) {
-    // 按空格拆分关键词，过滤空字符串
-    searchKeywords = search.split(/\s+/).filter(k => k.trim().length > 0)
+    // 按空格拆分关键词，过滤空字符串和纯特殊字符（如 &、| 等 HTML 实体符号）
+    searchKeywords = search.split(/\s+/).filter(k => k.trim().length > 0 && /[\w\u4e00-\u9fff]/.test(k))
     if (searchKeywords.length > 0) {
       // 任一关键词匹配标题或正文即可
       where.OR = searchKeywords.flatMap(keyword => [
@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
 
   // 相似心得检测：只搜标题匹配，限制返回数量
   if (similarTitle) {
-    const keywords = similarTitle.split(/\s+/).filter(k => k.trim().length > 0)
+    const keywords = similarTitle.split(/\s+/).filter(k => k.trim().length > 0 && /[\w\u4e00-\u9fff]/.test(k))
     if (keywords.length > 0) {
       where.OR = keywords.flatMap(keyword => [
         { title: { contains: keyword, mode: "insensitive" } },
