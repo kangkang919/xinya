@@ -58,7 +58,7 @@ export default function EditorToolbar({
           <button onMouseDown={e => e.preventDefault()} onClick={() => onInsertList("ul")} className={`p-2 rounded-lg ${hoverBg}`}><List size={18} color={iconColor} /></button>
           <button onMouseDown={e => e.preventDefault()} onClick={() => onInsertList("ol")} className={`p-2 rounded-lg ${hoverBg}`}><ListOrdered size={18} color={iconColor} /></button>
           <button onMouseDown={() => { onSaveRange(); onInsertCodeBlock(); }} className={`p-2 rounded-lg ${hoverBg}`}><Code size={18} color={iconColor} /></button>
-          <button onMouseDown={e => e.preventDefault()} onClick={onInsertDivider} className={`p-2 rounded-lg ${hoverBg}`}><Minus size={18} color={iconColor} /></button>
+          <button onMouseDown={() => { onSaveRange(); onInsertDivider(); }} className={`p-2 rounded-lg ${hoverBg}`}><Minus size={18} color={iconColor} /></button>
           <button onMouseDown={e => e.preventDefault()} onClick={openColorPicker} className={`p-2 rounded-lg ${hoverBg}`}><Palette size={18} color={iconColor} /></button>
           <div className="w-px h-5 mx-1" style={{ background: sepColor }} />
           <button onClick={onToggleTagPicker} className={`p-2 rounded-lg ${hoverBg}`}><Tag size={18} color={hasTags ? "#8BC34A" : iconColor} /></button>
