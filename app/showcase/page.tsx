@@ -236,7 +236,7 @@ function TabBar({ active, onChange }: { active: string; onChange: (v: string) =>
     { key: "root", label: "根系", Icon: TreePine },
   ]
 
-  const TabBtn = ({ k, label, Icon }: { k: string; label: string; Icon: React.ElementType }) => (
+  const TabBtn = ({ k, label, Icon }: { k: string; label: string; Icon: React.ComponentType<any> }) => (
     <button onClick={() => onChange(k)}
       className="flex flex-col items-center gap-0.5 flex-1 py-2">
       <Icon className={`w-5 h-5 ${active === k ? "text-[#8BC34A]" : "text-[#AAAAAA]"}`} />
@@ -247,7 +247,7 @@ function TabBar({ active, onChange }: { active: string; onChange: (v: string) =>
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#E8E8E3] flex items-center pb-safe z-50"
       style={{ height: "64px" }}>
-      {leftTabs.map(t => <TabBtn key={t.key} k={t.key} label={t.label} Icon={t.Icon as React.ElementType} />)}
+      {leftTabs.map(t => <TabBtn key={t.key} k={t.key} label={t.label} Icon={t.Icon} />)}
 
       {/* 中央 + 按钮 */}
       <div className="flex flex-col items-center flex-1">
@@ -258,7 +258,7 @@ function TabBar({ active, onChange }: { active: string; onChange: (v: string) =>
         </button>
       </div>
 
-      {rightTabs.map(t => <TabBtn key={t.key} k={t.key} label={t.label} Icon={t.Icon as React.ElementType} />)}
+      {rightTabs.map(t => <TabBtn key={t.key} k={t.key} label={t.label} Icon={t.Icon} />)}
     </nav>
   )
 }
