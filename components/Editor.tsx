@@ -140,6 +140,19 @@ export default function Editor({ entryId, isNew }: EditorProps) {
   function handleExecCommand(cmd: string, value?: string) {
     const editor = editorRef.current
     if (editor) editor.focus()
+    // 标题切换：h2 ↔ 普通段落
+    if (cmd === 'formatBlock' && value === 'h2') {
+      const sel = window.getSelection()
+      if (sel && sel.rangeCount > 0) {
+        let node = sel.getRangeAt(0).startContainer as HTMLElement
+        if (node.nodeType === 3) node = node.parentElement as HTMLElement
+        while (node && node !== editor && node.parentElement !== editor) node = node.parentElement as HTMLElement
+        if (node && node !== editor && node.tagName === 'H2') {
+          document.execCommand('formatBlock', false, 'p')
+          return
+        }
+      }
+    }
     if (value !== undefined) {
       document.execCommand(cmd, false, value)
     } else {
@@ -148,70 +161,57 @@ export default function Editor({ entryId, isNew }: EditorProps) {
   }
 
   // Obsidian 风格分隔线：输入 --- 后按回车自动转为灰色分割线
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key !== 'Enter') return
+  // 使用 beforeinput 事件：在浏览器处理 Enter 前拦截，此时 --- 仍在当前块中
+  function handleBeforeInput(e: React.FormEvent) {
+    const nativeEvent = e.nativeEvent as InputEvent
+    if (nativeEvent.inputType !== 'insertParagraph') return
     const editor = editorRef.current
     if (!editor) return
 
     const sel = window.getSelection()
     if (!sel || sel.rangeCount === 0) return
 
-    const range = sel.getRangeAt(0)
-    let container = range.startContainer as HTMLElement
+    let container = sel.getRangeAt(0).startContainer as HTMLElement
     if (container.nodeType === 3) container = container.parentElement as HTMLElement
 
-    // 找到当前光标所在的编辑器直接子块
-    let currentBlock: HTMLElement | null = container
-    while (currentBlock && currentBlock.parentElement !== editor) {
-      currentBlock = currentBlock.parentElement
+    // 找到光标所在的编辑器直接子块
+    let block: HTMLElement | null = container
+    while (block && block.parentElement !== editor) {
+      block = block.parentElement
     }
-    if (!currentBlock || currentBlock === editor) return
+    if (!block || block === editor) return
 
-    // 检查前一个兄弟块（浏览器按 Enter 后，--- 文本留在前一个块中）
-    let prevBlock = currentBlock.previousElementSibling as HTMLElement | null
-    if (prevBlock && prevBlock.parentElement === editor) {
-      const text = prevBlock.textContent || ''
-      if (text.trim() === '---') {
-        e.preventDefault()
-        const hr = document.createElement('hr')
-        prevBlock.replaceWith(hr)
-        // 确保 hr 后面有可编辑块
-        if (!currentBlock.textContent?.trim()) {
-          currentBlock.innerHTML = '<br>'
-        }
-        // 光标移到 hr 后面的块
-        const r = document.createRange()
-        r.setStart(currentBlock, 0)
-        r.collapse(true)
-        sel.removeAllRanges()
-        sel.addRange(r)
-        return
-      }
-      // 也处理 --- 后面还有文字的情况（如 "hello---"）
-      const markerIdx = text.lastIndexOf('---')
-      if (markerIdx > 0) {
-        e.preventDefault()
-        const beforeText = text.substring(0, markerIdx)
-        const afterText = text.substring(markerIdx + 3)
-        prevBlock.textContent = beforeText
-        const hr = document.createElement('hr')
-        prevBlock.after(hr)
-        if (afterText) {
-          const p = document.createElement('div')
-          p.textContent = afterText
-          hr.after(p)
-        }
-        // 光标移到 hr 后面的块
-        const nextBlock = hr.nextElementSibling as HTMLElement
-        if (nextBlock) {
-          const r = document.createRange()
-          r.setStart(nextBlock, 0)
-          r.collapse(true)
-          sel.removeAllRanges()
-          sel.addRange(r)
-        }
-        return
-      }
+    const text = block.textContent || ''
+
+    // 情况1：整块只有 ---
+    if (text.trim() === '---') {
+      e.preventDefault()
+      const hr = document.createElement('hr')
+      const newBlock = document.createElement('div')
+      newBlock.innerHTML = '<br>'
+      block.replaceWith(hr, newBlock)
+      const r = document.createRange()
+      r.setStart(newBlock, 0)
+      r.collapse(true)
+      sel.removeAllRanges()
+      sel.addRange(r)
+      return
+    }
+
+    // 情况2：--- 在末尾（如 "hello---"），保留前面的文字
+    if (text.endsWith('---') && text.length > 3) {
+      e.preventDefault()
+      const beforeText = text.slice(0, -3)
+      block.textContent = beforeText
+      const hr = document.createElement('hr')
+      const newBlock = document.createElement('div')
+      newBlock.innerHTML = '<br>'
+      block.after(hr, newBlock)
+      const r = document.createRange()
+      r.setStart(newBlock, 0)
+      r.collapse(true)
+      sel.removeAllRanges()
+      sel.addRange(r)
     }
   }
 
@@ -433,7 +433,7 @@ export default function Editor({ entryId, isNew }: EditorProps) {
           </div>
         )}
         {focusMode && <button onClick={() => setFocusMode(false)} className="fixed top-4 right-4 z-20 p-2 rounded-full opacity-50 hover:opacity-100" style={{ background: "rgba(255,255,255,0.1)" }}><EyeOff size={20} color="#aaa" /></button>}
-        <div ref={editorRef} contentEditable suppressContentEditableWarning onPaste={handlePaste} onKeyDown={handleKeyDown} className="w-full outline-none text-sm leading-relaxed" style={{ padding: focusMode ? "40px 24px" : "16px", minHeight: focusMode ? "60vh" : "30vh", color: focusMode ? "#ddd" : (isDark ? "#E0E0E0" : "#333") }} onInput={handleInput} data-placeholder="在这里写下你的感悟、想法或日记…" />
+        <div ref={editorRef} contentEditable suppressContentEditableWarning onPaste={handlePaste} onBeforeInput={handleBeforeInput} className="w-full outline-none text-sm leading-relaxed" style={{ padding: focusMode ? "40px 24px" : "16px", minHeight: focusMode ? "60vh" : "30vh", color: focusMode ? "#ddd" : (isDark ? "#E0E0E0" : "#333") }} onInput={handleInput} data-placeholder="在这里写下你的感悟、想法或日记…" />
         {!focusMode && (
           <div className="px-4 py-3 border-t" style={{ borderColor: isDark ? "#444" : "#e0e0e0" }}>
             <p className="text-xs mb-2" style={{ color: "#999" }}>此刻的心情</p>
