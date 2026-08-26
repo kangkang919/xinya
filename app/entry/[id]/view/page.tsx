@@ -1,9 +1,11 @@
 "use client"
-import { useEffect, useState, Suspense } from "react"
+import { useEffect, useState, Suspense, useCallback } from "react"
 import { useRouter, useParams, useSearchParams } from "next/navigation"
 import { useTheme } from "@/lib/useTheme"
 import SharePanel from "@/components/SharePanel"
 import { DeleteDialog } from "@/components/DeleteDialog"
+import LinkPanel from "@/components/LinkPanel"
+import LinkSearchModal from "@/components/LinkSearchModal"
 import toast from "react-hot-toast"
 
 interface Tag { id: string; name: string }
@@ -64,6 +66,21 @@ function ViewEntryContent() {
   const [showShare, setShowShare] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
+
+  // 知识关联（F13）
+  const [showLinkModal, setShowLinkModal] = useState(false)
+  const [links, setLinks] = useState<{ outgoing: any[]; incoming: any[] }>({ outgoing: [], incoming: [] })
+
+  const fetchLinks = useCallback(() => {
+    fetch(`/api/entries/${id}/links`)
+      .then(r => r.json())
+      .then(data => { if (data.ok) setLinks(data.data) })
+      .catch(() => {})
+  }, [id])
+
+  useEffect(() => {
+    if (id) fetchLinks()
+  }, [id, fetchLinks])
 
   // 删除心得（与列表页规范一致：二次确认 + 叶子飘落提示）
   async function handleDelete() {
@@ -151,6 +168,24 @@ function ViewEntryContent() {
 
         <div className="flex items-center gap-2">
           <button
+            onClick={() => setShowLinkModal(true)}
+            className="flex items-center gap-1 text-sm rounded-full px-3 py-1.5 transition"
+            style={{ color: '#AB47BC', background: 'rgba(171,71,188,0.1)' }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+              fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 2a10 10 0 0 1 10 10" />
+              <path d="M12 2a10 10 0 0 0-10 10" />
+              <path d="M12 2v4" />
+              <circle cx="12" cy="12" r="2" />
+              <path d="M12 14v8" />
+              <path d="M2 12h4" />
+              <path d="M18 12h4" />
+            </svg>
+            联想
+          </button>
+
+          <button
             onClick={() => router.push(`/entry/${id}?from=${from || ''}&tagId=${tagId || ''}`)}
             className="flex items-center gap-1 text-sm rounded-full px-3 py-1.5 transition"
             style={{ color: '#8BC34A', background: 'rgba(139,195,74,0.1)' }}
@@ -218,6 +253,20 @@ function ViewEntryContent() {
         />
       </div>
 
+      {/* 关联心得列表 */}
+      <LinkPanel
+        outgoing={links.outgoing}
+        incoming={links.incoming}
+        isDark={isDark}
+        currentEntryId={id}
+        onDelete={(linkId) => {
+          setLinks(prev => ({
+            outgoing: prev.outgoing.filter(l => l.id !== linkId),
+            incoming: prev.incoming.filter(l => l.id !== linkId),
+          }))
+        }}
+      />
+
       {/* 底部操作栏 */}
       <div
         className="sticky bottom-0 px-4 py-3 flex items-center justify-between"
@@ -277,6 +326,16 @@ function ViewEntryContent() {
         onCancel={() => setDeleteOpen(false)}
         loading={deleting}
       />
+
+      {/* 联想搜索弹窗 */}
+      {showLinkModal && (
+        <LinkSearchModal
+          currentEntryId={id}
+          isDark={isDark}
+          onClose={() => setShowLinkModal(false)}
+          onCreated={fetchLinks}
+        />
+      )}
 
       {/* contentEditable 内容样式 */}
       <style>{`

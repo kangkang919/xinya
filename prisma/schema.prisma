@@ -48,6 +48,8 @@ model Entry {
   tags        Tag[]     @relation("EntryTags")
   quizQuestions QuizQuestion[]
   sortOrders  EntryTagSort[]
+  linksFrom   EntryLink[] @relation("EntryLinkFrom")
+  linksTo     EntryLink[] @relation("EntryLinkTo")
 
   @@index([userId, recordTime(sort: Desc)])
   @@index([userId, isTop])
@@ -229,4 +231,22 @@ model ReviewCallLog {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
+}
+
+// 心得之间的知识关联（F13）
+model EntryLink {
+  id           String   @id @default(cuid())
+  fromEntryId  String
+  toEntryId    String
+  relationType String   // sequence(串行) / hierarchy(总分) / related(关联) / insight(启发)
+  note         String?  // 可选备注（≤50字）
+  source       String   @default("manual") // manual(手动标注) / ai(AI推荐确认)
+  createdAt    DateTime @default(now())
+
+  fromEntry    Entry    @relation("EntryLinkFrom", fields: [fromEntryId], references: [id], onDelete: Cascade)
+  toEntry      Entry    @relation("EntryLinkTo", fields: [toEntryId], references: [id], onDelete: Cascade)
+
+  @@unique([fromEntryId, toEntryId])
+  @@index([fromEntryId])
+  @@index([toEntryId])
 }

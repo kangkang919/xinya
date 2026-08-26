@@ -1,7 +1,7 @@
 # 新芽 dev-framework
 
 > 状态：🟢 活文档（全项目最高执行标准，功能/约束/变更记录以本文档为唯一权威来源）
-> 最后核对：2026-08-12
+> 最后核对：2026-08-26
 >
 > 基于「通用开发范式」填充，是心芽程序的最高执行标准。每次新需求开发前按此框架回顾、确认后再实施。
 
@@ -13,7 +13,7 @@
 |---|---|
 | **产品名称** | 心芽 |
 | **产品定位** | 面向个人的私有化心得记录应用，支持四页面架构（萌芽/枝叶/年轮/根系） |
-| **核心能力** | 富文本记录 → 标签组织 → 数据统计 → 可控分享 → AI洞察 |
+| **核心能力** | 富文本记录 → 标签组织 → 数据统计 → 可控分享 → AI洞察 → 知识关联 |
 | **技术栈** | Next.js 16.2.9 App Router + React 19.2.4 + TypeScript 5 + Tailwind CSS v4 + Prisma 6.19.3 + PostgreSQL + DeepSeek（AI） |
 | **前端方案** | 响应式网页（PC/手机统一），手绘自然风格，2套主题（春日萌芽/墨色幽微），PWA支持"添加到主屏幕" |
 | **代码仓库** | GitHub（origin，主仓库）+ Gitee（gitee，镜像仓库），标准 Git 命令行工作流，手动双推，无 CI/CD |
@@ -375,6 +375,18 @@ Phase 7: 产品交付     —— 部署、交付
 | F12.2 | 发现相似心得时在标题下方显示警告提示，可点击跳转查看 | P0 |
 | F12.3 | 仅标题匹配，不强制阻断保存 | P0 |
 
+#### F13: 知识关联
+
+| 功能点 | 描述 | 优先级 |
+|---|---|---|
+| F13.1 | 心得详情页顶部导航栏新增「联想」按钮（紫色，编辑/删除旁），点击弹出搜索弹窗 | P0 |
+| F13.2 | 联想搜索弹窗：输入关键词搜索心得，选中后选择关系类型（串行/总分/关联/启发），可选填备注（≤50字） | P0 |
+| F13.3 | 心得详情页正文下方显示「关联心得」列表，按关系类型分组，点击跳转到对应心得 | P0 |
+| F13.4 | 关联类型 4 种：sequence(串行/蓝色)、hierarchy(总分/绿色)、related(关联/橙色)、insight(启发/紫色) | P0 |
+| F13.5 | 同一对心得只允许一条关联（双向唯一），删除心得时关联自动级联清除 | P0 |
+| F13.6 | 根系页新增「知识图谱」卡片入口，点击进入全屏图谱可视化页面（reagraph WebGL 渲染） | P0 |
+| F13.7 | 知识图谱：每个心得=节点，每条关联=连线（颜色按关系类型区分），节点大小按关联数量缩放，点击节点跳转心得详情 | P0 |
+
 #### F8: 新用户引导
 
 | 功能点 | 描述 | 优先级 |
@@ -434,7 +446,7 @@ Phase 7: 产品交付     —— 部署、交付
 | L1 | AI 网关 LiteLLM/Kong | ❌ | 裸调 DeepSeek API，无网关（单模型阶段够用，未来多模型时考虑） |
 | L2 | 后端服务 Fastify/FastAPI | ✅ | Next.js API Routes 充当后端服务层（变体） |
 | L3 | Agent 编排 + AI 安全 | ❌ | 单次 prompt→JSON 响应，无多步编排 |
-| L4 | 数据存储 PostgreSQL | ✅ | PostgreSQL + Prisma ORM，14 张表 |
+| L4 | 数据存储 PostgreSQL | ✅ | PostgreSQL + Prisma ORM，15 张表 |
 | L5 | 缓存层 Redis/GPTCache | ❌ | 无独立缓存，用 InsightReport 表做数据库级永久缓存替代 |
 | L6 | 消息队列 Kafka/BullMQ | ❌ | 所有操作同步处理，无异步任务队列 |
 | L7 | 评测监控 LangFuse/Ragas | ❌ | 仅 console.log + ReviewCallLog 表，无 AI 质量评测 |
@@ -488,6 +500,10 @@ Phase 7: 产品交付     —— 部署、交付
 | DELETE | `/api/shares/[id]` | 撤销分享 |
 | GET | `/api/share/[token]` | 访客通过令牌访问只读内容 |
 | GET | `/api/entries?similarTitle=` | 相似心得检测（按标题关键词匹配） |
+| GET | `/api/entries/[id]/links` | F13：获取某心得的所有关联（出向+入向） |
+| POST | `/api/entries/[id]/links` | F13：创建心得关联（body: toEntryId, relationType, note?） |
+| DELETE | `/api/links/[id]` | F13：删除一条关联 |
+| GET | `/api/entries/graph` | F13：获取知识图谱数据（所有节点+边） |
 
 > **API 变更说明（F11/F12）：**
 > - `GET /api/tags` 返回增加 `parentId`、`children` 字段
@@ -515,6 +531,7 @@ QuizQuestion   -- 拾遗题目缓存（entryId, question, type, options, answer,
 QuizRecord     -- 拾遗答题记录（userId, questionId, entryId, correct, answeredAt, nextReviewAt, streak）
 UserSetting    -- 用户设置（userId, reviewEnabled, lastCardDate, lastQuestionId）
 ReviewCallLog  -- 复习调用日志（userId, entryId?, step, success, questionCount, errorMsg）
+EntryLink      -- 心得知识关联（fromEntryId, toEntryId, relationType, note?, source）双向唯一
 ```
 
 #### 其他存储
@@ -1339,6 +1356,7 @@ pm2 save
 | 2026-08-25 | 全面 Code Review + 文件梳理：删除 9 个无用文件（根目录 3 张调试截图 login-*.png、构建产物 tsconfig.tsbuildinfo、一次性脚本 scripts/create-migration.js + backfill-questions.ts + fix-truncated-questions.ts + create-guest-accounts.js、调试接口 app/api/review/debug/route.ts）；更新 4 个文件（types/index.ts ThemeType 修正为 spring\|night、.env.example 删除废弃的 SILICONFLOW_API_KEY、.gitignore 新增 tsconfig.tsbuildinfo 忽略、README.md 替换为项目介绍）；优化 scripts/regenerate-all-summaries.ts 改用 lib/deepseek.ts 共享函数（删除 70 行重复代码） | 已验收 |
 | 2026-08-25 | 编辑器新增 4 项富文本功能：①分隔线——工具栏 Minus 按钮，点击在光标处插入 `<hr>`（保留 `---`+回车 Obsidian 风格作为备选）；②删除线——工具栏 Strikethrough 按钮，execCommand strikeThrough；③标题——工具栏 Heading 按钮，execCommand formatBlock h2（支持 h2↔p 双向切换）；④引用块——工具栏 Quote 按钮，execCommand formatBlock blockquote；涉及文件 EditorToolbar.tsx（新增 4 按钮）、Editor.tsx（insertDivider 函数 + handleExecCommand 支持 value 参数 + 编辑器 hr/blockquote/h2 样式）、view/page.tsx + SharePanel.tsx + share/[token]/page.tsx（三处渲染样式补充） | 待验收 |
 | 2026-08-26 | **F1 编辑器底层迁移至 Tiptap**：废弃手工 contentEditable + document.execCommand + 手动 DOM 操作实现，迁移至 Tiptap v3（基于 ProseMirror 框架）。彻底解决光标丢失、按钮失效、标题切换异常等顽固 bug。新增依赖：@tiptap/react @tiptap/starter-kit @tiptap/extension-underline @tiptap/extension-text-style @tiptap/extension-color @tiptap/extension-placeholder 等；重写文件：Editor.tsx（useEditor + EditorContent 替代 contentEditable）、EditorToolbar.tsx（Tiptap chain commands + isActive 按钮激活态高亮）；简化：export-utils.ts（Tiptap 输出标准语义 HTML，turndown 转换更准确）；旧内容兼容：`<font color>` 加载时自动转为 `<span style="color">`。数据库 schema 不变 | 待验收 |
+| 2026-08-26 | F13 知识关联：新增 EntryLink 表（4 种关系类型：串行/总分/关联/启发，双向唯一约束，级联删除）；新增 API：GET/POST /api/entries/[id]/links、DELETE /api/links/[id]、GET /api/entries/graph；心得详情页顶部导航栏新增「联想」按钮（紫色）+ 搜索弹窗（LinkSearchModal）+ 正文下方关联列表面板（LinkPanel）；根系页新增「知识图谱」卡片入口 + 全屏图谱可视化页面（reagraph WebGL 渲染，动态导入）；新增依赖 reagraph；新增文件：components/LinkPanel.tsx、components/LinkSearchModal.tsx、components/GraphViewer.tsx、app/(main)/root/graph/page.tsx | 待验收 |
 
 ---
 
