@@ -78,6 +78,17 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     include: { tags: { select: { id: true, name: true } } },
   })
 
+  // 同步更新 searchVector（用于 PostgreSQL 全文搜索）
+  await prisma.$executeRawUnsafe(
+    `UPDATE "Entry" SET "searchVector" = 
+      setweight(to_tsvector('simple', coalesce($1, '')), 'A') ||
+      setweight(to_tsvector('simple', coalesce($2, '')), 'D')
+     WHERE "id" = $3`,
+    title.trim(),
+    stripHtml(content || "", 10000),
+    entry.id
+  )
+
   // 编辑后异步重新生成 AI 总结和题目
   if (!isDraft && content) {
     generateAndSaveQuestions(userId, entry.id, title.trim(), content, "regenerate", true).catch(e =>

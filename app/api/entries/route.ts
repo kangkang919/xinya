@@ -3,6 +3,7 @@ import { getCurrentUserId } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { generateAndSaveQuestions } from "@/lib/review-scheduler"
 import { stripHtml } from "@/lib/utils"
+import { parseKeywords, buildTsQuery } from "@/lib/search"
 
 // GET /api/entries?search=&favorite=&tagId=&from=&to=&page=1&limit=20&similarTitle=
 // 注意：tagId 标签视图为全量返回（不做分页截断），page/limit 仅对搜索/筛选视图生效
@@ -43,13 +44,12 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // 多关键词搜索 + 相关度排序
+  // 多关键词搜索 + PostgreSQL 全文检索
   let searchKeywords: string[] = []
   if (search) {
-    // 按空格拆分关键词，过滤空字符串和纯特殊字符（如 &、| 等 HTML 实体符号）
-    searchKeywords = search.split(/\s+/).filter(k => k.trim().length > 0 && /[\w\u4e00-\u9fff]/.test(k))
+    searchKeywords = parseKeywords(search)
     if (searchKeywords.length > 0) {
-      // 任一关键词匹配标题或正文即可
+      // 任一关键词匹配标题或正文即可（用 OR 连接）
       where.OR = searchKeywords.flatMap(keyword => [
         { title: { contains: keyword, mode: "insensitive" } },
         { content: { contains: keyword, mode: "insensitive" } },
@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
 
   // 相似心得检测：只搜标题匹配，限制返回数量
   if (similarTitle) {
-    const keywords = similarTitle.split(/\s+/).filter(k => k.trim().length > 0 && /[\w\u4e00-\u9fff]/.test(k))
+    const keywords = parseKeywords(similarTitle)
     if (keywords.length > 0) {
       where.OR = keywords.flatMap(keyword => [
         { title: { contains: keyword, mode: "insensitive" } },
@@ -88,11 +88,6 @@ export async function GET(req: NextRequest) {
 
   // 标签视图自定义排序模式：有 tagId 且非搜索
   const isTagView = viewTagIds.length > 0 && searchKeywords.length === 0
-
-  // 排序：搜索时按相关度（标题命中优先），否则按时间
-  const orderBy: any = searchKeywords.length > 0
-    ? undefined  // Prisma 不直接支持 ts_rank，用应用层排序
-    : [{ isTop: "desc" }, { recordTime: "desc" }]
 
   let resultEntries: any[]
   let total: number
@@ -128,14 +123,96 @@ export async function GET(req: NextRequest) {
       return b.recordTime.getTime() - a.recordTime.getTime()
     })
 
-    // 标签视图不做分页截断：枝叶页需展示该标签下全部心得，
-    // 原 slice(0, limit) 会导致超过 50 篇的父标签丢失旧心得
+    // 标签视图不做分页截断：枝叶页需展示该标签下全部心得
+  } else if (searchKeywords.length > 0) {
+    // 搜索模式：使用 PostgreSQL 全文检索 + ts_rank 相关度排序
+    const tsQuery = buildTsQuery(searchKeywords)
+    const skip = (page - 1) * limit
+
+    // 构建额外 WHERE 条件（favorite / tag / time range）
+    const extraConditions: string[] = []
+    const params: unknown[] = [tsQuery, userId]
+    let paramIdx = 3 // $3 开始是额外参数
+
+    if (favorite) {
+      extraConditions.push('"Entry"."isFavorite" = true')
+    }
+    if (viewTagIds.length > 0) {
+      // 需要 JOIN _EntryTags 表来过滤标签
+      extraConditions.push(`EXISTS (
+        SELECT 1 FROM "_EntryTags" et 
+        WHERE et."A" = "Entry"."id" AND et."B" = ANY($${paramIdx}::text[])
+      )`)
+      params.push(viewTagIds)
+      paramIdx++
+    }
+    if (from || to) {
+      if (from && to) {
+        const toDate = new Date(to)
+        toDate.setDate(toDate.getDate() + 1)
+        extraConditions.push(`"Entry"."recordTime" >= $${paramIdx} AND "Entry"."recordTime" < $${paramIdx + 1}`)
+        params.push(new Date(from), toDate)
+        paramIdx += 2
+      } else if (from) {
+        extraConditions.push(`"Entry"."recordTime" >= $${paramIdx}`)
+        params.push(new Date(from))
+        paramIdx++
+      } else if (to) {
+        const toDate = new Date(to)
+        toDate.setDate(toDate.getDate() + 1)
+        extraConditions.push(`"Entry"."recordTime" < $${paramIdx}`)
+        params.push(toDate)
+        paramIdx++
+      }
+    }
+
+    const whereClause = extraConditions.length > 0
+      ? 'AND ' + extraConditions.join(' AND ')
+      : ''
+
+    // 用 raw SQL 执行全文搜索 + 相关度排序
+    const sql = `
+      SELECT 
+        "Entry".*,
+        ts_rank(
+          setweight(to_tsvector('simple', coalesce("Entry"."title", '')), 'A') ||
+          setweight(to_tsvector('simple', coalesce("Entry"."content", '')), 'D'),
+          to_tsquery('simple', $1)
+        ) AS "_score"
+      FROM "Entry"
+      WHERE "Entry"."userId" = $2
+        AND setweight(to_tsvector('simple', coalesce("Entry"."title", '')), 'A') ||
+            setweight(to_tsvector('simple', coalesce("Entry"."content", '')), 'D') @@ to_tsquery('simple', $1)
+        ${whereClause}
+      ORDER BY 
+        CASE WHEN "Entry"."isTop" THEN 0 ELSE 1 END,
+        "_score" DESC,
+        "Entry"."recordTime" DESC
+      OFFSET $${paramIdx} LIMIT $${paramIdx + 1}
+    `
+    params.push(skip, limit)
+
+    const rows = await prisma.$queryRawUnsafe(sql, ...params) as any[]
+    resultEntries = rows
+
+    // 用 raw SQL 获取准确匹配总数（与搜索使用相同的全文检索条件）
+    const countSql = `
+      SELECT COUNT(*)::int AS count
+      FROM "Entry"
+      WHERE "Entry"."userId" = $2
+        AND setweight(to_tsvector('simple', coalesce("Entry"."title", '')), 'A') ||
+            setweight(to_tsvector('simple', coalesce("Entry"."content", '')), 'D') @@ to_tsquery('simple', $1)
+        ${whereClause}
+    `
+    const countResult = await prisma.$queryRawUnsafe(countSql, ...params.slice(0, -2)) as [{ count: number }]
+    total = countResult[0].count
   } else {
+    // 普通列表模式：按置顶 + 时间排序
     const [entries, count] = await Promise.all([
       prisma.entry.findMany({
         where,
         include: { tags: { select: { id: true, name: true } } },
-        ...(orderBy ? { orderBy } : {}),
+        orderBy: [{ isTop: "desc" }, { recordTime: "desc" }],
         skip: (page - 1) * limit,
         take: limit,
       }),
@@ -143,30 +220,6 @@ export async function GET(req: NextRequest) {
     ])
     resultEntries = entries
     total = count
-
-    // 搜索时做应用层相关度排序
-    if (searchKeywords.length > 0) {
-      type ScoredEntry = typeof entries[number] & { _score: number }
-      const scored: ScoredEntry[] = entries.map(e => {
-        let score = 0
-        const titleLower = e.title.toLowerCase()
-        const contentLower = stripHtml(e.content, 500).toLowerCase()
-        let titleMatchCount = 0
-        for (const kw of searchKeywords) {
-          const kwLower = kw.toLowerCase()
-          if (titleLower.includes(kwLower)) { score += 3; titleMatchCount++ }
-          if (contentLower.includes(kwLower)) score += 1
-        }
-        // 标题包含所有关键词时额外加分，确保精确标题匹配排在最前
-        if (titleMatchCount === searchKeywords.length) score += 10
-        return { ...e, _score: score }
-      })
-      scored.sort((a, b) => {
-        if (a.isTop !== b.isTop) return a.isTop ? -1 : 1
-        return b._score - a._score
-      })
-      resultEntries = scored
-    }
   }
 
   const data = resultEntries.map(e => ({
@@ -221,6 +274,17 @@ export async function POST(req: NextRequest) {
     },
     include: { tags: { select: { id: true, name: true } } },
   })
+
+  // 同步更新 searchVector（用于 PostgreSQL 全文搜索）
+  await prisma.$executeRawUnsafe(
+    `UPDATE "Entry" SET "searchVector" = 
+      setweight(to_tsvector('simple', coalesce($1, '')), 'A') ||
+      setweight(to_tsvector('simple', coalesce($2, '')), 'D')
+     WHERE "id" = $3`,
+    title.trim(),
+    stripHtml(content || "", 10000),
+    entry.id
+  )
 
   // 异步预生成题目（不阻塞响应）
   if (!isDraft && content) {
