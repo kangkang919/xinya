@@ -345,6 +345,39 @@ export default function Editor({ entryId, isNew }: EditorProps) {
     setCharCount((editor.textContent || "").replace(/\s/g, "").length)
   }
 
+  function insertDivider() {
+    const editor = editorRef.current
+    if (!editor) return
+    const range = savedRangeRef.current
+    if (!range) return
+    const sel = window.getSelection()
+    if (!sel) return
+    sel.removeAllRanges()
+    sel.addRange(range)
+
+    const hr = document.createElement('hr')
+    let node = range.startContainer as HTMLElement
+    if (node.nodeType === 3) node = node.parentElement as HTMLElement
+    while (node && node.parentElement && node.parentElement !== editor) {
+      node = node.parentElement
+    }
+    if (node && node !== editor) {
+      node.parentNode?.insertBefore(hr, node.nextSibling)
+    } else {
+      editor.appendChild(hr)
+    }
+    // hr 后面插入空段落，光标移入
+    const p = document.createElement('div')
+    p.innerHTML = '<br>'
+    hr.after(p)
+    const r = document.createRange()
+    r.setStart(p, 0)
+    r.collapse(true)
+    sel.removeAllRanges()
+    sel.addRange(r)
+    setCharCount((editor.textContent || "").replace(/\s/g, "").length)
+  }
+
   async function handleSave() {
     if (!title.trim()) { toast.error("标题不能为空"); return }
     setSaving(true)
@@ -409,6 +442,7 @@ export default function Editor({ entryId, isNew }: EditorProps) {
           onExecCommand={handleExecCommand}
           onInsertList={insertList}
           onInsertCodeBlock={insertCodeBlock}
+          onInsertDivider={insertDivider}
           onSaveRange={saveRange}
         />
       )}

@@ -86,7 +86,7 @@ Phase 7: 产品交付     —— 部署、交付
 
 | 功能点 | 描述 | 优先级 |
 |---|---|---|
-| F1.1 | 富文本编辑：加粗、斜体、有序/无序列表、撤销/重做、字体颜色（红/黄/蓝/黑） | P0 |
+| F1.1 | 富文本编辑：加粗、斜体、下划线、删除线、有序/无序列表、标题(H2)、引用块、代码块、分隔线、字体颜色（6色） | P0 |
 | F1.2 | 标题必填，正文富文本 | P0 |
 | F1.3 | 心情标记：开心/低落/平静/兴奋/忧虑 ✅ | P1 |
 | F1.4 | 记录时间：自动生成，可手动修改 | P0 |
@@ -95,6 +95,40 @@ Phase 7: 产品交付     —— 部署、交付
 | F1.7 | 手机端编辑时顶部工具栏固定 | P0 |
 | F1.8 | 专注模式（网页端全屏编辑，ESC 退出） ✅ | P1 |
 | F1.9 | 自动保存草稿（已移除） | 已删除 |
+
+##### F1 编辑器富文本功能清单
+
+| 功能 | HTML 标签 | 说明 | 状态 |
+|---|---|---|---|
+| 加粗 | `<b>文字</b>` | 行内加粗 | ✅ 已实现 |
+| 斜体 | `<i>文字</i>` | 行内斜体 | ✅ 已实现 |
+| 下划线 | `<u>文字</u>` | 行内下划线 | ✅ 已实现 |
+| 删除线 | `<s>文字</s>` | 行内删除线 | ✅ 已实现 |
+| 标题 | `<h2>标题</h2>` | 仅支持 H2 一层，不支持 H1/H3/H4；点击按钮切换 h2↔p | ✅ 已实现 |
+| 引用块 | `<blockquote>文字</blockquote>` | 左侧竖线 + 缩进灰色文字 | ✅ 已实现 |
+| 无序列表 | `<ul><li>项目</li></ul>` | 圆点列表 | ✅ 已实现 |
+| 有序列表 | `<ol><li>项目</li></ol>` | 数字列表 | ✅ 已实现 |
+| 代码块 | `<pre>代码</pre>` | 等宽字体、灰底、横向滚动不换行 | ✅ 已实现 |
+| 分隔线 | `<hr>` | 输入 `---` 后按回车自动转为灰色横线 | ✅ 已实现 |
+| 字体颜色 | `<font color="色值">文字</font>` | 6 色：#333333 #8BC34A #42A5F5 #FF8C42 #795548 #e57373 | ✅ 已实现 |
+| 换行 | `<br>` | 段内换行 | ✅ 已实现 |
+| 段落 | `<p>` 或 `<div>` | 浏览器默认段落容器 | ✅ 已实现 |
+
+**禁止使用的标签和功能（其他智能体输出内容时不得生成）：**
+
+| 禁止项 | 说明 |
+|---|---|
+| `<img>` | 不支持图片 |
+| `<table>` | 不支持表格 |
+| `<a>` | 不支持超链接 |
+| H1/H3/H4 | 仅支持 H2 一层标题 |
+| 任务列表/复选框 | 不支持 |
+| 文本对齐 | 不支持左/中/右对齐 |
+| 背景色高亮 | 不支持 |
+| 嵌套列表 | 不支持列表内嵌列表 |
+| 视频/音频/附件 | 不支持 |
+
+> 此清单同时作为其他 AI 智能体输出格式的约束 prompt：生成的内容必须使用上述支持的 HTML 标签格式化，不得使用 markdown 语法或不支持的标签。
 
 #### F2: 标签管理
 
@@ -1299,7 +1333,7 @@ pm2 save
 | 2026-08-24 | 代码块插入位置修复：`insertCodeBlock` 中 `editor.focus()` 会把光标重置到编辑器末尾，导致代码块插入位置错位；修复为在 focus 前保存光标位置（`cloneRange()`），focus 后恢复；涉及文件 components/Editor.tsx | 已验收 |
 | 2026-08-24 | 粘贴多行文本代码块问题修复：`insertText` 会把多行文本拆成多个独立块（每个段落一个 `<div>`），导致点击 `<>` 时生成多个代码块；修复为手动插入文本节点+`<br>`，让多行文本保持在同一个块内，点击 `<>` 只生成一个代码块；涉及文件 components/Editor.tsx | 已验收 |
 | 2026-08-25 | 全面 Code Review + 文件梳理：删除 9 个无用文件（根目录 3 张调试截图 login-*.png、构建产物 tsconfig.tsbuildinfo、一次性脚本 scripts/create-migration.js + backfill-questions.ts + fix-truncated-questions.ts + create-guest-accounts.js、调试接口 app/api/review/debug/route.ts）；更新 4 个文件（types/index.ts ThemeType 修正为 spring\|night、.env.example 删除废弃的 SILICONFLOW_API_KEY、.gitignore 新增 tsconfig.tsbuildinfo 忽略、README.md 替换为项目介绍）；优化 scripts/regenerate-all-summaries.ts 改用 lib/deepseek.ts 共享函数（删除 70 行重复代码） | 已验收 |
-| 2026-08-25 | 编辑器新增 4 项富文本功能：①分隔线——Obsidian 风格，输入 `---` 后按回车自动转为灰色 `<hr>` 横线（handleKeyDown 检测前一个块文本内容替换）；②删除线——工具栏 Strikethrough 按钮，execCommand strikeThrough；③标题——工具栏 Heading 按钮，execCommand formatBlock h2；④引用块——工具栏 Quote 按钮，execCommand formatBlock blockquote；涉及文件 EditorToolbar.tsx（新增 3 按钮）、Editor.tsx（handleKeyDown + handleExecCommand 支持 value 参数 + 编辑器 hr/blockquote/h2 样式）、view/page.tsx + SharePanel.tsx + share/[token]/page.tsx（三处渲染样式补充） | 待验收 |
+| 2026-08-25 | 编辑器新增 4 项富文本功能：①分隔线——工具栏 Minus 按钮，点击在光标处插入 `<hr>`（保留 `---`+回车 Obsidian 风格作为备选）；②删除线——工具栏 Strikethrough 按钮，execCommand strikeThrough；③标题——工具栏 Heading 按钮，execCommand formatBlock h2（支持 h2↔p 双向切换）；④引用块——工具栏 Quote 按钮，execCommand formatBlock blockquote；涉及文件 EditorToolbar.tsx（新增 4 按钮）、Editor.tsx（insertDivider 函数 + handleExecCommand 支持 value 参数 + 编辑器 hr/blockquote/h2 样式）、view/page.tsx + SharePanel.tsx + share/[token]/page.tsx（三处渲染样式补充） | 待验收 |
 
 ---
 
