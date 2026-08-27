@@ -3,7 +3,7 @@ import { getCurrentUserId } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { generateAndSaveQuestions } from "@/lib/review-scheduler"
 import { stripHtml } from "@/lib/utils"
-import { parseKeywords, buildTsQuery } from "@/lib/search"
+import { parseKeywords } from "@/lib/search"
 
 // GET /api/entries?search=&favorite=&tagId=&from=&to=&page=1&limit=20&similarTitle=
 // 注意：tagId 标签视图为全量返回（不做分页截断），page/limit 仅对搜索/筛选视图生效
@@ -44,13 +44,14 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // 多关键词搜索 + PostgreSQL 全文检索
-  let searchKeywords: string[] = []
+  // 多关键词搜索：使用 ILIKE 模糊匹配（PostgreSQL 原生支持，无需分词）
+  let hasSearch = false
   if (search) {
-    searchKeywords = parseKeywords(search)
-    if (searchKeywords.length > 0) {
+    const keywords = parseKeywords(search)
+    if (keywords.length > 0) {
+      hasSearch = true
       // 任一关键词匹配标题或正文即可（用 OR 连接）
-      where.OR = searchKeywords.flatMap(keyword => [
+      where.OR = keywords.flatMap(keyword => [
         { title: { contains: keyword, mode: "insensitive" } },
         { content: { contains: keyword, mode: "insensitive" } },
       ])
@@ -87,7 +88,7 @@ export async function GET(req: NextRequest) {
   }
 
   // 标签视图自定义排序模式：有 tagId 且非搜索
-  const isTagView = viewTagIds.length > 0 && searchKeywords.length === 0
+  const isTagView = viewTagIds.length > 0 && !hasSearch
 
   let resultEntries: any[]
   let total: number
@@ -124,111 +125,8 @@ export async function GET(req: NextRequest) {
     })
 
     // 标签视图不做分页截断：枝叶页需展示该标签下全部心得
-  } else if (searchKeywords.length > 0) {
-    // 搜索模式：使用 PostgreSQL 全文检索 + ts_rank 相关度排序
-    const tsQuery = buildTsQuery(searchKeywords)
-    const skip = (page - 1) * limit
-
-    // 构建额外 WHERE 条件（favorite / tag / time range）
-    const extraConditions: string[] = []
-    const params: unknown[] = [tsQuery, userId]
-    let paramIdx = 3 // $3 开始是额外参数
-
-    if (favorite) {
-      extraConditions.push('"Entry"."isFavorite" = true')
-    }
-    if (viewTagIds.length > 0) {
-      // 需要 JOIN _EntryTags 表来过滤标签
-      extraConditions.push(`EXISTS (
-        SELECT 1 FROM "_EntryTags" et 
-        WHERE et."A" = "Entry"."id" AND et."B" = ANY($${paramIdx}::text[])
-      )`)
-      params.push(viewTagIds)
-      paramIdx++
-    }
-    if (from || to) {
-      if (from && to) {
-        const toDate = new Date(to)
-        toDate.setDate(toDate.getDate() + 1)
-        extraConditions.push(`"Entry"."recordTime" >= $${paramIdx} AND "Entry"."recordTime" < $${paramIdx + 1}`)
-        params.push(new Date(from), toDate)
-        paramIdx += 2
-      } else if (from) {
-        extraConditions.push(`"Entry"."recordTime" >= $${paramIdx}`)
-        params.push(new Date(from))
-        paramIdx++
-      } else if (to) {
-        const toDate = new Date(to)
-        toDate.setDate(toDate.getDate() + 1)
-        extraConditions.push(`"Entry"."recordTime" < $${paramIdx}`)
-        params.push(toDate)
-        paramIdx++
-      }
-    }
-
-    const whereClause = extraConditions.length > 0
-      ? 'AND ' + extraConditions.join(' AND ')
-      : ''
-
-    // 用 raw SQL 执行全文搜索 + 相关度排序
-    // 注意：必须显式列出列（排除 searchVector），Prisma 无法反序列化 tsvector 类型
-    const sql = `
-      SELECT 
-        "Entry"."id", "Entry"."userId", "Entry"."title", "Entry"."content",
-        "Entry"."keyPoints", "Entry"."mood", "Entry"."recordTime",
-        "Entry"."isTop", "Entry"."isFavorite", "Entry"."isDraft",
-        "Entry"."createdAt", "Entry"."updatedAt",
-        ts_rank(
-          setweight(to_tsvector('simple', regexp_replace(coalesce("Entry"."title", ''), '([一-鿿])', '\\1 ', 'g')), 'A') ||
-          setweight(to_tsvector('simple', regexp_replace(coalesce("Entry"."content", ''), '([一-鿿])', '\\1 ', 'g')), 'D'),
-          to_tsquery('simple', $1)
-        ) AS "_score"
-      FROM "Entry"
-      WHERE "Entry"."userId" = $2
-        AND (setweight(to_tsvector('simple', regexp_replace(coalesce("Entry"."title", ''), '([一-鿿])', '\\1 ', 'g')), 'A') ||
-             setweight(to_tsvector('simple', regexp_replace(coalesce("Entry"."content", ''), '([一-鿿])', '\\1 ', 'g')), 'D')) @@ to_tsquery('simple', $1)
-        ${whereClause}
-      ORDER BY 
-        CASE WHEN "Entry"."isTop" THEN 0 ELSE 1 END,
-        "_score" DESC,
-        "Entry"."recordTime" DESC
-      OFFSET $${paramIdx} LIMIT $${paramIdx + 1}
-    `
-    params.push(skip, limit)
-
-    const rows = await prisma.$queryRawUnsafe(sql, ...params) as any[]
-
-    // 补充查询 tags（raw SQL 无法 JOIN 隐式多对多关系表）
-    const entryIds = rows.map((r: any) => r.id)
-    let tagRecords: any[] = []
-    if (entryIds.length > 0) {
-      tagRecords = await prisma.$queryRawUnsafe(
-        `SELECT et."A" AS "entryId", t."id", t."name"
-         FROM "_EntryTags" et JOIN "Tag" t ON et."B" = t."id"
-         WHERE et."A" = ANY($1::text[])`,
-        entryIds
-      ) as any[]
-    }
-    const tagsByEntry = new Map<string, { id: string; name: string }[]>()
-    for (const tr of tagRecords) {
-      if (!tagsByEntry.has(tr.entryId)) tagsByEntry.set(tr.entryId, [])
-      tagsByEntry.get(tr.entryId)!.push({ id: tr.id, name: tr.name })
-    }
-    resultEntries = rows.map((r: any) => ({ ...r, tags: tagsByEntry.get(r.id) || [] }))
-
-    // 用 raw SQL 获取准确匹配总数（与搜索使用相同的全文检索条件）
-    const countSql = `
-      SELECT COUNT(*)::int AS count
-      FROM "Entry"
-      WHERE "Entry"."userId" = $2
-        AND (setweight(to_tsvector('simple', regexp_replace(coalesce("Entry"."title", ''), '([一-鿿])', '\\1 ', 'g')), 'A') ||
-             setweight(to_tsvector('simple', regexp_replace(coalesce("Entry"."content", ''), '([一-鿿])', '\\1 ', 'g')), 'D')) @@ to_tsquery('simple', $1)
-        ${whereClause}
-    `
-    const countResult = await prisma.$queryRawUnsafe(countSql, ...params.slice(0, -2)) as [{ count: number }]
-    total = countResult[0].count
   } else {
-    // 普通列表模式：按置顶 + 时间排序
+    // 普通列表/搜索模式：按置顶 + 时间排序
     const [entries, count] = await Promise.all([
       prisma.entry.findMany({
         where,
