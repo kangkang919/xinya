@@ -46,12 +46,13 @@ export async function GET(req: NextRequest) {
 
   // 多关键词搜索：使用 ILIKE 模糊匹配（PostgreSQL 原生支持，无需分词）
   let hasSearch = false
+  let searchKeywords: string[] = []
   if (search) {
-    const keywords = parseKeywords(search)
-    if (keywords.length > 0) {
+    searchKeywords = parseKeywords(search)
+    if (searchKeywords.length > 0) {
       hasSearch = true
       // 任一关键词匹配标题或正文即可（用 OR 连接）
-      where.OR = keywords.flatMap(keyword => [
+      where.OR = searchKeywords.flatMap(keyword => [
         { title: { contains: keyword, mode: "insensitive" } },
         { content: { contains: keyword, mode: "insensitive" } },
       ])
