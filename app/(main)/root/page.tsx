@@ -3,7 +3,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { toMarkdown, downloadBlob } from "@/lib/export-utils"
 import { DeleteDialog } from "@/components/DeleteDialog"
-import { Sprout, Link, User as UserIcon, RotateCcw, Tags, Palette, Download, Info, ChevronDown, Network } from "lucide-react"
+import { Sprout, Link, User as UserIcon, RotateCcw, Tags, Palette, Download, Info, ChevronDown } from "lucide-react"
 
 interface User {
   email: string
@@ -617,24 +617,6 @@ export default function RootPage() {
           )}
         </div>
       )}
-
-      {/* 知识图谱 */}
-      <div className="p-4 rounded-xl mb-3" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <Network size={14} strokeWidth={2} style={{ color: '#8BC34A' }} />
-            <span className="text-sm font-medium" style={{ color: titleColor }}>知识图谱</span>
-          </div>
-          <button
-            onClick={() => router.push('/root/graph')}
-            className="text-xs px-3 py-1 rounded-full transition"
-            style={{ color: '#8BC34A', background: 'rgba(139,195,74,0.1)' }}
-          >
-            查看
-          </button>
-        </div>
-        <p className="text-xs mt-2" style={{ color: dimColor }}>心得间的关联网络，可视化知识关系</p>
-      </div>
 
       {/* ═══ 组3：内容管理 ═══ */}
       <div className="flex items-center gap-2 my-5">

@@ -3,7 +3,7 @@ import { getCurrentUserId } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { stripHtml } from "@/lib/utils"
 
-const VALID_TYPES = ["sequence", "hierarchy", "related", "insight"]
+const VALID_TYPES = ["related"]
 
 // GET /api/entries/[id]/links — 获取某心得的所有关联（出向 + 入向）
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -95,10 +95,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!entry) return NextResponse.json({ ok: false, error: "未找到该心得" }, { status: 404 })
 
   const body = await req.json()
-  const { toEntryId, relationType, note } = body
+  const { toEntryId, note } = body
 
   if (!toEntryId) return NextResponse.json({ ok: false, error: "请选择关联的心得" }, { status: 400 })
-  if (!VALID_TYPES.includes(relationType)) return NextResponse.json({ ok: false, error: "无效的关系类型" }, { status: 400 })
   if (toEntryId === id) return NextResponse.json({ ok: false, error: "不能关联自己" }, { status: 400 })
   if (note && note.length > 50) return NextResponse.json({ ok: false, error: "备注不超过50字" }, { status: 400 })
 
@@ -121,7 +120,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     data: {
       fromEntryId: id,
       toEntryId,
-      relationType,
+      relationType: "related",
       note: note?.trim() || null,
     },
   })

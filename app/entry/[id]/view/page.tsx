@@ -183,7 +183,7 @@ function ViewEntryContent() {
               <path d="M2 12h4" />
               <path d="M18 12h4" />
             </svg>
-            联想
+            关联
           </button>
 
           <button
@@ -328,7 +328,7 @@ function ViewEntryContent() {
         loading={deleting}
       />
 
-      {/* 联想搜索弹窗 */}
+      {/* 关联搜索弹窗 */}
       {showLinkModal && (
         <LinkSearchModal
           currentEntryId={id}

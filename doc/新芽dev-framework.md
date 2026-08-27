@@ -375,17 +375,15 @@ Phase 7: 产品交付     —— 部署、交付
 | F12.2 | 发现相似心得时在标题下方显示警告提示，可点击跳转查看 | P0 |
 | F12.3 | 仅标题匹配，不强制阻断保存 | P0 |
 
-#### F13: 知识关联
+#### F13: 心得关联
 
 | 功能点 | 描述 | 优先级 |
 |---|---|---|
-| F13.1 | 心得详情页顶部导航栏新增「联想」按钮（紫色，编辑/删除旁），点击弹出搜索弹窗 | P0 |
-| F13.2 | 联想搜索弹窗：输入关键词搜索心得，选中后选择关系类型（串行/总分/关联/启发），可选填备注（≤50字） | P0 |
-| F13.3 | 心得详情页正文下方显示「关联心得」列表，按关系类型分组，点击跳转到对应心得 | P0 |
-| F13.4 | 关联类型 4 种：sequence(串行/蓝色)、hierarchy(总分/绿色)、related(关联/橙色)、insight(启发/紫色) | P0 |
-| F13.5 | 同一对心得只允许一条关联（双向唯一），删除心得时关联自动级联清除 | P0 |
-| F13.6 | 根系页新增「知识图谱」卡片入口，点击进入全屏图谱可视化页面（reagraph WebGL 渲染） | P0 |
-| F13.7 | 知识图谱：每个心得=节点，每条关联=连线（颜色按关系类型区分），节点大小按关联数量缩放，点击节点跳转心得详情 | P0 |
+| F13.1 | 心得详情页顶部导航栏新增「关联」按钮，点击弹出搜索弹窗 | P0 |
+| F13.2 | 关联搜索弹窗：输入关键词搜索心得，选中后确认关联，可选填备注（≤50字） | P0 |
+| F13.3 | 心得详情页正文下方显示「关联心得」列表（出向→/入向←），点击跳转到对应心得 | P0 |
+| F13.4 | 同一对心得只允许一条关联（双向唯一），删除心得时关联自动级联清除 | P0 |
+| F13.5 | 知识树 = 枝叶页（标签层级即知识结构），不单独建图谱页面 | P0 |
 
 #### F8: 新用户引导
 
@@ -501,9 +499,8 @@ Phase 7: 产品交付     —— 部署、交付
 | GET | `/api/share/[token]` | 访客通过令牌访问只读内容 |
 | GET | `/api/entries?similarTitle=` | 相似心得检测（按标题关键词匹配） |
 | GET | `/api/entries/[id]/links` | F13：获取某心得的所有关联（出向+入向） |
-| POST | `/api/entries/[id]/links` | F13：创建心得关联（body: toEntryId, relationType, note?） |
+| POST | `/api/entries/[id]/links` | F13：创建心得关联（body: toEntryId, note?），relationType 固定 related |
 | DELETE | `/api/links/[id]` | F13：删除一条关联 |
-| GET | `/api/entries/graph` | F13：获取知识图谱数据（所有节点+边） |
 
 > **API 变更说明（F11/F12）：**
 > - `GET /api/tags` 返回增加 `parentId`、`children` 字段
@@ -531,7 +528,7 @@ QuizQuestion   -- 拾遗题目缓存（entryId, question, type, options, answer,
 QuizRecord     -- 拾遗答题记录（userId, questionId, entryId, correct, answeredAt, nextReviewAt, streak）
 UserSetting    -- 用户设置（userId, reviewEnabled, lastCardDate, lastQuestionId）
 ReviewCallLog  -- 复习调用日志（userId, entryId?, step, success, questionCount, errorMsg）
-EntryLink      -- 心得知识关联（fromEntryId, toEntryId, relationType, note?, source）双向唯一
+EntryLink      -- 心得关联（fromEntryId, toEntryId, relationType=related, note?, source）双向唯一
 ```
 
 #### 其他存储
@@ -1357,7 +1354,8 @@ pm2 save
 | 2026-08-25 | 全面 Code Review + 文件梳理：删除 9 个无用文件（根目录 3 张调试截图 login-*.png、构建产物 tsconfig.tsbuildinfo、一次性脚本 scripts/create-migration.js + backfill-questions.ts + fix-truncated-questions.ts + create-guest-accounts.js、调试接口 app/api/review/debug/route.ts）；更新 4 个文件（types/index.ts ThemeType 修正为 spring\|night、.env.example 删除废弃的 SILICONFLOW_API_KEY、.gitignore 新增 tsconfig.tsbuildinfo 忽略、README.md 替换为项目介绍）；优化 scripts/regenerate-all-summaries.ts 改用 lib/deepseek.ts 共享函数（删除 70 行重复代码） | 已验收 |
 | 2026-08-25 | 编辑器新增 4 项富文本功能：①分隔线——工具栏 Minus 按钮，点击在光标处插入 `<hr>`（保留 `---`+回车 Obsidian 风格作为备选）；②删除线——工具栏 Strikethrough 按钮，execCommand strikeThrough；③标题——工具栏 Heading 按钮，execCommand formatBlock h2（支持 h2↔p 双向切换）；④引用块——工具栏 Quote 按钮，execCommand formatBlock blockquote；涉及文件 EditorToolbar.tsx（新增 4 按钮）、Editor.tsx（insertDivider 函数 + handleExecCommand 支持 value 参数 + 编辑器 hr/blockquote/h2 样式）、view/page.tsx + SharePanel.tsx + share/[token]/page.tsx（三处渲染样式补充） | 待验收 |
 | 2026-08-26 | **F1 编辑器底层迁移至 Tiptap**：废弃手工 contentEditable + document.execCommand + 手动 DOM 操作实现，迁移至 Tiptap v3（基于 ProseMirror 框架）。彻底解决光标丢失、按钮失效、标题切换异常等顽固 bug。新增依赖：@tiptap/react @tiptap/starter-kit @tiptap/extension-underline @tiptap/extension-text-style @tiptap/extension-color @tiptap/extension-placeholder 等；重写文件：Editor.tsx（useEditor + EditorContent 替代 contentEditable）、EditorToolbar.tsx（Tiptap chain commands + isActive 按钮激活态高亮）；简化：export-utils.ts（Tiptap 输出标准语义 HTML，turndown 转换更准确）；旧内容兼容：`<font color>` 加载时自动转为 `<span style="color">`。数据库 schema 不变 | 待验收 |
-| 2026-08-26 | F13 知识关联：新增 EntryLink 表（4 种关系类型：串行/总分/关联/启发，双向唯一约束，级联删除）；新增 API：GET/POST /api/entries/[id]/links、DELETE /api/links/[id]、GET /api/entries/graph；心得详情页顶部导航栏新增「联想」按钮（紫色）+ 搜索弹窗（LinkSearchModal）+ 正文下方关联列表面板（LinkPanel）；根系页新增「知识图谱」卡片入口 + 全屏图谱可视化页面（reagraph WebGL 渲染，动态导入）；新增依赖 reagraph；新增文件：components/LinkPanel.tsx、components/LinkSearchModal.tsx、components/GraphViewer.tsx、app/(main)/root/graph/page.tsx | 待验收 |
+| 2026-08-26 | F13 知识关联：新增 EntryLink 表（4 种关系类型：串行/总分/关联/启发，双向唯一约束，级联删除）；新增 API：GET/POST /api/entries/[id]/links、DELETE /api/links/[id]、GET /api/entries/graph；心得详情页顶部导航栏新增「联想」按钮（紫色）+ 搜索弹窗（LinkSearchModal）+ 正文下方关联列表面板（LinkPanel）；根系页新增「知识图谱」卡片入口 + 全屏图谱可视化页面（reagraph WebGL 渲染，动态导入）；新增依赖 reagraph；新增文件：components/LinkPanel.tsx、components/LinkSearchModal.tsx、components/GraphViewer.tsx、app/(main)/root/graph/page.tsx | 已废弃 |
+| 2026-08-27 | F13 简化重构：①清空 EntryLink 表 38 条历史数据（4 种关系类型废弃，统一为 related）；②删除知识图谱可视化（GraphViewer.tsx、root/graph/page.tsx、api/entries/graph/route.ts）；③卸载 reagraph 依赖；④根系页移除「知识图谱」卡片；⑤LinkSearchModal 移除 4 种关系类型选择，简化为搜索+备注+确认；⑥LinkPanel 移除按类型分组，改为扁平列表（出向→/入向←）；⑦详情页「联想」改名为「关联」；⑧API POST 不再要求 relationType 参数，固定写 related。设计理念：标签层级即知识结构（知识树=枝叶页），无需单独图谱页面 | 待验收 |
 
 ---
 
