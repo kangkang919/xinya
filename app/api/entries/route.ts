@@ -185,8 +185,8 @@ export async function GET(req: NextRequest) {
         ) AS "_score"
       FROM "Entry"
       WHERE "Entry"."userId" = $2
-        AND setweight(to_tsvector('simple', coalesce("Entry"."title", '')), 'A') ||
-            setweight(to_tsvector('simple', coalesce("Entry"."content", '')), 'D') @@ to_tsquery('simple', $1)
+        AND (setweight(to_tsvector('simple', coalesce("Entry"."title", '')), 'A') ||
+             setweight(to_tsvector('simple', coalesce("Entry"."content", '')), 'D')) @@ to_tsquery('simple', $1)
         ${whereClause}
       ORDER BY 
         CASE WHEN "Entry"."isTop" THEN 0 ELSE 1 END,
@@ -221,8 +221,8 @@ export async function GET(req: NextRequest) {
       SELECT COUNT(*)::int AS count
       FROM "Entry"
       WHERE "Entry"."userId" = $2
-        AND setweight(to_tsvector('simple', coalesce("Entry"."title", '')), 'A') ||
-            setweight(to_tsvector('simple', coalesce("Entry"."content", '')), 'D') @@ to_tsquery('simple', $1)
+        AND (setweight(to_tsvector('simple', coalesce("Entry"."title", '')), 'A') ||
+             setweight(to_tsvector('simple', coalesce("Entry"."content", '')), 'D')) @@ to_tsquery('simple', $1)
         ${whereClause}
     `
     const countResult = await prisma.$queryRawUnsafe(countSql, ...params.slice(0, -2)) as [{ count: number }]
