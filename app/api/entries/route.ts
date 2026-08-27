@@ -179,14 +179,14 @@ export async function GET(req: NextRequest) {
         "Entry"."isTop", "Entry"."isFavorite", "Entry"."isDraft",
         "Entry"."createdAt", "Entry"."updatedAt",
         ts_rank(
-          setweight(to_tsvector('simple', regexp_replace(coalesce("Entry"."title", ''), '([一-鿿])', '\1 ', 'g')), 'A') ||
-          setweight(to_tsvector('simple', regexp_replace(coalesce("Entry"."content", ''), '([一-鿿])', '\1 ', 'g')), 'D'),
+          setweight(to_tsvector('simple', regexp_replace(coalesce("Entry"."title", ''), '([一-鿿])', '\\1 ', 'g')), 'A') ||
+          setweight(to_tsvector('simple', regexp_replace(coalesce("Entry"."content", ''), '([一-鿿])', '\\1 ', 'g')), 'D'),
           to_tsquery('simple', $1)
         ) AS "_score"
       FROM "Entry"
       WHERE "Entry"."userId" = $2
-        AND (setweight(to_tsvector('simple', regexp_replace(coalesce("Entry"."title", ''), '([一-鿿])', '\1 ', 'g')), 'A') ||
-             setweight(to_tsvector('simple', regexp_replace(coalesce("Entry"."content", ''), '([一-鿿])', '\1 ', 'g')), 'D')) @@ to_tsquery('simple', $1)
+        AND (setweight(to_tsvector('simple', regexp_replace(coalesce("Entry"."title", ''), '([一-鿿])', '\\1 ', 'g')), 'A') ||
+             setweight(to_tsvector('simple', regexp_replace(coalesce("Entry"."content", ''), '([一-鿿])', '\\1 ', 'g')), 'D')) @@ to_tsquery('simple', $1)
         ${whereClause}
       ORDER BY 
         CASE WHEN "Entry"."isTop" THEN 0 ELSE 1 END,
@@ -221,8 +221,8 @@ export async function GET(req: NextRequest) {
       SELECT COUNT(*)::int AS count
       FROM "Entry"
       WHERE "Entry"."userId" = $2
-        AND (setweight(to_tsvector('simple', regexp_replace(coalesce("Entry"."title", ''), '([一-鿿])', '\1 ', 'g')), 'A') ||
-             setweight(to_tsvector('simple', regexp_replace(coalesce("Entry"."content", ''), '([一-鿿])', '\1 ', 'g')), 'D')) @@ to_tsquery('simple', $1)
+        AND (setweight(to_tsvector('simple', regexp_replace(coalesce("Entry"."title", ''), '([一-鿿])', '\\1 ', 'g')), 'A') ||
+             setweight(to_tsvector('simple', regexp_replace(coalesce("Entry"."content", ''), '([一-鿿])', '\\1 ', 'g')), 'D')) @@ to_tsquery('simple', $1)
         ${whereClause}
     `
     const countResult = await prisma.$queryRawUnsafe(countSql, ...params.slice(0, -2)) as [{ count: number }]
