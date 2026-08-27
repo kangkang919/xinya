@@ -126,8 +126,32 @@ export async function GET(req: NextRequest) {
     })
 
     // 标签视图不做分页截断：枝叶页需展示该标签下全部心得
+  } else if (hasSearch) {
+    // 搜索模式：先取全部匹配结果，按相关度排序后再分页
+    const allEntries = await prisma.entry.findMany({
+      where,
+      include: { tags: { select: { id: true, name: true } } },
+    })
+    total = allEntries.length
+
+    // 相关度排序：置顶 > 标题匹配 > 内容匹配，同级别按时间倒序
+    const searchLower = search.toLowerCase()
+    resultEntries = [...allEntries].sort((a, b) => {
+      // 置顶优先
+      if (a.isTop !== b.isTop) return a.isTop ? -1 : 1
+      // 标题匹配优先
+      const aTitleMatch = a.title.toLowerCase().includes(searchLower)
+      const bTitleMatch = b.title.toLowerCase().includes(searchLower)
+      if (aTitleMatch !== bTitleMatch) return aTitleMatch ? -1 : 1
+      // 同级别按时间倒序
+      return b.recordTime.getTime() - a.recordTime.getTime()
+    })
+
+    // 分页截断
+    const skip = (page - 1) * limit
+    resultEntries = resultEntries.slice(skip, skip + limit)
   } else {
-    // 普通列表/搜索模式：按置顶 + 时间排序
+    // 普通列表模式：按置顶 + 时间排序
     const [entries, count] = await Promise.all([
       prisma.entry.findMany({
         where,
