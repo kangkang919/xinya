@@ -91,13 +91,21 @@ export async function generateQuestions(
       }
 
       const result = JSON.parse(jsonMatch[0])
-      const questions = (result.questions || []).map((q: any) => ({
-        question: q.question?.substring(0, 100) || "", // 100字安全上限（仅防异常超长，不再30字硬截断致断句）
-        type: ["single", "multiple", "truefalse"].includes(q.type) ? q.type : "single",
-        options: Array.isArray(q.options) ? q.options.slice(0, 4) : [],
-        answer: Array.isArray(q.answer) ? q.answer : [0],
-        explanation: q.explanation || "",
-      }))
+      const questions = (result.questions || []).map((q: any) => {
+        let type = ["single", "multiple", "truefalse"].includes(q.type) ? q.type : "single"
+        const answer = Array.isArray(q.answer) ? q.answer : [0]
+        // 题型与答案数量不一致时自动修正：多选但只有1个正确答案 → 降级为单选
+        if (type === "multiple" && answer.length <= 1) {
+          type = "single"
+        }
+        return {
+          question: q.question?.substring(0, 100) || "", // 100字安全上限（仅防异常超长，不再30字硬截断致断句）
+          type,
+          options: Array.isArray(q.options) ? q.options.slice(0, 4) : [],
+          answer,
+          explanation: q.explanation || "",
+        }
+      })
 
       return {
         keyPoints: result.keyPoints || "",
