@@ -1282,7 +1282,7 @@ export default function RootPage() {
       )}
 
       {/* 豆苗悬浮头像按钮 */}
-      <div className="fixed z-40" style={{ bottom: '5.5rem', right: '1rem' }}>
+      <div className="fixed z-40" style={{ bottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))', right: '1rem' }}>
         <button
           onClick={() => router.push('/assistant')}
           className="rounded-full shadow-lg transition-transform active:scale-95"
