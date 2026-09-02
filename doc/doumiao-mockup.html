@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>豆苗 · 界面交互原型 v2</title>
+<style>
+/* ============ 心芽风格变量 ============ */
+:root{
+  --primary:#8BC34A; --primary-light:#AED581; --primary-bg:#F1F8E9;
+  --bg:#FAFAF5; --brown:#795548; --blue:#42A5F5;
+  --text:#333; --text-soft:#666; --text-muted:#999; --border:#E8E8E3;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:linear-gradient(160deg,#F4F9EC,#EAF3E0);color:var(--text);font-family:"PingFang SC","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+input,textarea{font-family:inherit}
+
+/* ============ 顶部操作条 ============ */
+.toolbar{position:fixed;top:0;left:0;right:0;z-index:50;background:#fff;border-bottom:1px solid var(--border);padding:10px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.toolbar .t-title{font-weight:700;font-size:15px;color:var(--brown)}
+.toolbar .t-desc{font-size:12px;color:var(--text-muted)}
+.scene-btn{padding:6px 14px;border-radius:999px;font-size:13px;background:var(--primary-bg);color:#4a7c1f;border:1.5px solid var(--primary-light);transition:.2s}
+.scene-btn:hover{background:var(--primary-light);color:#fff}
+.scene-btn.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+
+/* ============ 演示舞台 ============ */
+.stage{display:flex;justify-content:center;padding:76px 16px 36px;min-height:100vh}
+.demo-frame{position:relative;background:var(--bg);border-radius:24px;box-shadow:0 12px 40px rgba(0,0,0,.12);border:1px solid var(--border);overflow:hidden;display:flex;flex-direction:column;transition:width .3s}
+#phoneFrame{width:420px;height:780px}
+#phoneFrame.wide{width:760px}
+#phoneFrame>div{display:flex;flex-direction:column;flex:1;min-height:0}
+.hidden{display:none!important}
+.width-seg{position:absolute;top:-36px;right:0;display:flex;gap:4px;background:#fff;border:1px solid var(--border);border-radius:999px;padding:3px}
+.width-seg button{padding:4px 12px;border-radius:999px;font-size:12px;color:var(--text-muted)}
+.width-seg button.on{background:var(--primary);color:#fff}
+.tool-seg{display:flex;gap:2px;background:var(--bg);border:1px solid var(--border);border-radius:999px;padding:2px}
+.tool-seg button{padding:4px 12px;border-radius:999px;font-size:12px;color:var(--text-muted)}
+.tool-seg button.on{background:var(--primary);color:#fff}
+
+/* ============ 豆苗头像（用户提供形象图） ============ */
+.avatar{width:44px;height:44px;border-radius:50%;background:#fff;border:2px solid var(--primary-light);flex-shrink:0;overflow:hidden}
+.avatar img{width:100%;height:100%;object-fit:cover;object-position:center 22%}
+.avatar-sm{width:34px;height:34px;border-width:1.5px}
+.avatar-lg{width:84px;height:84px}
+.avatar-gray{filter:grayscale(1) opacity(.5)}
+.avatar-round-lg{width:120px;height:120px;border-radius:50%;background:#fff;border:3px solid var(--primary-light);overflow:hidden;box-shadow:0 6px 18px rgba(139,195,74,.25)}
+.avatar-round-lg img{width:100%;height:100%;object-fit:cover;object-position:center 20%}
+
+/* ============ 模拟顶栏（页面内） ============ */
+.page-top{background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;padding:9px 12px}
+.page-top .info{flex:1;min-width:0;padding:0 2px}
+.page-top .name{font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.page-top .meta{font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.page-top .pill,.page-top .icon-btn{flex-shrink:0}
+.icon-btn{width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;background:var(--bg);border:1px solid var(--border)}
+.icon-btn:hover{background:var(--primary-bg)}
+.pill{font-size:10px;background:var(--primary-bg);color:#5a8a2a;border-radius:999px;padding:2px 8px;border:1px solid var(--primary-light);white-space:nowrap}
+
+/* ============ 聊天区 ============ */
+.chat-body{flex:1;overflow-y:auto;padding:14px 14px 8px;display:flex;flex-direction:column;gap:10px;background:var(--bg)}
+.date-line{text-align:center;font-size:11px;color:var(--text-muted);margin:2px 0}
+.msg{display:flex;gap:8px;max-width:86%;animation:fadeUp .3s ease-out}
+.msg.me{align-self:flex-end;flex-direction:row-reverse}
+.bubble{padding:8px 12px;border-radius:14px;font-size:14px;line-height:1.55;word-break:break-word}
+.msg.bot .bubble{background:#fff;border:1px solid var(--border);border-top-left-radius:4px}
+.msg.me .bubble{background:var(--primary);color:#fff;border-top-right-radius:4px}
+.msg.bot .bubble u,.msg.bot .bubble b{color:#5a8a2a}
+.retrieve-tag{display:inline-flex;align-items:center;gap:4px;background:var(--primary-bg);border:1px solid var(--primary-light);color:#5a8a2a;font-size:11px;border-radius:999px;padding:1px 8px;margin-bottom:4px}
+.retrieve-tag .dot{width:5px;height:5px;border-radius:50%;background:var(--primary)}
+.typing .bubble{color:var(--text-muted);font-size:13px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;padding:2px 14px 8px;background:var(--bg)}
+.chip{border:1.5px dashed var(--primary-light);color:#5a8a2a;font-size:12px;padding:5px 11px;border-radius:999px;background:#fff;transition:.2s}
+.chip:hover{background:var(--primary);color:#fff;border-style:solid}
+
+/* ============ 输入区 ============ */
+.input-bar{display:flex;align-items:center;gap:8px;padding:9px 12px;background:#fff;border-top:1px solid var(--border)}
+.input-box{flex:1;border:1.5px solid var(--border);border-radius:18px;padding:8px 14px;font-size:14px;outline:none;background:var(--bg);transition:.2s}
+.input-box:focus{border-color:var(--primary-light);background:#fff}
+.mic-btn{width:36px;height:36px;border-radius:50%;background:var(--bg);border:1.5px solid var(--border);color:var(--text-muted);font-size:15px;position:relative;flex-shrink:0}
+.send-btn{width:36px;height:36px;border-radius:50%;background:var(--primary);color:#fff;font-size:15px;display:flex;align-items:center;justify-content:center;transition:.2s;flex-shrink:0}
+.send-btn:hover{background:#7cb342}
+
+/* ============ 通用按钮 ============ */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 22px;border-radius:12px;font-size:14px;font-weight:600;transition:.2s;flex:none}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:hover{background:#7cb342}
+.btn-ghost{background:#fff;color:var(--text-soft);border:1px solid var(--border)}
+.btn-ghost:hover{background:var(--bg)}
+.btn-disable{opacity:.4;pointer-events:none}
+
+/* ============ 设置向导 ============ */
+.wizard{flex:1;display:flex;flex-direction:column;background:var(--bg);overflow:hidden}
+.wz-head{padding:20px 22px 8px;text-align:center}
+.wz-avatar{width:56px;height:56px;border-radius:50%;margin:0 auto 8px;overflow:hidden;border:2px solid var(--primary-light)}
+.wz-avatar img{width:100%;height:100%;object-fit:cover;object-position:center 22%}
+.wz-head h2{font-size:17px;color:var(--brown)}
+.wz-head p{font-size:12px;color:var(--text-muted);margin-top:3px}
+.wz-steps{display:flex;justify-content:center;gap:8px;padding:8px 0 2px}
+.step-dot{width:24px;height:24px;border-radius:50%;background:#fff;border:2px solid var(--border);font-size:11px;display:flex;align-items:center;justify-content:center;color:var(--text-muted)}
+.step-dot.on{background:var(--primary);border-color:var(--primary);color:#fff}
+.wz-body{flex:1;padding:8px 20px 6px;overflow-y:auto}
+.wz-q{font-size:14.5px;font-weight:600;margin:4px 0 10px;color:var(--text)}
+.wz-q small{display:block;font-weight:400;font-size:11.5px;color:var(--text-muted);margin-top:2px}
+.opt{display:flex;align-items:center;gap:11px;border:1.5px solid var(--border);background:#fff;border-radius:13px;padding:9px 12px;margin-bottom:8px;cursor:pointer;transition:.15s}
+.opt:hover{border-color:var(--primary-light)}
+.opt.sel{border-color:var(--primary);background:var(--primary-bg);box-shadow:0 0 0 1px var(--primary)}
+.opt .emoji{font-size:20px;width:32px;text-align:center}
+.opt .ot{font-size:13.5px;font-weight:600}
+.opt .od{font-size:11.5px;color:var(--text-muted);margin-top:1px;line-height:1.4}
+.wz-free{margin-top:4px}
+.wz-free label{font-size:13.5px;font-weight:600;display:block;margin-bottom:5px}
+.wz-free textarea{width:100%;border:1.5px solid var(--border);border-radius:12px;padding:9px 12px;font-size:13px;resize:none;height:60px;outline:none;background:#fff}
+.wz-free textarea:focus{border-color:var(--primary-light)}
+.wz-example{font-size:11px;color:var(--text-muted);background:#fff8e6;border:1px dashed #e6c76a;border-radius:8px;padding:6px 10px;margin-top:5px;line-height:1.5}
+.wz-foot{padding:10px 20px 14px;border-top:1px solid var(--border);background:#fff}
+.wz-btns{display:flex;gap:10px}
+.wz-skip{display:block;margin:8px auto 0;font-size:12px;color:var(--text-muted);text-decoration:underline}
+.wz-skip:hover{color:var(--brown)}
+.wz-done{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:18px;background:var(--bg)}
+.wz-done h3{font-size:17px;color:var(--brown)}
+.wz-done .sum{font-size:12px;color:var(--text-soft);line-height:1.8}
+
+/* ============ 0 心得空态 ============ */
+.empty-body{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;gap:12px}
+.empty-body .hint{font-size:13px;color:var(--text-soft);line-height:1.7;max-width:300px}
+.empty-body .todo{font-size:11.5px;color:var(--text-muted)}
+.empty-tag{font-size:11px;background:#fff8e6;border:1px dashed #e6c76a;color:#8a6d1f;padding:2px 10px;border-radius:999px}
+
+/* ============ 弹层 ============ */
+.mask{position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;z-index:100;animation:fadeIn .2s}
+.sheet{background:#fff;border-radius:18px;width:min(410px,92vw);max-height:80vh;display:flex;flex-direction:column;overflow:hidden;animation:pop .25s ease-out}
+.sheet-head{padding:14px 18px 9px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)}
+.sheet-head h3{font-size:15.5px;color:var(--brown);flex:1}
+.sheet-body{padding:13px 18px;overflow-y:auto}
+.sheet-foot{padding:10px 18px 14px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end}
+.mem-item{border:1.5px solid var(--border);border-radius:13px;padding:10px 12px;margin-bottom:9px;background:var(--bg);animation:fadeUp .3s}
+.mem-item .mi-top{display:flex;align-items:center;gap:7px;margin-bottom:3px;flex-wrap:wrap}
+.mem-tag{font-size:10.5px;padding:2px 8px;border-radius:999px;font-weight:600}
+.mem-tag.like{background:#E8F5E9;color:#2e7d32;border:1px solid #A5D6A7}
+.mem-tag.weak{background:#FFF3E0;color:#e65100;border:1px solid #FFCC80}
+.mem-item .mi-title{font-size:13px;font-weight:600}
+.mem-item .mi-desc{font-size:11.5px;color:var(--text-soft);line-height:1.5;margin-top:2px}
+.mem-item .mi-foot{display:flex;align-items:center;justify-content:space-between;margin-top:6px}
+.mem-item .mi-src{font-size:10px;color:var(--text-muted)}
+.del-btn{font-size:11px;color:#d32f2f;border:1px solid #ffcdd2;background:#fff;border-radius:7px;padding:2px 9px}
+.del-btn:hover{background:#ffebee}
+.mem-note{font-size:11px;color:var(--text-muted);background:#fff8e6;border:1px dashed #e6c76a;border-radius:9px;padding:7px 10px;line-height:1.6;margin-top:3px}
+.set-dim{font-size:13px;font-weight:600;margin:10px 0 7px;color:var(--text)}
+.set-dim:first-child{margin-top:0}
+.set-opts{display:flex;flex-wrap:wrap;gap:7px}
+.set-opt{border:1.5px solid var(--border);border-radius:999px;padding:4px 12px;font-size:12px;background:#fff}
+.set-opt.sel{background:var(--primary);border-color:var(--primary);color:#fff}
+.set-note{font-size:10.5px;color:var(--text-muted);margin-top:10px;line-height:1.6}
+.toast{position:fixed;left:50%;bottom:40px;transform:translateX(-50%);background:rgba(51,51,51,.92);color:#fff;padding:8px 18px;border-radius:999px;font-size:13px;z-index:200;animation:fadeUp .25s}
+
+/* ============ 动画 ============ */
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes pop{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:scale(1)}}
+@keyframes typingDot{0%,80%,100%{transform:scale(.7);opacity:.4}40%{transform:scale(1);opacity:1}}
+.td{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--text-muted);margin-right:3px;animation:typingDot 1.2s infinite}
+.td:nth-child(2){animation-delay:.15s}.td:nth-child(3){animation-delay:.3s}
+
+@media (max-width:860px){
+  #phoneFrame{width:min(420px,94vw);height:auto;min-height:640px;max-height:82vh}
+  #phoneFrame.wide{width:min(420px,94vw)}
+  .toolbar .t-desc{display:none}
+}
+</style>
+</head>
+<body>
+
+<!-- ========== 顶部操作条 ========== -->
+<div class="toolbar">
+  <span class="t-title">🌱 豆苗 · 界面交互原型 v2</span>
+  <span class="t-desc">豆苗统一使用「单一持续会话」：手机与桌面同一界面，仅宽度自适应；多会话列表设计已废弃。</span>
+  <span style="flex:1"></span>
+  <span class="tool-seg" id="widthSeg">
+    <button data-w="mobile" class="on" onclick="setWidth('mobile')">📱 手机</button>
+    <button data-w="wide" onclick="setWidth('wide')">🖥️ 桌面</button>
+  </span>
+  <button class="scene-btn" data-scene="wizard">① 首次设置向导</button>
+  <button class="scene-btn" data-scene="chat">② 聊天 · 单一会话</button>
+  <button class="scene-btn" data-scene="empty">③ 0 心得状态</button>
+</div>
+
+<!-- ========== 演示舞台 ========== -->
+<div class="stage">
+  <div class="demo-frame" id="phoneFrame">
+    <div id="scene-wizard"></div>
+    <div id="scene-chat" class="hidden"></div>
+    <div id="scene-empty" class="hidden"></div>
+  </div>
+</div>
+
+<!-- ========== 弹层占位 ========== -->
+<div id="maskSlot"></div>
+<div id="toastSlot"></div>
+
+<script>
+/* ============================================================
+   豆苗形象：doc/doumiao-avatar.png（用户提供）
+============================================================ */
+const IMG = "doumiao-avatar.png";
+const avatarHTML = (sizeClass) => `<div class="avatar ${sizeClass||''}"><img src="${IMG}" alt="豆苗"></div>`;
+
+/* ============ 工具 ============ */
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function toast(msg){ $('#toastSlot').innerHTML = `<div class="toast">${esc(msg)}</div>`; setTimeout(()=>{ const t=$('.toast'); if(t) t.remove(); }, 2200); }
+function scrollBottom(el){ el.scrollTop = el.scrollHeight; }
+function msgBotHTML(html, tag){ return `
+  <div class="msg bot">${avatarHTML('avatar-sm')}
+  <div>${tag?`<div class="retrieve-tag"><span class="dot"></span>${esc(tag)}</div>`:''}<div class="bubble">${html}</div></div></div>`; }
+function msgMeHTML(text){ return `<div class="msg me"><div class="bubble">${esc(text)}</div></div>`; }
+
+/* ============================================================
+   豆苗模拟回复路由（原型演示用；真实回复由 DeepSeek 生成）
+============================================================ */
+const FALLBACK_REFUSE = "这个话题我还不太了解，系统设置了我仅能聊聊心得方面的话题，我们聊聊心得吧～";
+const FALLBACK_NONE = "我在你的心得里没有找到相关的话题呢～要不要换个问题，或者先去写一篇相关的心得？";
+
+function routeReply(q){
+  const t = q.trim();
+  if(/天气|电影|笑话|股票|美食|新闻|游戏|推荐/.test(t)) return { html: FALLBACK_REFUSE };
+  if(/薄弱|哪里不会|错题|不擅长/.test(t)) return {
+    tag: "已分析 8 次答题记录 + 6 篇相关心得",
+    html: "从你的答题记录和心得来看，目前相对薄弱的是：<br>① <b>CSS 布局</b>（flex/grid 相关题目正确率约 60%）<br>② <b>状态管理概念辨析</b>（多次把 useEffect 和 useMemo 搞混）<br><br>要不要我出一道相关的小题帮你巩固一下？"
+  };
+  if(/React|状态管理|前端/.test(t)) return {
+    tag: "从 23 篇心得中找到 3 篇（标签匹配：React）",
+    html: "你写过 3 篇关于 React 的：<br>①《React 状态管理初体验》②《为什么选 zustand》③《useMemo 踩坑记》<br><br>你第一篇里提到「总是不确定该用哪个」，现在想通了吗？"
+  };
+  if(/CSS|布局|样式/.test(t)) return {
+    tag: "从 23 篇心得中找到 2 篇（标签匹配：CSS）",
+    html: "《flex 布局终于搞懂了》和《grid 还是 flex？》这两篇里，你记了 flex 的 align-items / justify-content 区分技巧。<br><br>想让我考考你，还是帮你把这两篇的要点串一遍？"
+  };
+  if(/最近|状态|怎么样|总结/.test(t)) return {
+    tag: "已通读你最近 7 天的心得",
+    html: "最近 7 天你写了 5 篇心得，主题集中在 React 和 CSS。<br><br>节奏不错～看得出你在坚持记录。上次你提到「写代码前先想清楚数据流」，这个思路后来有应用吗？"
+  };
+  return {
+    tag: "已检索你的心得库（23 篇）",
+    html: "你问的这个问题，我记得在心得里有相关记录。<br><br>先想想看：如果让你自己回答，你会怎么组织？可以从「是什么、怎么用、踩过什么坑」三个角度试试。"
+  };
+}
+
+/* ============================================================
+   场景一：设置向导（3 步 + 自由描述）
+============================================================ */
+const DIMS = {
+  tone: { title:"语气风格", desc:"豆苗说话给人的整体感觉", options:[
+    {emoji:"⚡", t:"简洁直接", d:"干脆利落，不废话"},
+    {emoji:"🌸", t:"温暖鼓励", d:"温和友善，多说肯定"},
+    {emoji:"🎈", t:"活泼俏皮", d:"轻松有趣，偶尔调侃"},
+    {emoji:"📚", t:"沉稳知性", d:"稳重理性，有书卷气"},
+    {emoji:"💮", t:"娃娃音", d:"可爱俏皮，语气词多（呀～嘛～啦）"},
+  ]},
+  teach: { title:"指导方式", desc:"豆苗怎么帮你理解知识", options:[
+    {emoji:"🧠", t:"苏格拉底式提问", d:"以问代答，引导你自己思考"},
+    {emoji:"📖", t:"直接解答", d:"清晰直接给出答案和解释"},
+    {emoji:"🔍", t:"启发引导", d:"先给提示等你思考，不会再说答案"},
+    {emoji:"🤗", t:"鼓励陪伴", d:"重在共情和肯定，压力小"},
+  ]},
+  call: { title:"角色称呼", desc:"豆苗的自称和对你的称呼", options:[
+    {emoji:"👋", t:"我 / 你", d:"最自然中性，像朋友聊天"},
+    {emoji:"👩‍🏫", t:"老师感", d:"自称老师，说话带指导感"},
+    {emoji:"🤝", t:"咱们 / 伙伴", d:"像一起学习的伙伴"},
+  ]},
+};
+let wizardSel = { tone:"温暖鼓励", teach:"启发引导", call:"我 / 你", free:"" };
+let wizardStep = 1;
+
+function renderWizard(){
+  const el = $('#scene-wizard'); el.innerHTML = '';
+  if(wizardStep === 4){
+    const dimNames = { tone:"语气", teach:"指导", call:"称呼" };
+    const parts = Object.entries(wizardSel).filter(([k])=>k!=='free')
+      .map(([k,v])=>`${dimNames[k]}：${v}`).join(' · ');
+    el.innerHTML = `
+      <div class="wizard"><div class="wz-done">
+        <div class="avatar-round-lg"><img src="${IMG}" alt="豆苗"></div>
+        <h3>设置完成！豆苗认识你啦～</h3>
+        <div class="sum">${esc(parts)}<br>${wizardSel.free ? `自由润色：「${esc(wizardSel.free)}」` : "（未填写自由描述）"}<br>可在「豆苗设置」中随时调整 · 对话中不能修改</div>
+        <button class="btn btn-primary" onclick="wizardEnter()">开始和豆苗聊天 ➤</button>
+        <button class="btn btn-ghost" style="font-weight:400;font-size:12px;padding:6px 16px" onclick="switchScene('empty')">先看看 0 心得的样子</button>
+      </div></div>`;
+    return;
+  }
+  const keys = Object.keys(DIMS), key = keys[wizardStep-1], dim = DIMS[key];
+  const opts = dim.options.map(o => `
+    <div class="opt ${wizardSel[key]===o.t?'sel':''}" onclick="pickDim('${key}','${o.t}')">
+      <div class="emoji">${o.emoji}</div><div><div class="ot">${o.t}</div><div class="od">${o.d}</div></div>
+    </div>`).join('');
+  const freeBlock = key==='call' ? `
+    <div class="wz-free">
+      <label>自由描述（可选）<span style="font-weight:400;font-size:10.5px;color:var(--text-muted)">· 仅做局部润色，不覆盖上面选项</span></label>
+      <textarea id="freeInput" placeholder="给豆苗加点独特的语气细节……">${esc(wizardSel.free)}</textarea>
+      <div class="wz-example">💡 示例：你是一个温柔的女老师，喜欢用提问引导我思考，偶尔会活泼地开个玩笑</div>
+    </div>` : '';
+  el.innerHTML = `
+    <div class="wizard">
+      <div class="wz-head">
+        <div class="wz-avatar"><img src="${IMG}" alt="豆苗"></div>
+        <h2>你好呀，我是豆苗 🌱</h2>
+        <p>以后由我陪你回顾心得、分析知识。先花 30 秒认识一下？</p>
+        <div class="wz-steps">${[1,2,3].map(i=>`<div class="step-dot ${i===wizardStep?'on':''}">${i<wizardStep?'✓':i}</div>`).join('')}</div>
+      </div>
+      <div class="wz-body">
+        <div class="wz-q">第 ${wizardStep} 步 · ${dim.title}<small>${dim.desc}</small></div>
+        ${opts}
+        ${freeBlock}
+      </div>
+      <div class="wz-foot">
+        <div class="wz-btns">
+          <button class="btn btn-ghost ${wizardStep===1?'btn-disable':''}" onclick="if(wizardStep>1)goStep(wizardStep-1)">上一步</button>
+          <button class="btn btn-primary" onclick="goStep(wizardStep+1)">${wizardStep===3?'完成设置':'下一步'}</button>
+        </div>
+        <button class="wz-skip" onclick="wizardSkip()">跳过设置，使用默认值 →</button>
+      </div>
+    </div>`;
+}
+function pickDim(key, val){ wizardSel[key] = val; renderWizard(); }
+function goStep(n){
+  if(n>1 && n<=4){ const f = $('#freeInput'); if(f) wizardSel.free = f.value; }
+  wizardStep = n; renderWizard();
+}
+function wizardSkip(){
+  wizardSel = { tone:"温暖鼓励", teach:"启发引导", call:"我 / 你", free:"" };
+  wizardStep = 4; renderWizard();
+}
+function wizardEnter(){
+  switchScene('chat');
+  const body = $('#convA-body');
+  body.innerHTML = `<div class="date-line">今天</div>` +
+    msgBotHTML("设置完成～我是豆苗 🌱 你的心得学习小助手。<br><br>我可以陪你梳理心得、分析薄弱点、用提问帮你加深理解。我们聊的话题会<u>只围绕你的心得</u>，超出范围的我就帮不上啦。<br><br>先从这些试试？", null);
+  renderChips(body);
+  scrollBottom(body);
+}
+
+/* ============================================================
+   场景二：单一会话聊天（手机 / 桌面同一界面，宽度自适应）
+============================================================ */
+let chatSeeded = false;
+function renderChat(){
+  const el = $('#scene-chat');
+  el.innerHTML = `
+      <div class="page-top">
+        ${avatarHTML('avatar-sm')}
+        <div class="info"><div class="name">豆苗</div><div class="meta">知识库 23 篇 · 在线</div></div>
+        <span class="pill">学习助手</span>
+        <button class="icon-btn" title="记忆清单" onclick="openSheet('mem')">🧠</button>
+        <button class="icon-btn" title="豆苗设置" onclick="openSheet('set')">⚙️</button>
+      </div>
+      <div class="chat-body" id="convA-body"></div>
+      <div class="chips" id="chipsBar"></div>
+      <div class="input-bar">
+        <button class="mic-btn" title="语音输入（后期版本支持）">🎙️</button>
+        <input class="input-box" id="chat-input" placeholder="和我聊聊你的心得吧…" onkeydown="if(event.key==='Enter')sendChat()">
+        <button class="send-btn" onclick="sendChat()">➤</button>
+      </div>`;
+  seedChat();
+}
+function seedChat(){
+  const body = $('#convA-body');
+  if(chatSeeded){ scrollBottom(body); return; }
+  chatSeeded = true;
+  body.innerHTML = `<div class="date-line">今天</div>` +
+    msgBotHTML("我是豆苗～你的学习心得小助手 🌱<br>有什么想聊的？可以问我写过什么、哪里薄弱，或者让我考考你。", null) +
+    msgMeHTML("我写过哪些关于 React 的心得？") +
+    msgBotHTML("你写过 3 篇关于 React 的：<br>①《React 状态管理初体验》②《为什么选 zustand》③《useMemo 踩坑记》<br><br>要不要挑一篇细聊？", "从 23 篇心得中找到 3 篇（标签匹配：React）");
+  renderChips(body);
+  scrollBottom(body);
+}
+function renderChips(container){
+  const bar = container.closest('#scene-chat') ? $('#chipsBar') : null;
+  if(bar && !bar.querySelector('.chip')) bar.innerHTML = [
+    ['我哪里比较薄弱？','💪'],['我最近学习状态怎么样？','🌱'],['今天天气怎么样？','☀️']
+  ].map(([txt,em])=>`<button class="chip" onclick="askQuick('${txt}')">${em} ${txt}</button>`).join('');
+}
+function sendChat(){
+  const inp = $('#chat-input'); const q = inp.value.trim(); if(!q) return;
+  inp.value = '';
+  const body = $('#convA-body'); const bar = $('#chipsBar');
+  bar.innerHTML = '';
+  body.insertAdjacentHTML('beforeend', msgMeHTML(q));
+  typingThen(() => {
+    const r = routeReply(q);
+    body.insertAdjacentHTML('beforeend', msgBotHTML(r.html, r.tag));
+    renderChips(body); scrollBottom(body);
+  });
+}
+function askQuick(q){
+  const body = $('#convA-body'); const bar = $('#chipsBar');
+  bar.innerHTML = '';
+  body.insertAdjacentHTML('beforeend', msgMeHTML(q));
+  typingThen(() => {
+    const r = routeReply(q);
+    body.insertAdjacentHTML('beforeend', msgBotHTML(r.html, r.tag));
+    renderChips(body); scrollBottom(body);
+  });
+}
+function typingThen(done){
+  const body = $('#convA-body');
+  body.insertAdjacentHTML('beforeend', `<div class="msg bot typing">${avatarHTML('avatar-sm')}<div class="bubble"><span class="td"></span><span class="td"></span><span class="td"></span></div></div>`);
+  scrollBottom(body);
+  setTimeout(()=>{ body.querySelector('.typing')?.remove(); done(); }, 850);
+}
+
+/* ============================================================
+   场景三：0 心得空态
+============================================================ */
+function renderEmpty(){
+  $('#scene-empty').innerHTML = `
+      <div class="page-top">
+        ${avatarHTML('avatar-sm')}
+        <div class="info"><div class="name">豆苗</div><div class="meta">知识库 0 篇</div></div>
+        <span class="pill">学习助手</span>
+      </div>
+      <div class="empty-body">
+        <div class="avatar-round-lg avatar-gray"><img src="${IMG}" alt="豆苗"></div>
+        <h3 style="color:var(--brown);font-size:16px">豆苗还在等你写第一篇心得 🌱</h3>
+        <div class="empty-tag">提示文案待定稿（开发前与您确认）</div>
+        <div class="hint">我了解的知识都来自你写下的心得。现在知识库还是空的，我能帮你的还很有限——先去写一篇心得吧，写下的每一篇都会让我更懂你。</div>
+        <button class="btn btn-primary" onclick="toast('原型演示：跳转到写心得页面）')">✍️ 去写心得</button>
+        <div class="todo">· 心得达到一定数量后，我能回答的问题会越来越多 ·</div>
+      </div>`;
+}
+
+/* ============================================================
+   弹层：记忆清单 / 设置
+============================================================ */
+let memories = [
+  { tag:'like', tagName:'兴趣', title:'React 状态管理', desc:'在多篇心得里持续记录状态管理的困惑与解决过程，反复探索', src:'来自 3 篇心得（标签匹配）' },
+  { tag:'weak', tagName:'薄弱', title:'CSS 布局（flex/grid）', desc:'答题正确率约 60%，多次把 align-items 与 justify-content 搞混', src:'来自答题记录 + 心得分析' },
+  { tag:'weak', tagName:'薄弱', title:'useEffect vs useMemo', desc:'多次混淆两者使用场景，心得中标记为「易错」', src:'来自答题记录 + 心得分析' },
+];
+function openSheet(type){
+  const slot = $('#maskSlot');
+  if(type==='mem'){
+    const items = memories.map((m,i)=>`
+      <div class="mem-item">
+        <div class="mi-top"><span class="mem-tag ${m.tag}">${m.tagName}</span><span class="mi-title">${esc(m.title)}</span></div>
+        <div class="mi-desc">${esc(m.desc)}</div>
+        <div class="mi-foot"><span class="mi-src">📌 ${esc(m.src)}</span>
+        <button class="del-btn" onclick="delMemory(${i},this)">删除</button></div>
+      </div>`).join('');
+    slot.innerHTML = `
+      <div class="mask" onclick="if(event.target===this)closeSheet()"><div class="sheet">
+        <div class="sheet-head"><h3>🧠 豆苗了解的我</h3><button class="icon-btn" onclick="closeSheet()">✕</button></div>
+        <div class="sheet-body">
+          ${items || '<p style="text-align:center;color:var(--text-muted);padding:20px 0">豆苗还没有记住什么～</p>'}
+          <div class="mem-note">豆苗只会记录你在<u>心得知识方面</u>的喜好与薄弱点（仅限心得范围）。每条记忆都可单独删除；删除后豆苗不再使用它。</div>
+        </div>
+        <div class="sheet-foot"><button class="btn btn-primary" onclick="closeSheet()">知道了</button></div>
+      </div></div>`;
+  } else {
+    const dimEmoji = { tone:'🗣️', teach:'🎯', call:'💬' };
+    const dimsHTML = Object.entries(DIMS).map(([key,d])=>{
+      const opts = d.options.map(o=>`<button class="set-opt ${wizardSel[key]===o.t?'sel':''}" onclick="setDim('${key}','${o.t}')">${o.emoji} ${o.t}</button>`).join('');
+      return `<div class="set-dim">${dimEmoji[key]} ${d.title}</div><div class="set-opts">${opts}</div>`;
+    }).join('');
+    slot.innerHTML = `
+      <div class="mask" onclick="if(event.target===this)closeSheet()"><div class="sheet">
+        <div class="sheet-head"><h3>⚙️ 豆苗设置</h3><button class="icon-btn" onclick="closeSheet()">✕</button></div>
+        <div class="sheet-body">
+          ${dimsHTML}
+          <div class="set-dim">✏️ 自由描述（可选 · 仅做局部润色）</div>
+          <textarea id="setFree" style="width:100%;border:1.5px solid var(--border);border-radius:12px;padding:9px 12px;font-size:12.5px;height:56px;resize:none;outline:none">${esc(wizardSel.free)}</textarea>
+          <div class="set-note">① 预设选项是豆苗人设的<u>骨架</u>，对话中不可修改，只能在设置里调整<br>② 自由描述只做<u>局部润色</u>，不会覆盖预设选项<br>③ 修改后对<u>后续新对话</u>生效，历史对话不变</div>
+        </div>
+        <div class="sheet-foot">
+          <button class="btn btn-ghost" onclick="closeSheet()">取消</button>
+          <button class="btn btn-primary" onclick="saveSet()">保存</button>
+        </div>
+      </div></div>`;
+  }
+}
+function setDim(key, val){ wizardSel[key] = val; openSheet('set'); }
+function saveSet(){
+  const f = $('#setFree'); if(f) wizardSel.free = f.value;
+  closeSheet(); toast('设置已保存（对后续新对话生效）');
+}
+function delMemory(i, btn){
+  const item = btn.closest('.mem-item');
+  item.style.transition = '.25s'; item.style.opacity = 0; item.style.transform = 'translateX(20px)';
+  setTimeout(()=>{ memories.splice(i,1); openSheet('mem'); toast('已删除这条记忆，豆苗不会再使用它'); }, 250);
+}
+function closeSheet(){ $('#maskSlot').innerHTML = ''; }
+
+/* ============================================================
+   场景总装
+============================================================ */
+let currentScene = 'wizard';
+function switchScene(name){
+  currentScene = name;
+  document.querySelectorAll('.scene-btn').forEach(b=>b.classList.toggle('active', b.dataset.scene===name));
+  $('#widthSeg').classList.toggle('hidden', name!=='chat');
+  ['wizard','chat','empty'].forEach(s=>$('#scene-'+s).classList.toggle('hidden', s!==name));
+  if(name==='wizard'){ wizardStep = (wizardStep===4?4:1); renderWizard(); }
+  if(name==='chat'){ renderChat(); }
+  if(name==='empty'){ renderEmpty(); }
+}
+function setWidth(w){
+  document.querySelectorAll('#widthSeg button').forEach(b=>b.classList.toggle('on', b.dataset.w===w));
+  $('#phoneFrame').classList.toggle('wide', w==='wide');
+}
+
+/* 初始化 */
+document.querySelectorAll('.scene-btn').forEach(b=>b.addEventListener('click', e=>switchScene(e.target.dataset.scene)));
+switchScene('wizard');
+</script>
+</body>
+</html>

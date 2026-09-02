@@ -28,6 +28,12 @@ model User {
   settings       UserSetting?
   quizRecords    QuizRecord[]
   reviewCallLogs ReviewCallLog[]
+
+  // ===== 豆苗学习助手模块（删除豆苗时移除以下 4 个关系字段）=====
+  assistantProfile  AssistantProfile?
+  assistantMessages AssistantMessage[]
+  assistantMemories AssistantMemory[]
+  assistantUsages   AssistantUsage[]
 }
 
 model Entry {
@@ -249,4 +255,68 @@ model EntryLink {
   @@unique([fromEntryId, toEntryId])
   @@index([fromEntryId])
   @@index([toEntryId])
+}
+
+// ============================================================
+// ===== 豆苗学习助手模块（独立模块，删除豆苗时移除本区块）=====
+// ============================================================
+
+// 豆苗配置（每用户一条）
+model AssistantProfile {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  tone       String   @default("温暖鼓励")
+  teach      String   @default("启发引导")
+  call       String   @default("我 / 你")
+  freeDesc   String   @default("")
+  wizardDone Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// 对话消息（单一持续会话，最近 30 轮参与生成，历史永久保存可翻看）
+model AssistantMessage {
+  id           String   @id @default(cuid())
+  userId       String
+  role         String   // "user" | "assistant"
+  content      String
+  retrievedTag String?  // 如「标签匹配：React（3篇）」，非知识问答为 null
+  createdAt    DateTime @default(now())
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+}
+
+// 记忆条目（兴趣与薄弱点，选择性写入，可见可删）
+model AssistantMemory {
+  id          String   @id @default(cuid())
+  userId      String
+  type        String   // "interest" | "weak"
+  title       String   // 主题（如 CSS 布局）
+  description String   // 一句话描述
+  source      String   // "dialogue" | "quiz" | "user_specified"
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// DeepSeek 调用消耗记录（成本追溯审计）
+model AssistantUsage {
+  id            String   @id @default(cuid())
+  userId        String
+  inputTokens   Int      @default(0)
+  outputTokens  Int      @default(0)
+  model         String   @default("deepseek-chat")
+  estimatedCost Float    @default(0) // 估算费用（元）
+  questionBrief String?  // 用户问题摘要（≤30字，脱敏概览用）
+  createdAt     DateTime @default(now())
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
 }

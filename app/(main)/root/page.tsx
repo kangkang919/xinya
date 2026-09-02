@@ -1280,6 +1280,42 @@ export default function RootPage() {
           已重新播种，去萌芽页领取今日的第一道题吧 🌱
         </div>
       )}
+
+      {/* 豆苗悬浮头像按钮 */}
+      <div className="fixed z-40" style={{ bottom: '5.5rem', right: '1rem' }}>
+        <button
+          onClick={() => router.push('/assistant')}
+          className="rounded-full shadow-lg transition-transform active:scale-95"
+          style={{
+            width: '56px',
+            height: '56px',
+            padding: 0,
+            border: '2px solid #fff',
+            background: 'transparent',
+            overflow: 'hidden',
+          }}
+          aria-label="打开豆苗学习助手"
+        >
+          <img
+            src="/assistant/doumiao-avatar.png"
+            alt="豆苗"
+            className="w-full h-full object-cover"
+            style={{ objectPosition: 'center 20%' }}
+          />
+        </button>
+        {/* 在线小绿点（在头像圆框外面右上角） */}
+        <span
+          className="absolute rounded-full"
+          style={{
+            top: '-2px',
+            right: '-2px',
+            width: '12px',
+            height: '12px',
+            background: '#4CAF50',
+            border: '2px solid #fff',
+          }}
+        />
+      </div>
     </div>
   )
 }

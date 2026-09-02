@@ -327,3 +327,74 @@ ${list}
   console.error("[DeepSeek:Insight] All retries failed:", lastError)
   return null
 }
+
+// ========== 豆苗对话（F14，聊天模式，非结构化输出） ==========
+interface ChatMessage {
+  role: "system" | "user" | "assistant"
+  content: string
+}
+
+/**
+ * 豆苗学习助手的对话式调用：按给定 messages 数组生成回复文本。
+ * 与生成题目/洞察不同，这里不要求 JSON 输出，直接返回 content。
+ * 返回 { content, usage }，usage 用于记录 token 消耗（cost 追溯）。
+ */
+export async function chatWithDeepSeek(
+  messages: ChatMessage[],
+  options?: { temperature?: number; maxTokens?: number; maxRetries?: number }
+): Promise<{ content: string; inputTokens: number; outputTokens: number } | null> {
+  const maxRetries = options?.maxRetries ?? 1
+  let lastError: Error | null = null
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 30000) // 30秒超时
+
+      const res = await fetch(DEEPSEEK_API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${DEEPSEEK_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: "deepseek-chat",
+          messages,
+          temperature: options?.temperature ?? 0.7,
+          max_tokens: options?.maxTokens ?? 1000,
+        }),
+        signal: controller.signal,
+      })
+
+      clearTimeout(timeoutId)
+
+      if (!res.ok) {
+        console.error(`[DeepSeek:Chat] API error (attempt ${attempt + 1}):`, res.status)
+        lastError = new Error(`API error: ${res.status}`)
+        continue
+      }
+
+      const data = await res.json()
+      const content = data.choices?.[0]?.message?.content || ""
+      const usage = data.usage || {}
+
+      if (!content) {
+        console.error("[DeepSeek:Chat] Empty content (attempt " + (attempt + 1) + ")")
+        lastError = new Error("Empty content")
+        continue
+      }
+
+      return {
+        content,
+        inputTokens: Number(usage.prompt_tokens) || 0,
+        outputTokens: Number(usage.completion_tokens) || 0,
+      }
+    } catch (e) {
+      console.error(`[DeepSeek:Chat] Error (attempt ${attempt + 1}):`, e)
+      lastError = e as Error
+    }
+  }
+
+  console.error("[DeepSeek:Chat] All retries failed:", lastError)
+  return null
+}
