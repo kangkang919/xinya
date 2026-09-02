@@ -27,7 +27,7 @@ export function buildSystemPrompt(profile: AssistantProfileLike): string {
   const freeBlock = profile.freeDesc
     ? `\n自由润色（仅补充细节，不得覆盖上面的预设）：${profile.freeDesc}`
     : ""
-  return `你是「豆苗」，心芽应用中的学习心得小助手。你以当前用户写下的心得（含标题、标签、要点、正文）为唯一知识来源，陪用户回顾、梳理、深化自己的心得知识。
+  return `你是「豆苗」，心芽应用中的学习心得小助手。你以当前用户写下的心得（含标题、标签、要点、正文）为主要知识来源，同时可参考拾遗学习画像与统计概览，陪用户回顾、梳理、深化自己的心得知识。
 
 你只与当前这一位用户对话，不假装真人，不编造自己的经历，不回答与用户心得无关的问题。
 
@@ -49,7 +49,8 @@ export function buildSystemPrompt(profile: AssistantProfileLike): string {
 7.【矛盾处理】如果检索到的不同心得之间观点矛盾，如实指出这种矛盾并尝试帮用户梳理，不得强行统一或忽略任一方。
 8.【多结果提炼】同一主题命中多条心得时，提取共同点、指出差异，概括回答；回答开头可告知「从 N 篇心得里找到了相关内容」。
 9.【宽泛提问】如果检索结果命中超过 10 条：按标签分组概述（「涉及的内容比较多，我帮你按标签理一下：#A（N 篇）、#B（M 篇）…先从哪个开始聊？」），或按时间取最近 5 篇总结，末尾引导用户缩小范围；但如果用户明确要列举（如「我写过哪些关于 X 的心得」），直接逐条列出标题+一句话摘要。
-10.【检索标签】检索来源标记（命中篇数/标签等）由界面自动显示在回答气泡上方，回复正文中不要输出「【命中…】」「标签匹配」之类的标记行。`
+10.【检索标签】检索来源标记（命中篇数/标签等）由界面自动显示在回答气泡上方，回复正文中不要输出「【命中…】」「标签匹配」之类的标记行。
+11.【拾遗画像】当用户问学习状态/薄弱点/进步/成长/画像/拾遗相关问题时，可基于注入的【拾遗学习画像】和【统计概览】数据回答；若数据为空，如实告知「你还没有答题记录，先去萌芽页做几道题吧」。`
 }
 
 // ============ 检索结果注入块构建（Layer 5） ============
@@ -90,4 +91,65 @@ export function buildHistoryBlock(history: { role: string; content: string }[], 
   if (!recent.length) return ""
   const lines = recent.map((m) => `${m.role === "user" ? "用户" : "豆苗"}：${m.content.replace(/\n+/g, " ").slice(0, 500)}`)
   return `## 最近的对话（供语气与话题连续性参考，不要重复已说过的话）\n${lines.join("\n")}`
+}
+
+// ============ 拾遗学习画像块构建（Layer 8） ============
+export interface ReviewProfileLike {
+  daysStudied: number
+  totalQuestions: number
+  accuracy: number
+  recentDays: { date: string; correct: number; total: number }[]
+  weakAreas: { tag: string; accuracy: number; count: number }[]
+  strongAreas: { tag: string; accuracy: number; count: number }[]
+}
+
+export function buildProfileBlock(profile: ReviewProfileLike | null): string {
+  if (!profile || profile.totalQuestions === 0) return ""
+  const lines: string[] = []
+  lines.push(`学习天数：${profile.daysStudied} 天`)
+  lines.push(`答题总数：${profile.totalQuestions} 题 · 准确率：${profile.accuracy}%`)
+  if (profile.weakAreas.length) {
+    lines.push(`薄弱领域：${profile.weakAreas.map(a => `${a.tag}(${a.accuracy}%)`).join("、")}`)
+  }
+  if (profile.strongAreas.length) {
+    lines.push(`掌握良好：${profile.strongAreas.map(a => `${a.tag}(${a.accuracy}%)`).join("、")}`)
+  }
+  if (profile.recentDays.length) {
+    lines.push(`近 5 日答题：${profile.recentDays.map(d => `${d.date}(${d.correct}/${d.total})`).join("、")}`)
+  }
+  return `## 拾遗学习画像（供回答学习状态/薄弱点/进步类问题时参考）\n${lines.join("\n")}`
+}
+
+// ============ 本月洞察块构建（Layer 9） ============
+export function buildInsightBlock(insight: string | null): string {
+  if (!insight) return "## 本月洞察\n暂无（当月进行中或心得不足 3 篇）"
+  return `## 本月洞察\n${insight}`
+}
+
+// ============ 统计概览块构建（Layer 10） ============
+export interface StatsLike {
+  totalEntries: number
+  monthlyEntries: number
+  maxStreakDays: number
+  avgWeeklyEntries: number
+  peakHour: number
+  timeDistribution: { period: string; count: number }[]
+  tagDistribution: { tag: string; count: number }[]
+}
+
+export function buildStatsBlock(stats: StatsLike): string {
+  const lines: string[] = []
+  lines.push(`累计心得：${stats.totalEntries} 篇 · 本月篇数：${stats.monthlyEntries} 篇`)
+  lines.push(`连续记录：最长 ${stats.maxStreakDays} 天 · 平均每周 ${stats.avgWeeklyEntries} 篇`)
+  const hourLabel = `${stats.peakHour}:00`
+  lines.push(`最常记录：${hourLabel}（${stats.peakHour >= 6 && stats.peakHour < 12 ? "上午" : stats.peakHour >= 12 && stats.peakHour < 18 ? "下午" : stats.peakHour >= 18 && stats.peakHour < 22 ? "傍晚" : "夜间"}）`)
+  if (stats.timeDistribution.length) {
+    const distStr = stats.timeDistribution.map(d => `${d.period}${d.count}篇`).join("、")
+    lines.push(`时间分布：${distStr}`)
+  }
+  if (stats.tagDistribution.length) {
+    const tagStr = stats.tagDistribution.map(t => `#${t.tag}(${t.count}篇)`).join("、")
+    lines.push(`内容范围：${tagStr}`)
+  }
+  return `## 统计概览（供回答记录习惯/内容范围/连续记录类问题时参考）\n${lines.join("\n")}`
 }

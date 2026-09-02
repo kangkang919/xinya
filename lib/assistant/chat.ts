@@ -6,11 +6,15 @@ import { chatWithDeepSeek } from "@/lib/deepseek"
 import { retrieve } from "./retrieve"
 import { getMemories, evaluateDialogueMemory, type MemoryItem } from "./memory"
 import { recordUsage } from "./usage"
+import { getUserStats } from "./stats"
 import {
   buildSystemPrompt,
   buildRetrievalBlock,
   buildMemoryBlock,
   buildHistoryBlock,
+  buildProfileBlock,
+  buildInsightBlock,
+  buildStatsBlock,
   FALLBACK_NONE,
 } from "./prompts"
 
@@ -189,6 +193,59 @@ export async function handleChat(userId: string, question: string): Promise<Chat
     .reverse()
     .map(m => ({ role: m.role as "user" | "assistant", content: m.content }))
 
+  // ---- 步骤 6.5：查询拾遗画像/本月洞察/统计概览 ----
+  const [reviewProfile, insightRow, stats] = await Promise.all([
+    // 拾遗学习画像（从 quizRecord 聚合，与 /api/review/profile 逻辑一致）
+    (async () => {
+      const records = await prisma.quizRecord.findMany({
+        where: { userId, answeredAt: { not: null } },
+        include: { question: { include: { entry: { include: { tags: true } } } } },
+        orderBy: { answeredAt: "asc" },
+        take: 500,
+      })
+      if (records.length === 0) return null
+      const daysSet = new Set<string>()
+      records.forEach(r => { if (r.answeredAt) daysSet.add(r.answeredAt.toISOString().slice(0, 10)) })
+      const totalQuestions = records.length
+      const correctCount = records.filter(r => r.correct).length
+      const accuracy = totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0
+      const recentDays: { date: string; correct: number; total: number }[] = []
+      const dayMap = new Map<string, { correct: number; total: number }>()
+      records.forEach(r => {
+        if (r.answeredAt) {
+          const day = r.answeredAt.toISOString().slice(0, 10)
+          if (!dayMap.has(day)) dayMap.set(day, { correct: 0, total: 0 })
+          const stat = dayMap.get(day)!
+          stat.total++
+          if (r.correct) stat.correct++
+        }
+      })
+      const sortedDays = Array.from(dayMap.entries()).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 5).reverse()
+      sortedDays.forEach(([date, stat]) => { recentDays.push({ date: date.slice(5).replace("-", "/"), ...stat }) })
+      const tagMap = new Map<string, { correct: number; total: number }>()
+      records.forEach(r => { r.question.entry.tags.forEach(t => { if (!tagMap.has(t.name)) tagMap.set(t.name, { correct: 0, total: 0 }); const s = tagMap.get(t.name)!; s.total++; if (r.correct) s.correct++ }) })
+      const tagStats = Array.from(tagMap.entries()).map(([tag, s]) => ({ tag, ...s, accuracy: Math.round((s.correct / s.total) * 100) }))
+      const weak = tagStats.filter(t => t.accuracy < 60).sort((a, b) => a.accuracy - b.accuracy).slice(0, 5)
+      const strong = tagStats.filter(t => t.accuracy >= 80).sort((a, b) => b.accuracy - a.accuracy).slice(0, 5)
+      return { daysStudied: daysSet.size, totalQuestions, accuracy, recentDays, weakAreas: weak, strongAreas: strong }
+    })(),
+    // 本月洞察
+    (async () => {
+      const now = new Date()
+      const y = now.getFullYear(), m = now.getMonth() + 1
+      const monthStart = new Date(Date.UTC(y, m - 1, 1))
+      const nextMonthStart = new Date(Date.UTC(y, m, 1))
+      const row = await prisma.insightReport.findUnique({
+        where: { userId_type_periodStart: { userId, type: "monthly", periodStart: monthStart } },
+      })
+      if (!row) return null
+      const content = row.content as any
+      return typeof content === "string" ? content : (content?.summary || content?.content || JSON.stringify(content))
+    })(),
+    // 统计概览
+    getUserStats(userId),
+  ])
+
   // ---- 步骤 7：组装 Prompt 并调用 DeepSeek ----
   const sysContent =
     buildSystemPrompt(profile) +
@@ -197,7 +254,13 @@ export async function handleChat(userId: string, question: string): Promise<Chat
     "\n\n" +
     buildMemoryBlock(memories) +
     "\n\n" +
-    buildHistoryBlock(history)
+    buildHistoryBlock(history) +
+    "\n\n" +
+    buildProfileBlock(reviewProfile) +
+    "\n\n" +
+    buildInsightBlock(insightRow) +
+    "\n\n" +
+    buildStatsBlock(stats)
 
   const result = await chatWithDeepSeek(
     [
