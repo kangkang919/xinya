@@ -225,8 +225,8 @@ export async function handleChat(userId: string, question: string): Promise<Chat
       const tagMap = new Map<string, { correct: number; total: number }>()
       records.forEach(r => { r.question.entry.tags.forEach(t => { if (!tagMap.has(t.name)) tagMap.set(t.name, { correct: 0, total: 0 }); const s = tagMap.get(t.name)!; s.total++; if (r.correct) s.correct++ }) })
       const tagStats = Array.from(tagMap.entries()).map(([tag, s]) => ({ tag, ...s, accuracy: Math.round((s.correct / s.total) * 100) }))
-      const weak = tagStats.filter(t => t.accuracy < 60).sort((a, b) => a.accuracy - b.accuracy).slice(0, 5)
-      const strong = tagStats.filter(t => t.accuracy >= 80).sort((a, b) => b.accuracy - a.accuracy).slice(0, 5)
+      const weak = tagStats.filter(t => t.accuracy < 60).sort((a, b) => a.accuracy - b.accuracy).slice(0, 5).map(t => ({ tag: t.tag, accuracy: t.accuracy, count: t.total }))
+      const strong = tagStats.filter(t => t.accuracy >= 80).sort((a, b) => b.accuracy - a.accuracy).slice(0, 5).map(t => ({ tag: t.tag, accuracy: t.accuracy, count: t.total }))
       return { daysStudied: daysSet.size, totalQuestions, accuracy, recentDays, weakAreas: weak, strongAreas: strong }
     })(),
     // 本月洞察
