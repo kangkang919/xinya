@@ -75,7 +75,10 @@ const SAFE_REPLY = "这个话题我帮不上忙，我们还是聊聊心得吧～
 const REVIEW_WORDS = /最近|近况|这周|这个月|阶段|状态|总结|回顾|梳理|写了什么|怎么样|进步|收获/
 
 // 分析类问题（薄弱/兴趣/擅长等，检索为 0 时也补充最近心得让 AI 基于最近内容分析）
-const ANALYSIS_WORDS = /薄弱|不会|难|错|兴趣|喜欢|擅长|学得好|掌握|记住/
+const ANALYSIS_WORDS = /薄弱|不会|难|错|兴趣|喜欢|擅长|学得好|掌握|记住|盲点|提升|成长|不足|改进|加强|学习|知识|技能|理解|困惑|疑问/
+
+// 宽泛学习相关（兜底：检索为 0 时，若问题与学习/成长相关，也补充最近心得让 AI 给通用建议）
+const LEARNING_WORDS = /学习|成长|提升|进步|知识|技能|理解|掌握|困惑|疑问|盲点|不足|改进|加强|复习|巩固|拓展|深入|思考|反思|总结|心得|体会|感悟|收获|启发|灵感|方向|目标|计划|方法|技巧|经验|教训|建议|推荐|怎么|如何|为什么|什么|哪些|哪里/
 
 function isPureGreeting(question: string): boolean {
   const clean = question.replace(/[^\u4e00-\u9fffA-Za-z]/g, "")
@@ -151,9 +154,10 @@ export async function handleChat(userId: string, question: string): Promise<Chat
   let items = [...retrieval.items] as RecentItem[]
   let totalCount = retrieval.totalCount
 
-  // ---- 步骤 4：检索为 0 且属回顾类问题 → 补充最近心得；仍为 0 → 检索无果兜底 ----
+  // ---- 步骤 4：检索为 0 且属回顾/分析/学习相关问题 → 补充最近心得；仍为 0 → 检索无果兜底 ----
   const isReview = REVIEW_WORDS.test(q) || ANALYSIS_WORDS.test(q)
-  if (items.length === 0 && isReview) {
+  const isLearningRelated = LEARNING_WORDS.test(q)
+  if (items.length === 0 && (isReview || isLearningRelated)) {
     const excludeIds = new Set(retrieval.items.map(i => i.entryId))
     const recent = await appendRecentEntries(userId, excludeIds)
     items = recent
