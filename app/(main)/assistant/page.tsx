@@ -7,6 +7,8 @@ import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import toast from "react-hot-toast"
 import { Brain, Loader2, Send, Settings } from "lucide-react"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 import { useTheme } from "@/lib/useTheme"
 import { beijingDateString, getBeijingDateParts } from "@/lib/utils"
 import { Avatar, type ProfileState } from "./dims"
@@ -423,7 +425,7 @@ function ChatView({ profile, isDark, cardBg, cardBorder, titleColor, dimColor, i
                         </div>
                       )}
                       <div
-                        className="text-[14px] leading-relaxed whitespace-pre-wrap break-words rounded-2xl px-3.5 py-2.5"
+                        className="text-[14px] leading-relaxed break-words rounded-2xl px-3.5 py-2.5 prose prose-sm max-w-none"
                         style={{
                           background: isDark ? "#2A2A2A" : "#fff",
                           border: `1px solid ${cardBorder}`,
@@ -431,7 +433,7 @@ function ChatView({ profile, isDark, cardBg, cardBorder, titleColor, dimColor, i
                           color: titleColor,
                         }}
                       >
-                        {m.content}
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
                       </div>
                     </div>
                   </div>

@@ -76,3 +76,83 @@ body {
 /* ===== 移动端底部安全区域 ===== */
 .pb-safe     { padding-bottom: env(safe-area-inset-bottom, 0px); }
 .bottom-safe { bottom: env(safe-area-inset-bottom, 0px); }
+
+/* ===== Markdown 渲染样式（豆苗 AI 回复） ===== */
+.prose {
+  line-height: 1.6;
+}
+.prose p {
+  margin: 0.5em 0;
+}
+.prose p:first-child {
+  margin-top: 0;
+}
+.prose p:last-child {
+  margin-bottom: 0;
+}
+.prose strong {
+  font-weight: 600;
+  color: inherit;
+}
+.prose em {
+  font-style: italic;
+}
+.prose ul,
+.prose ol {
+  padding-left: 1.5em;
+  margin: 0.5em 0;
+}
+.prose ul {
+  list-style-type: disc;
+}
+.prose ol {
+  list-style-type: decimal;
+}
+.prose li {
+  margin: 0.25em 0;
+}
+.prose blockquote {
+  border-left: 3px solid var(--color-primary, #8BC34A);
+  padding-left: 1em;
+  margin: 0.5em 0;
+  color: inherit;
+  opacity: 0.85;
+}
+.prose code {
+  background: rgba(139, 195, 74, 0.1);
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+  font-size: 0.9em;
+  font-family: "SF Mono", "Monaco", "Consolas", monospace;
+}
+.prose pre {
+  background: rgba(0, 0, 0, 0.05);
+  padding: 1em;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 0.5em 0;
+}
+.prose pre code {
+  background: transparent;
+  padding: 0;
+}
+.prose hr {
+  border: none;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  margin: 1em 0;
+}
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4 {
+  font-weight: 600;
+  margin: 0.75em 0 0.5em;
+  color: inherit;
+}
+.prose h1 { font-size: 1.25em; }
+.prose h2 { font-size: 1.15em; }
+.prose h3 { font-size: 1.05em; }
+.prose a {
+  color: var(--color-primary, #8BC34A);
+  text-decoration: underline;
+}
