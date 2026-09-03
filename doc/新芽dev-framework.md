@@ -397,6 +397,9 @@ Phase 7: 产品交付     —— 部署、交付
 | F14.4 | 最近 30 轮对话参与生成；历史消息游标分页向上翻看；可清空历史（配置与记忆保留） | P2 |
 | F14.5 | 每次 DeepSeek 调用记录消耗（token/估算费用/问题摘要）到 AssistantUsage，成本可追溯 | P2 |
 | F14.6 | 整体可下线：lib/assistant、app/api/assistant、app/(main)/assistant 三目录 + 4 张 Assistant 表 + User 4 个关系字段 + 导航入口一并移除 | P1 |
+| F14.7 | Prompt 模板（lib/assistant/prompts.ts）：10 条输出指令（风格/长度/范围/寒暄/检索依据/禁止编造/矛盾处理/多结果提炼/宽泛提问/检索标签/拾遗画像）；人设骨架（语气/指导/称呼）+ 可选自由润色；固定话术（FALLBACK_REFUSE/FALLBACK_NONE） | P1 |
+| F14.8 | 拾遗画像/本月洞察/统计概览注入（lib/assistant/stats.ts 新建）：连续记录天数/平均每周篇数/最常记录时间/时间分布/标签分布 Top10；本月洞察无数据显示「暂无」 | P2 |
+| F14.9 | 豆苗可干预拾遗出题优先级（2026-09-03 新增）：新建 QuizPriority 表（tag/mode/multiplier/until/active）；支持 insert（插队直到未答题全部答完）和 weight（权重倍数）两种模式；豆苗对话可查询当前出题规划/设置优先级；出题逻辑（review-scheduler.ts）集成优先级配置；新增 API `/api/review/priority`；**关键约束**：新增心得生成的题目必须进入出题列表，优先级只影响抽取顺序不影响题目池完整性 | P2 |
 
 #### F8: 新用户引导
 
@@ -1268,10 +1271,11 @@ pm2 save
 
 | 日期 | 变更内容 | 状态 |
 | :--- | :--- | :--- |
-| 2026-09-02 | 新增 F14 豆苗学习助手：AI 聊天助手（DeepSeek，以本人非草稿心得为知识库），含 3 步人设向导/三级检索/记忆/消耗记录/清空历史；底部导航新增第 5 tab「豆苗」；迁移 20260902_add_assistant_models（线上账号无 shadow DB 权限，手写 SQL 应用 + migrate resolve）；新增 AssistantProfile/Message/Memory/Usage 四表与 User 关系字段（带删除注释）；端到端验证通过（寒暄/越界/安全词/标签检索/记忆/清空/消耗） | 已开发待验收 |
+| 2026-09-02 | 新增 F14 豆苗学习助手：AI 聊天助手（DeepSeek，以本人非草稿心得为知识库），含 3 步人设向导/三级检索/记忆/消耗记录/清空历史；底部导航新增第 5 tab「豆苗」；迁移 20260902_add_assistant_models（线上账号无 shadow DB 权限，手写 SQL 应用 + migrate resolve）；新增 AssistantProfile/Message/Memory/Usage 四表与 User 关系字段（带删除注释）；端到端验证通过（寒暄/越界/安全词/标签检索/记忆/清空/消耗） | 已验收 |
 | 2026-09-02 | 遗留记录：线上 DB Entry.searchVector 列与索引仍在但 schema 已无（F11 2026-08-27 重构时未 DROP），当前无读写路径、检索已走 ILIKE；迁移 diff 时勿带出 DROP，后续清理需单独评估 | 已记录 |
 | 2026-09-02 | `lib/deepseek.ts` 94/206 行 `any` 类型 lint 报错（预存，与 F14 豆苗无关），待后续清理 | 待处理 |
 | 2026-09-02 | F14 豆苗「少量心得降级提示」未实现（当前 1 篇以上直接进 chat，无特殊提示），待 P2 开发 | 待开发（P2） |
+| 2026-09-02 | F14 验收修复：豆苗 tab 从底部导航移至根系页右下角悬浮头像（56px 圆形 + 在线绿点 + calc() 适配安全区域）；顶栏 sticky 固定；输入框 16px 防 iOS 放大；ANALYSIS_WORDS + LEARNING_WORDS 扩大关键词兜底；注入拾遗画像/本月洞察/统计概览到 AI prompt（stats.ts 新建）；AI 回复改用 react-markdown 渲染（globals.css 新增 .prose 样式） | 已验收 |
 | 2026-08-27 | F11 搜索重构：移除 PostgreSQL 全文搜索（tsvector/tsquery），改用 ILIKE 模糊匹配；搜索结果按相关度排序（置顶>标题匹配>内容匹配>时间倒序）；修复运算符优先级问题（@@ 高于 || 导致 tsvector 拼接错误） | 已验收 |
 | 2026-06-21 | 置顶规则从"最多1篇"改为"允许多篇同时置顶" | 已验收 |
 | 2026-06-21 | 移除"存草稿"功能与按钮 | 已验收 |

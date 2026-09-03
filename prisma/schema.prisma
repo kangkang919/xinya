@@ -34,6 +34,7 @@ model User {
   assistantMessages AssistantMessage[]
   assistantMemories AssistantMemory[]
   assistantUsages   AssistantUsage[]
+  quizPriorities    QuizPriority[]
 }
 
 model Entry {
@@ -313,10 +314,27 @@ model AssistantUsage {
   outputTokens  Int      @default(0)
   model         String   @default("deepseek-chat")
   estimatedCost Float    @default(0) // 估算费用（元）
-  questionBrief String?  // 用户问题摘要（≤30字，脱敏概览用）
+  questionBrief String?  // 用户问题摘要（≤30 字，脱敏概览用）
   createdAt     DateTime @default(now())
 
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt(sort: Desc)])
+}
+
+// 出题优先级配置（豆苗可干预，删除豆苗时移除）
+model QuizPriority {
+  id         Int      @id @default(autoincrement())
+  userId     String
+  tag        String   // 标签名
+  mode       String   // "insert" | "weight"
+  multiplier Float    @default(2.0) // 权重倍数（仅 weight 模式）
+  until      String   @default("all_answered") // "all_answered" | "manual"
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, active])
 }

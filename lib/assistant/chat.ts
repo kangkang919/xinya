@@ -7,6 +7,7 @@ import { retrieve } from "./retrieve"
 import { getMemories, evaluateDialogueMemory, type MemoryItem } from "./memory"
 import { recordUsage } from "./usage"
 import { getUserStats } from "./stats"
+import { getQuizPriorities, getTagUnansweredStats } from "../quiz-priority"
 import {
   buildSystemPrompt,
   buildRetrievalBlock,
@@ -15,6 +16,7 @@ import {
   buildProfileBlock,
   buildInsightBlock,
   buildStatsBlock,
+  buildPriorityBlock,
   FALLBACK_NONE,
 } from "./prompts"
 
@@ -193,8 +195,8 @@ export async function handleChat(userId: string, question: string): Promise<Chat
     .reverse()
     .map(m => ({ role: m.role as "user" | "assistant", content: m.content }))
 
-  // ---- 步骤 6.5：查询拾遗画像/本月洞察/统计概览 ----
-  const [reviewProfile, insightRow, stats] = await Promise.all([
+  // ---- 步骤 6.5：查询拾遗画像/本月洞察/统计概览/出题优先级 ----
+  const [reviewProfile, insightRow, stats, priorities, priorityTagStats] = await Promise.all([
     // 拾遗学习画像（从 quizRecord 聚合，与 /api/review/profile 逻辑一致）
     (async () => {
       const records = await prisma.quizRecord.findMany({
@@ -244,6 +246,14 @@ export async function handleChat(userId: string, question: string): Promise<Chat
     })(),
     // 统计概览
     getUserStats(userId),
+    // 出题优先级配置
+    getQuizPriorities(userId),
+    // 优先级标签的未答题统计
+    (async () => {
+      const prios = await getQuizPriorities(userId)
+      const tags = prios.map(p => p.tag)
+      return tags.length > 0 ? await getTagUnansweredStats(userId, tags) : {}
+    })(),
   ])
 
   // ---- 步骤 7：组装 Prompt 并调用 DeepSeek ----
@@ -260,7 +270,9 @@ export async function handleChat(userId: string, question: string): Promise<Chat
     "\n\n" +
     buildInsightBlock(insightRow) +
     "\n\n" +
-    buildStatsBlock(stats)
+    buildStatsBlock(stats) +
+    "\n\n" +
+    buildPriorityBlock(priorities, priorityTagStats)
 
   const result = await chatWithDeepSeek(
     [

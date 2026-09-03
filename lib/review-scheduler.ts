@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client"
 import { generateKeyPoints } from "./template-questions"
 import { generateQuestions } from "./deepseek"
 import { devLog, beijingDateString } from "./utils"
+import { getQuizPriorities, autoDeactivateCompletedPriorities } from "./quiz-priority"
 
 // 记录调用日志（保留最近30条）
 export async function logReviewCall(
@@ -54,6 +55,16 @@ export async function getTodayCard(userId: string): Promise<TodayCard | null> {
   // 检查今天是否已弹过卡片
   if (setting.lastCardDate === today) return null
 
+  // 自动停用已完成的 insert 优先级
+  await autoDeactivateCompletedPriorities(userId)
+
+  // 获取当前优先级配置
+  const priorities = await getQuizPriorities(userId)
+  const insertTags = priorities.filter(p => p.mode === "insert" && p.active).map(p => p.tag)
+  const weightMap = new Map(
+    priorities.filter(p => p.mode === "weight" && p.active).map(p => [p.tag, p.multiplier])
+  )
+
   // 查找待复习题目（nextReviewAt <= now，按答错优先 > 久未复习优先）
   const now = new Date()
   const dueQuestions = await prisma.quizRecord.findMany({
@@ -68,17 +79,30 @@ export async function getTodayCard(userId: string): Promise<TodayCard | null> {
     include: {
       question: {
         include: {
-          entry: true,
+          entry: {
+            include: { tags: true },
+          },
         },
       },
     },
-    take: 10, // 取前10个候选，从中随机选一个
+    take: 50, // 扩大候选池，便于优先级筛选
   })
 
   if (dueQuestions.length > 0) {
-    // 随机选取一个，避免同一篇心得的题目连续推送
-    const randomIndex = Math.floor(Math.random() * dueQuestions.length)
-    return formatCard(dueQuestions[randomIndex])
+    // 应用 insert 优先级：优先从指定标签中选取
+    let candidates = dueQuestions
+    if (insertTags.length > 0) {
+      const insertCandidates = dueQuestions.filter(q =>
+        q.question.entry.tags.some(t => insertTags.includes(t.name))
+      )
+      if (insertCandidates.length > 0) {
+        candidates = insertCandidates
+      }
+    }
+
+    // 应用 weight 优先级：调整随机权重
+    const randomIndex = selectByWeight(candidates, weightMap)
+    return formatCard(candidates[randomIndex])
   }
 
   // 若无待复习题，优先查找已有题目但未答题的记录
@@ -91,17 +115,31 @@ export async function getTodayCard(userId: string): Promise<TodayCard | null> {
     include: {
       question: {
         include: {
-          entry: true,
+          entry: {
+            include: { tags: true },
+          },
         },
       },
     },
-    take: 10,
+    take: 50,
   })
 
   if (unreviewedRecords.length > 0) {
-    const randomIndex = Math.floor(Math.random() * unreviewedRecords.length)
-    devLog("[Scheduler] Found unreviewed record, entryId:", unreviewedRecords[randomIndex].entryId)
-    return formatCard(unreviewedRecords[randomIndex])
+    // 应用 insert 优先级
+    let candidates = unreviewedRecords
+    if (insertTags.length > 0) {
+      const insertCandidates = unreviewedRecords.filter(q =>
+        q.question.entry.tags.some(t => insertTags.includes(t.name))
+      )
+      if (insertCandidates.length > 0) {
+        candidates = insertCandidates
+      }
+    }
+
+    // 应用 weight 优先级
+    const randomIndex = selectByWeight(candidates, weightMap)
+    devLog("[Scheduler] Found unreviewed record, entryId:", candidates[randomIndex].entryId)
+    return formatCard(candidates[randomIndex])
   }
 
   // 最后才查找尚未出题的心得（需要在线生成题目）
@@ -337,4 +375,45 @@ export async function generateAndSaveQuestions(
   } else {
     await logReviewCall(userId, entryId, step, false, 0, "DeepSeek returned empty")
   }
+}
+
+/**
+ * 按权重随机选择（用于 weight 模式）
+ * @param candidates 候选列表
+ * @param weightMap 标签权重映射
+ * @returns 选中的索引
+ */
+function selectByWeight<T extends { question: { entry: { tags: { name: string }[] } } }>(
+  candidates: T[],
+  weightMap: Map<string, number>
+): number {
+  if (candidates.length === 0) return 0
+  if (weightMap.size === 0) {
+    // 无权重配置，均匀随机
+    return Math.floor(Math.random() * candidates.length)
+  }
+
+  // 计算每个候选的权重
+  const weights = candidates.map(c => {
+    const tags = c.question.entry.tags.map(t => t.name)
+    let weight = 1.0
+    for (const tag of tags) {
+      const w = weightMap.get(tag)
+      if (w !== undefined) {
+        weight *= w // 多个标签权重相乘
+      }
+    }
+    return weight
+  })
+
+  // 加权随机选择
+  const totalWeight = weights.reduce((sum, w) => sum + w, 0)
+  let random = Math.random() * totalWeight
+  for (let i = 0; i < weights.length; i++) {
+    random -= weights[i]
+    if (random <= 0) {
+      return i
+    }
+  }
+  return candidates.length - 1
 }

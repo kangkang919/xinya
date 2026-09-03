@@ -50,7 +50,15 @@ export function buildSystemPrompt(profile: AssistantProfileLike): string {
 8.【多结果提炼】同一主题命中多条心得时，提取共同点、指出差异，概括回答；回答开头可告知「从 N 篇心得里找到了相关内容」。
 9.【宽泛提问】如果检索结果命中超过 10 条：按标签分组概述（「涉及的内容比较多，我帮你按标签理一下：#A（N 篇）、#B（M 篇）…先从哪个开始聊？」），或按时间取最近 5 篇总结，末尾引导用户缩小范围；但如果用户明确要列举（如「我写过哪些关于 X 的心得」），直接逐条列出标题+一句话摘要。
 10.【检索标签】检索来源标记（命中篇数/标签等）由界面自动显示在回答气泡上方，回复正文中不要输出「【命中…】」「标签匹配」之类的标记行。
-11.【拾遗画像】当用户问学习状态/薄弱点/进步/成长/画像/拾遗相关问题时，可基于注入的【拾遗学习画像】和【统计概览】数据回答；若数据为空，如实告知「你还没有答题记录，先去萌芽页做几道题吧」。`
+11.【拾遗画像】当用户问学习状态/薄弱点/进步/成长/画像/拾遗相关问题时，可基于注入的【拾遗学习画像】和【统计概览】数据回答；若数据为空，如实告知「你还没有答题记录，先去萌芽页做几道题吧」。
+12.【出题优先级干预】当用户提到想增加某个标签的出题频次/优先级时：
+   - 先调用 \`GET /api/review/priority\` 获取当前优先级配置和标签未答题统计
+   - 告知用户当前的出题规划（如「AI 安全目前有 5 道未答题，总共 20 道」）
+   - 询问用户希望如何增加：
+     a) **插队模式**：直接明天就插进去开始，直到这个标签的未答题全部答完
+     b) **权重模式**：仅放大这个标签下题目出现的概率（默认 2 倍）
+   - 用户确认后，调用 \`POST /api/review/priority\` 保存配置（body: { tag, mode: "insert"|"weight", multiplier?, until? }）
+   - **重要约束**：你不能干预出题规则（单选/多选/每天 1 次/每周凌晨更新），只能在已有题目范围内改变出题顺序/概率；新增心得生成的题目会自动进入出题列表，不会被遗漏`
 }
 
 // ============ 检索结果注入块构建（Layer 5） ============
@@ -152,4 +160,31 @@ export function buildStatsBlock(stats: StatsLike): string {
     lines.push(`内容范围：${tagStr}`)
   }
   return `## 统计概览（供回答记录习惯/内容范围/连续记录类问题时参考）\n${lines.join("\n")}`
+}
+
+// ============ 出题优先级块构建（Layer 10） ============
+export interface PriorityLike {
+  id: number
+  tag: string
+  mode: string
+  multiplier: number
+  until: string
+  active: boolean
+}
+
+export function buildPriorityBlock(
+  priorities: PriorityLike[],
+  tagStats: Record<string, { unanswered: number; total: number }>
+): string {
+  if (!priorities.length) {
+    return "## 出题优先级（当前无优先级配置，按默认顺序出题）"
+  }
+  const lines = priorities.map(p => {
+    const stats = tagStats[p.tag]
+    const statsStr = stats ? `（未答${stats.unanswered}/总${stats.total}）` : ""
+    const modeLabel = p.mode === "insert" ? "插队模式" : `权重模式（${p.multiplier}倍）`
+    const untilLabel = p.until === "all_answered" ? "直到未答题全部答完" : "手动清除"
+    return `- #${p.tag}：${modeLabel}，${untilLabel}${statsStr}`
+  })
+  return `## 出题优先级（用户已配置的标签优先出题规则）\n${lines.join("\n")}`
 }
