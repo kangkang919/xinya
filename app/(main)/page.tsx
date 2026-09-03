@@ -6,6 +6,7 @@ import { DeleteDialog } from "@/components/DeleteDialog"
 import ReviewCard from "@/components/review-card"
 import { useTheme } from "@/lib/useTheme"
 import toast from "react-hot-toast"
+import { DoumiaoFloatingButton } from "@/components/DoumiaoFloatingButton"
 
 interface Entry {
   id: string
@@ -401,6 +402,9 @@ export default function SproutPage() {
           }}
         />
       )}
+
+      {/* 豆苗悬浮头像按钮 */}
+      <DoumiaoFloatingButton />
     </div>
   )
 }
