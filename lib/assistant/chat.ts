@@ -19,6 +19,7 @@ import {
   buildPriorityBlock,
   FALLBACK_NONE,
 } from "./prompts"
+import { detectPriorityConfirm } from "./priority-intercept"
 
 export interface AssistantProfileData {
   tone: string
@@ -155,49 +156,48 @@ export async function handleChat(userId: string, question: string): Promise<Chat
     return { reply: SAFE_REPLY, retrievedTag: null, source: "local" }
   }
 
-  // ---- 步骤 2.5：检测用户是否要求保存优先级配置 ----
-  const SAVE_PRIORITY_WORDS = /保存|实施|按你说的|确认|就这么|好的就|行就|可以就/
-  if (SAVE_PRIORITY_WORDS.test(q)) {
-    // 从最近对话历史中提取配置信息
-    const recentHistory = await prisma.assistantMessage.findMany({
-      where: { userId },
-      orderBy: { createdAt: "desc" },
-      take: 6, // 最近 3 轮对话
+  // ---- 步骤 2.5：检测用户是否确认/选择优先级配置（确定性拦截，不依赖 LLM） ----
+  const recentHistory = await prisma.assistantMessage.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+    take: 6, // 最近 3 轮对话
+  })
+  const historyAsc = recentHistory.reverse().map(m => ({ role: m.role, content: m.content }))
+  const tagNames = (
+    await prisma.tag.findMany({ where: { userId }, select: { name: true } })
+  ).map(t => t.name)
+  const confirm = detectPriorityConfirm(q, historyAsc, tagNames)
+  if (confirm.intercept && confirm.tag && confirm.mode) {
+    const tag = confirm.tag
+    const mode = confirm.mode
+
+    // 检查是否已存在相同标签的活跃配置
+    const existing = await prisma.quizPriority.findFirst({
+      where: { userId, tag, active: true },
     })
-    const recentText = recentHistory.reverse().map(m => m.content).join("\n")
 
-    // 提取标签（如 #AI 安全 或 AI 安全）
-    const tagMatch = recentText.match(/#?([\u4e00-\u9fa5A-Za-z0-9]+)(?:安全 | 标签 | 相关)/)
-    // 提取模式（插队/权重）
-    const modeMatch = recentText.match(/(插队 | 权重|优先|概率)/)
-
-    if (tagMatch) {
-      const tag = tagMatch[1]
-      const mode = modeMatch && modeMatch[1] === "权重" ? "weight" : "insert"
-
-      // 检查是否已存在相同标签的活跃配置
-      const existing = await prisma.quizPriority.findFirst({
-        where: { userId, tag, active: true },
+    if (!existing) {
+      await addQuizPriority(userId, {
+        tag,
+        mode,
+        multiplier: mode === "weight" ? 2.0 : undefined,
+        until: mode === "insert" ? "all_answered" : undefined,
       })
 
-      if (!existing) {
-        await addQuizPriority(userId, {
-          tag,
-          mode,
-          multiplier: mode === "weight" ? 2.0 : undefined,
-          until: mode === "insert" ? "all_answered" : undefined,
-        })
-
-        const reply = `好的，已保存配置！\n\n**${tag}** 标签已设置为 **${mode === "insert" ? "插队模式" : "权重模式（2 倍）"}**\n${mode === "insert" ? "从明天开始，这个标签的题目会优先出现，直到所有未答题都答完为止。" : "这个标签的题目出现概率会提高到 2 倍。"}\n\n有新的心得或想调整配置，随时告诉我～`
-        await saveMessage(userId, "user", q)
-        await saveMessage(userId, "assistant", reply)
-        return { reply, retrievedTag: null, source: "local" }
-      } else {
-        const reply = `${tag} 标签的优先级配置已经存在了，无需重复保存。如需调整，告诉我具体怎么改～`
-        await saveMessage(userId, "user", q)
-        await saveMessage(userId, "assistant", reply)
-        return { reply, retrievedTag: null, source: "local" }
-      }
+      const reply = `好的，已保存配置！\n\n**${tag}** 标签已设置为 **${mode === "insert" ? "插队模式" : "权重模式（2 倍）"}**\n${mode === "insert" ? "从明天开始，这个标签的题目会优先出现，直到所有未答题都答完为止。" : "这个标签的题目出现概率会提高到 2 倍。"}\n\n有新的心得或想调整配置，随时告诉我～`
+      await saveMessage(userId, "user", q)
+      await saveMessage(userId, "assistant", reply)
+      return { reply, retrievedTag: null, source: "local" }
+    } else {
+      // 已存在配置：按新选择更新模式
+      await prisma.quizPriority.update({
+        where: { id: existing.id },
+        data: { mode, multiplier: mode === "weight" ? 2.0 : existing.multiplier },
+      })
+      const reply = `好的，已更新配置！**${tag}** 标签切换为 **${mode === "insert" ? "插队模式" : "权重模式（2 倍）"}**，明天开始生效～`
+      await saveMessage(userId, "user", q)
+      await saveMessage(userId, "assistant", reply)
+      return { reply, retrievedTag: null, source: "local" }
     }
   }
 
@@ -282,12 +282,11 @@ export async function handleChat(userId: string, question: string): Promise<Chat
       const now = new Date()
       const y = now.getFullYear(), m = now.getMonth() + 1
       const monthStart = new Date(Date.UTC(y, m - 1, 1))
-      const nextMonthStart = new Date(Date.UTC(y, m, 1))
       const row = await prisma.insightReport.findUnique({
         where: { userId_type_periodStart: { userId, type: "monthly", periodStart: monthStart } },
       })
       if (!row) return null
-      const content = row.content as any
+      const content = row.content as string | { summary?: string; content?: string } | null
       return typeof content === "string" ? content : (content?.summary || content?.content || JSON.stringify(content))
     })(),
     // 统计概览
