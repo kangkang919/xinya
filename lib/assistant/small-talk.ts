@@ -8,6 +8,8 @@ const THANKS_PATTERNS = [/^(谢谢|多谢|感谢|辛苦|麻烦|费心)/]
 const GREETING_PATTERNS = [/^(你好|您好|嗨|哈喽|hello|hi|在吗|早|早上好|中午好|下午好|晚上好)/i]
 const FAREWELL_PATTERNS = [/^(拜拜|再见|晚安|回见|下次见)/]
 const ACK_PATTERNS = [/^(好的|好嘞|明白|嗯嗯|知道了|收到|ok)/i]
+// 称呼前缀（如「豆苗，你好」「豆芽 你好」），分类前先剥离
+const CALL_NAME = /^(豆苗|豆芽|小苗|苗苗)/
 
 const GREETING_REPLIES = [
   "你好呀～我是豆苗 🌱 想回顾心得还是梳理知识点？",
@@ -36,10 +38,13 @@ const FAREWELL_REPLIES = [
 export function classifySmallTalk(question: string): SmallTalkKind | null {
   const clean = question.replace(/[^\u4e00-\u9fffA-Za-z]/g, "")
   if (clean.length === 0 || clean.length > 8) return null
-  if (THANKS_PATTERNS.some(r => r.test(clean))) return "thanks"
-  if (FAREWELL_PATTERNS.some(r => r.test(clean))) return "farewell"
-  if (GREETING_PATTERNS.some(r => r.test(clean))) return "greeting"
-  if (ACK_PATTERNS.some(r => r.test(clean))) return "ack"
+  // 剥离称呼前缀：「豆苗，你好」→「你好」；纯称呼（豆苗/豆芽）视为问候
+  const stripped = clean.replace(CALL_NAME, "")
+  if (stripped.length === 0) return "greeting"
+  if (THANKS_PATTERNS.some(r => r.test(stripped))) return "thanks"
+  if (FAREWELL_PATTERNS.some(r => r.test(stripped))) return "farewell"
+  if (GREETING_PATTERNS.some(r => r.test(stripped))) return "greeting"
+  if (ACK_PATTERNS.some(r => r.test(stripped))) return "ack"
   return null
 }
 

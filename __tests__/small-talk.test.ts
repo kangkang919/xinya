@@ -47,6 +47,23 @@ describe("classifySmallTalk - 线上对话评测集", () => {
       expect(classifySmallTalk(q)).toBe("farewell")
     }
   })
+
+  it("用例6：带称呼的问候归问候类（09-03 线上案例）", () => {
+    for (const q of ["豆芽，你好", "豆苗，你好", "豆苗 你好", "豆苗你好", "苗苗，嗨"]) {
+      expect(classifySmallTalk(q)).toBe("greeting")
+    }
+  })
+
+  it("用例7：纯称呼视为问候", () => {
+    for (const q of ["豆苗", "豆芽", "豆苗～"]) {
+      expect(classifySmallTalk(q)).toBe("greeting")
+    }
+  })
+
+  it("用例8：带称呼的感谢归感谢类", () => {
+    expect(classifySmallTalk("豆苗，谢谢")).toBe("thanks")
+    expect(classifySmallTalk("豆芽 辛苦了")).toBe("thanks")
+  })
 })
 
 describe("classifySmallTalk - 防误伤", () => {
