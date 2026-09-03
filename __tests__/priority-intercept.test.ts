@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest"
-import { detectPriorityConfirm, type HistoryMsg } from "@/lib/assistant/priority-intercept"
+import {
+  detectPriorityConfirm,
+  detectPriorityFollowUp,
+  type HistoryMsg,
+} from "@/lib/assistant/priority-intercept"
 
 // ============ 评测集：2026-09-03 真实线上对话（用户 1243177461@qq.com） ============
 // 场景：豆苗询问插队/权重模式后，用户的选择回复曾被误判为「检索无果」兜底回复。
@@ -112,5 +116,31 @@ describe("detectPriorityConfirm - 防误伤", () => {
     ]
     const r = detectPriorityConfirm("插队模式", history, TAGS)
     expect(r.intercept).toBe(false)
+  })
+})
+
+describe("detectPriorityFollowUp - 配置追问（09-03 线上案例）", () => {
+  const historyAfterSave: HistoryMsg[] = [
+    { role: "user", content: "我选择「权重模式」来实现" },
+    { role: "assistant", content: "好的，已更新配置！AI安全 标签切换为 权重模式（2 倍），明天开始生效～" },
+  ]
+
+  it("用例9：「明天就可以生效了吗？」→ 识别为配置追问", () => {
+    expect(detectPriorityFollowUp("明天就可以生效了吗？", historyAfterSave)).toBe(true)
+  })
+
+  it("用例10：生效时间/出题方式/剩余题数追问均识别", () => {
+    for (const q of ["什么时候生效？", "生效了吗", "题目会怎么出？", "还有多少道没答？"]) {
+      expect(detectPriorityFollowUp(q, historyAfterSave)).toBe(true)
+    }
+  })
+
+  it("无优先级上下文时不识别", () => {
+    expect(detectPriorityFollowUp("明天就可以生效了吗？", [])).toBe(false)
+  })
+
+  it("上下文含优先级但消息与配置无关时不识别（防误伤）", () => {
+    expect(detectPriorityFollowUp("我明天写一篇 AI 安全心得", historyAfterSave)).toBe(false)
+    expect(detectPriorityFollowUp("今天天气怎么样", historyAfterSave)).toBe(false)
   })
 })

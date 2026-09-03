@@ -19,7 +19,7 @@ import {
   buildPriorityBlock,
   FALLBACK_NONE,
 } from "./prompts"
-import { detectPriorityConfirm } from "./priority-intercept"
+import { detectPriorityConfirm, detectPriorityFollowUp } from "./priority-intercept"
 import { classifySmallTalk, smallTalkReply } from "./small-talk"
 
 export interface AssistantProfileData {
@@ -184,6 +184,22 @@ export async function handleChat(userId: string, question: string): Promise<Chat
       await saveMessage(userId, "assistant", reply)
       return { reply, retrievedTag: null, source: "local" }
     }
+  }
+
+  // ---- 步骤 2.6：配置追问（生效时间/出题方式等）→ 基于当前配置确定性回答 ----
+  if (detectPriorityFollowUp(q, historyAsc)) {
+    const prios = await getQuizPriorities(userId)
+    const reply =
+      prios.length === 0
+        ? "当前没有配置特殊优先级，题目会按默认节奏安排：每天 1 次，优先到期复习和未答过的题～"
+        : `对的～从明天开始，拾遗出题就按咱们定好的配置来：\n${prios
+            .map(p =>
+              `**${p.tag}**：${p.mode === "insert" ? "插队模式，这个标签的题目优先排队，直到未答题全部答完" : `权重模式，这个标签的题目出现概率放大 ${p.multiplier} 倍`}`,
+            )
+            .join("\n")}\n\n想调整随时告诉我～`
+    await saveMessage(userId, "user", q)
+    await saveMessage(userId, "assistant", reply)
+    return { reply, retrievedTag: null, source: "local" }
   }
 
   // ---- 步骤 3：三级检索 ----

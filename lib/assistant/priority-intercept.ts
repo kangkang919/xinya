@@ -19,6 +19,8 @@ const MODE_CHOICE_WORDS = /插队|权重|一口气|细水长流/
 const PRIORITY_CONTEXT_WORDS = /插队模式|权重模式|出题频次|出题优先/
 const QUESTION_WORDS = /怎么|如何|为什么|哪些|？|\?/
 const NEGATIVE_WORDS = /不想|不要|取消|别|不用/
+// 配置追问核心词（生效时间/出题方式/剩余题数），不含「明天/开始」等易误伤词
+const FOLLOWUP_WORDS = /生效|起效|什么时候|啥时候|怎么出|如何出|多少道|还有几道|排队|插队开始/
 
 function modeFrom(text: string): "insert" | "weight" | null {
   if (/插队|一口气|集中/.test(text)) return "insert"
@@ -74,4 +76,16 @@ export function detectPriorityConfirm(
   if (!mode) mode = "insert"
 
   return { intercept: true, tag, mode }
+}
+
+/**
+ * 判断用户当前消息是否为优先级配置的追问（如「明天就可以生效了吗？」）。
+ * 条件：上下文有优先级讨论 + 命中配置追问核心词 + （是疑问句 或 短消息）。
+ */
+export function detectPriorityFollowUp(q: string, history: HistoryMsg[]): boolean {
+  const recentText = history.map(m => m.content).join("\n")
+  if (!PRIORITY_CONTEXT_WORDS.test(recentText)) return false
+  if (!FOLLOWUP_WORDS.test(q)) return false
+  const isQuestion = /[吗|？|\?]/.test(q) || QUESTION_WORDS.test(q)
+  return isQuestion || q.length <= 12
 }
