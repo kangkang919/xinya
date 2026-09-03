@@ -7,7 +7,7 @@ import { retrieve } from "./retrieve"
 import { getMemories, evaluateDialogueMemory, type MemoryItem } from "./memory"
 import { recordUsage } from "./usage"
 import { getUserStats } from "./stats"
-import { getQuizPriorities, getTagUnansweredStats } from "../quiz-priority"
+import { getQuizPriorities, getTagUnansweredStats, addQuizPriority } from "../quiz-priority"
 import {
   buildSystemPrompt,
   buildRetrievalBlock,
@@ -153,6 +153,52 @@ export async function handleChat(userId: string, question: string): Promise<Chat
     await saveMessage(userId, "user", q)
     await saveMessage(userId, "assistant", SAFE_REPLY)
     return { reply: SAFE_REPLY, retrievedTag: null, source: "local" }
+  }
+
+  // ---- 步骤 2.5：检测用户是否要求保存优先级配置 ----
+  const SAVE_PRIORITY_WORDS = /保存|实施|按你说的|确认|就这么|好的就|行就|可以就/
+  if (SAVE_PRIORITY_WORDS.test(q)) {
+    // 从最近对话历史中提取配置信息
+    const recentHistory = await prisma.assistantMessage.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+      take: 6, // 最近 3 轮对话
+    })
+    const recentText = recentHistory.reverse().map(m => m.content).join("\n")
+
+    // 提取标签（如 #AI 安全 或 AI 安全）
+    const tagMatch = recentText.match(/#?([\u4e00-\u9fa5A-Za-z0-9]+)(?:安全 | 标签 | 相关)/)
+    // 提取模式（插队/权重）
+    const modeMatch = recentText.match(/(插队 | 权重|优先|概率)/)
+
+    if (tagMatch) {
+      const tag = tagMatch[1]
+      const mode = modeMatch && modeMatch[1] === "权重" ? "weight" : "insert"
+
+      // 检查是否已存在相同标签的活跃配置
+      const existing = await prisma.quizPriority.findFirst({
+        where: { userId, tag, active: true },
+      })
+
+      if (!existing) {
+        await addQuizPriority(userId, {
+          tag,
+          mode,
+          multiplier: mode === "weight" ? 2.0 : undefined,
+          until: mode === "insert" ? "all_answered" : undefined,
+        })
+
+        const reply = `好的，已保存配置！\n\n**${tag}** 标签已设置为 **${mode === "insert" ? "插队模式" : "权重模式（2 倍）"}**\n${mode === "insert" ? "从明天开始，这个标签的题目会优先出现，直到所有未答题都答完为止。" : "这个标签的题目出现概率会提高到 2 倍。"}\n\n有新的心得或想调整配置，随时告诉我～`
+        await saveMessage(userId, "user", q)
+        await saveMessage(userId, "assistant", reply)
+        return { reply, retrievedTag: null, source: "local" }
+      } else {
+        const reply = `${tag} 标签的优先级配置已经存在了，无需重复保存。如需调整，告诉我具体怎么改～`
+        await saveMessage(userId, "user", q)
+        await saveMessage(userId, "assistant", reply)
+        return { reply, retrievedTag: null, source: "local" }
+      }
+    }
   }
 
   // ---- 步骤 3：三级检索 ----
