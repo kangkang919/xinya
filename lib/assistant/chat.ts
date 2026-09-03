@@ -20,6 +20,7 @@ import {
   FALLBACK_NONE,
 } from "./prompts"
 import { detectPriorityConfirm } from "./priority-intercept"
+import { classifySmallTalk, smallTalkReply } from "./small-talk"
 
 export interface AssistantProfileData {
   tone: string
@@ -62,17 +63,6 @@ export async function saveProfile(
 }
 
 // ============ 本地快判话术 ============
-const GREETINGS = [
-  /^(你好|您好|嗨|哈喽|hello|hi|在吗|早|早上好|中午好|下午好|晚上好|晚安|拜拜|再见)/i,
-  /^(谢谢|多谢|感谢|辛苦|好的|好嘞|明白|嗯嗯|知道了)/,
-]
-const GREETING_REPLIES = [
-  "你好呀～我是豆苗 🌱 想回顾心得还是梳理知识点？",
-  "在的～有什么想一起看看的心得吗？",
-  "嗨～随时可以聊聊你写下的心得",
-  "谢谢～能陪你一起回顾学习，我也很开心 🌱",
-  "不用客气～我们继续吧",
-]
 // 安全敏感词：心得语境不会出现，属安全边界，必须本地拦截（不依赖 LLM）
 const SAFE_BLOCK =
   /毒品|赌博|色情|裸聊|诈骗|黑客|破解|外挂|翻墙|枪支|炸弹|杀人|自杀|自残|恐怖袭击|银行卡|验证码|身份证号/
@@ -86,12 +76,6 @@ const ANALYSIS_WORDS = /薄弱|不会|难|错|兴趣|喜欢|擅长|学得好|掌
 
 // 宽泛学习相关（兜底：检索为 0 时，若问题与学习/成长相关，也补充最近心得让 AI 给通用建议）
 const LEARNING_WORDS = /学习|成长|提升|进步|知识|技能|理解|掌握|困惑|疑问|盲点|不足|改进|加强|复习|巩固|拓展|深入|思考|反思|总结|心得|体会|感悟|收获|启发|灵感|方向|目标|计划|方法|技巧|经验|教训|建议|推荐|怎么|如何|为什么|什么|哪些|哪里/
-
-function isPureGreeting(question: string): boolean {
-  const clean = question.replace(/[^\u4e00-\u9fffA-Za-z]/g, "")
-  if (clean.length > 8) return false
-  return GREETINGS.some(r => r.test(clean))
-}
 
 // ============ 保存消息 ============
 async function saveMessage(
@@ -141,9 +125,10 @@ export async function handleChat(userId: string, question: string): Promise<Chat
   const q = question.trim()
   if (!q) return { reply: "嗯？我好像没听清，再说一遍吧～", retrievedTag: null, source: "local" }
 
-  // ---- 步骤 1：纯寒暄（本地回应，不调 LLM 不检索） ----
-  if (isPureGreeting(q)) {
-    const reply = GREETING_REPLIES[Math.floor(Math.random() * GREETING_REPLIES.length)]
+  // ---- 步骤 1：纯寒暄（问候/感谢/应答/告别，本地回应，不调 LLM 不检索） ----
+  const smallTalk = classifySmallTalk(q)
+  if (smallTalk) {
+    const reply = smallTalkReply(smallTalk)
     await saveMessage(userId, "user", q)
     await saveMessage(userId, "assistant", reply)
     return { reply, retrievedTag: null, source: "local" }
