@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation"
 import { toMarkdown, downloadBlob } from "@/lib/export-utils"
 import { DeleteDialog } from "@/components/DeleteDialog"
 import { Sprout, Link, User as UserIcon, RotateCcw, Tags, Palette, Download, Info, ChevronDown } from "lucide-react"
+import { DoumiaoFloatingButton } from "@/components/DoumiaoFloatingButton"
 
 interface User {
   email: string
@@ -1282,40 +1283,7 @@ export default function RootPage() {
       )}
 
       {/* 豆苗悬浮头像按钮 */}
-      <div className="fixed z-40" style={{ bottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))', right: '1rem' }}>
-        <button
-          onClick={() => router.push('/assistant')}
-          className="rounded-full shadow-lg transition-transform active:scale-95"
-          style={{
-            width: '56px',
-            height: '56px',
-            padding: 0,
-            border: '2px solid #fff',
-            background: 'transparent',
-            overflow: 'hidden',
-          }}
-          aria-label="打开豆苗学习助手"
-        >
-          <img
-            src="/assistant/doumiao-avatar.png"
-            alt="豆苗"
-            className="w-full h-full object-cover"
-            style={{ objectPosition: 'center 20%' }}
-          />
-        </button>
-        {/* 在线小绿点（在头像圆框外面右上角） */}
-        <span
-          className="absolute rounded-full"
-          style={{
-            top: '-2px',
-            right: '-2px',
-            width: '12px',
-            height: '12px',
-            background: '#4CAF50',
-            border: '2px solid #fff',
-          }}
-        />
-      </div>
+      <DoumiaoFloatingButton />
     </div>
   )
 }

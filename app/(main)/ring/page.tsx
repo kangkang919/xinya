@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react"
 import { useTheme } from "@/lib/useTheme"
 import { Moon, BarChart3 } from "lucide-react"
+import { DoumiaoFloatingButton } from "@/components/DoumiaoFloatingButton"
 
 interface DayData {
   day: number
@@ -409,6 +410,9 @@ export default function RingPage() {
           <span className="text-lg font-bold" style={{ color: titleColor }}>{entryCount}</span>
         </div>
       </div>
+
+      {/* 豆苗悬浮头像按钮 */}
+      <DoumiaoFloatingButton />
     </div>
   )
 }

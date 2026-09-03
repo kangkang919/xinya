@@ -54,6 +54,22 @@ body {
   to   { max-height: 600px; opacity: 1; }
 }
 
+/* ===== 豆苗呼吸浮动 ===== */
+@keyframes doumiaoFloat {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-4px); }
+}
+
+/* ===== 豆苗绿点脉冲 ===== */
+@keyframes doumiaoPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.5); }
+  70%  { box-shadow: 0 0 0 6px rgba(76, 175, 80, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0); }
+}
+
+.doumiao-float { animation: doumiaoFloat 3s ease-in-out infinite; }
+.doumiao-pulse { animation: doumiaoPulse 2s ease-in-out infinite; }
+
 /* ===== 叶片展开（枝叶页动效）===== */
 @keyframes leafSpread {
   from { transform: scale(0.8) rotate(-5deg); opacity: 0; }

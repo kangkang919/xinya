@@ -17,6 +17,7 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
+import { DoumiaoFloatingButton } from "@/components/DoumiaoFloatingButton"
 
 interface TagChild {
   id: string
@@ -465,6 +466,9 @@ function LeafPageContent() {
           )}
         </div>
       )}
+
+      {/* 豆苗悬浮头像按钮 */}
+      <DoumiaoFloatingButton />
     </div>
   )
 }
