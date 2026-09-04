@@ -6,7 +6,11 @@ export const FALLBACK_REFUSE =
   "这个话题我还不太了解，系统设置了我仅能聊聊心得方面的话题，我们聊聊心得吧～"
 
 export const FALLBACK_NONE =
-  "我在你的心得里没有找到相关的话题呢～要不要换个问题，或者先去写一篇相关的心得？"
+  "这个问题很有意思，不过你的心得里暂时还没记录这块内容呢～要不你先写一篇相关的心得？写好了咱们再一起聊 "
+
+// 追问场景下的引导式回复（检索为 0 但用户在追问豆苗上一轮回复）
+export const FALLBACK_FOLLOWUP =
+  "嗯，这个问题值得深入想想～不过你的心得里暂时还没记录这块，要不先把你的想法写一篇心得？有了记录咱们就能聊得更深入了 🌱"
 
 export interface AssistantProfileLike {
   tone: string

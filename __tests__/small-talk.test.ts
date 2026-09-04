@@ -48,6 +48,18 @@ describe("classifySmallTalk - 线上对话评测集", () => {
     }
   })
 
+  it("用例5b：数字告别归告别类（09-04 线上案例）", () => {
+    for (const q of ["88", "886", "拜拜88", "88～"]) {
+      expect(classifySmallTalk(q)).toBe("farewell")
+    }
+  })
+
+  it("用例5c：组合寒暄——感谢+数字告别（09-04 线上案例：谢谢，88）", () => {
+    expect(classifySmallTalk("谢谢，88")).toBe("farewell")
+    expect(classifySmallTalk("谢谢88")).toBe("farewell")
+    expect(classifySmallTalk("不用展开了，我已经了解了，谢谢，88")).toBe("farewell")
+  })
+
   it("用例6：带称呼的问候归问候类（09-03 线上案例）", () => {
     for (const q of ["豆芽，你好", "豆苗，你好", "豆苗 你好", "豆苗你好", "苗苗，嗨"]) {
       expect(classifySmallTalk(q)).toBe("greeting")
@@ -79,5 +91,15 @@ describe("classifySmallTalk - 防误伤", () => {
   it("空消息不判定", () => {
     expect(classifySmallTalk("")).toBeNull()
     expect(classifySmallTalk("！！！")).toBeNull()
+  })
+
+  it("长消息含88不判定为告别（88在中间非结尾）", () => {
+    // "88" 在消息中间且前后有其他内容时，不应判定为告别
+    expect(classifySmallTalk("第88条心得写了什么")).toBeNull()
+  })
+
+  it("告别在长消息结尾仍可识别", () => {
+    // 告别模式不受长度限制
+    expect(classifySmallTalk("我还有问题想问但是算了88")).toBe("farewell")
   })
 })

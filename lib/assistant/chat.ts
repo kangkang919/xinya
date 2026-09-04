@@ -18,9 +18,11 @@ import {
   buildStatsBlock,
   buildPriorityBlock,
   FALLBACK_NONE,
+  FALLBACK_FOLLOWUP,
 } from "./prompts"
 import { detectPriorityConfirm, detectPriorityFollowUp } from "./priority-intercept"
 import { classifySmallTalk, smallTalkReply } from "./small-talk"
+import { detectFollowUp } from "./follow-up"
 
 export interface AssistantProfileData {
   tone: string
@@ -217,9 +219,12 @@ export async function handleChat(userId: string, question: string): Promise<Chat
     totalCount = recent.length
   }
   if (items.length === 0) {
+    // L3 引导式回复：区分追问场景和普通场景
+    const isFollowUp = detectFollowUp(q, historyAsc)
+    const fallback = isFollowUp ? FALLBACK_FOLLOWUP : FALLBACK_NONE
     await saveMessage(userId, "user", q)
-    await saveMessage(userId, "assistant", FALLBACK_NONE)
-    return { reply: FALLBACK_NONE, retrievedTag: null, source: "local" }
+    await saveMessage(userId, "assistant", fallback)
+    return { reply: fallback, retrievedTag: null, source: "local" }
   }
 
   // ---- 步骤 5：读取配置与相关记忆 ----
