@@ -399,7 +399,7 @@ Phase 7: 产品交付     —— 部署、交付
 | F14.6 | 整体可下线：lib/assistant、app/api/assistant、app/(main)/assistant 三目录 + 4 张 Assistant 表 + User 4 个关系字段 + 导航入口一并移除 | P1 |
 | F14.7 | Prompt 模板（lib/assistant/prompts.ts）：10 条输出指令（风格/长度/范围/寒暄/检索依据/禁止编造/矛盾处理/多结果提炼/宽泛提问/检索标签/拾遗画像）；人设骨架（语气/指导/称呼）+ 可选自由润色；固定话术（FALLBACK_REFUSE/FALLBACK_NONE） | P1 |
 | F14.8 | 拾遗画像/本月洞察/统计概览注入（lib/assistant/stats.ts 新建）：连续记录天数/平均每周篇数/最常记录时间/时间分布/标签分布 Top10；本月洞察无数据显示「暂无」 | P2 |
-| F14.9 | 豆苗可干预拾遗出题优先级（2026-09-03 新增）：新建 QuizPriority 表（tag/mode/multiplier/until/active）；支持 insert（插队直到未答题全部答完）和 weight（权重倍数）两种模式；豆苗对话可查询当前出题规划/设置优先级；出题逻辑（review-scheduler.ts）集成优先级配置；新增 API `/api/review/priority`；**关键约束**：新增心得生成的题目必须进入出题列表，优先级只影响抽取顺序不影响题目池完整性 | P2 |
+| F14.9 | 豆苗可干预拾遗出题优先级（2026-09-03 新增）：新建 QuizPriority 表（tag/mode/multiplier/until/active）；支持 insert（插队直到未答题全部答完）和 weight（权重倍数）两种模式；豆苗对话可查询当前出题规划/设置优先级；出题逻辑（review-scheduler.ts）集成优先级配置；新增 API `/api/review/priority`；**关键约束**：新增心得生成的题目必须进入出题列表，优先级只影响抽取顺序不影响题目池完整性；**2026-09-09 修复**：insert 模式改为独立查询路径（先查该标签到期题→再查未答题→降级通用），解决原逻辑先取 50 道通用候选再过滤导致 insert 标签题被旧题挤出候选池的缺陷 | P2 |
 | F14.10 | 豆苗悬浮头像全页面可达（2026-09-03 新增）：提取 DoumiaoFloatingButton 可复用组件（components/DoumiaoFloatingButton.tsx），萌芽/枝叶/年轮/根系四页统一放置（固定右下角，calc() 适配安全区域）；呼吸浮动动画（3s 周期 ±4px）+ 绿点脉冲扩散（2s 周期）；globals.css 新增 doumiao-float/doumiao-pulse 两个 keyframes | P2 |
 
 #### F8: 新用户引导
@@ -1272,6 +1272,8 @@ pm2 save
 
 | 日期 | 变更内容 | 状态 |
 | :--- | :--- | :--- |
+| 2026-09-09 | 修复 insert 优先级候选池挤压缺陷：原逻辑先取 50 道通用到期题再过滤 insert 标签，当旧题超过 50 道时 insert 标签题被挤出候选池导致优先级完全失效；改为 insert 标签独立查询路径（先查该标签到期题→再查未答题→降级通用），不受 50 道限制 | 待验收 |
+| 2026-09-04 | 分层回复策略：L0 修复 small-talk 数字寒暄（88/886 等网络告别语，clean 正则保留数字，告别优先于长度检查）；L1 新增 follow-up.ts 追问识别模块（具体说说/为什么/嗯嗯等）；L3 改造检索无果回复为引导式（FALLBACK_NONE/FALLBACK_FOLLOWUP 替代冷拒绝） | 已验收 |
 | 2026-09-03 | F14.10 豆苗悬浮头像全页面可达：提取 DoumiaoFloatingButton 组件，萌芽/枝叶/年轮/根系四页统一放置；新增呼吸浮动 + 绿点脉冲动画；修复萌芽页实际为 app/(main)/page.tsx 而非 (sprout)/page.tsx 的路由认知问题 | 已验收 |
 | 2026-09-02 | 新增 F14 豆苗学习助手：AI 聊天助手（DeepSeek，以本人非草稿心得为知识库），含 3 步人设向导/三级检索/记忆/消耗记录/清空历史；底部导航新增第 5 tab「豆苗」；迁移 20260902_add_assistant_models（线上账号无 shadow DB 权限，手写 SQL 应用 + migrate resolve）；新增 AssistantProfile/Message/Memory/Usage 四表与 User 关系字段（带删除注释）；端到端验证通过（寒暄/越界/安全词/标签检索/记忆/清空/消耗） | 已验收 |
 | 2026-09-02 | 遗留记录：线上 DB Entry.searchVector 列与索引仍在但 schema 已无（F11 2026-08-27 重构时未 DROP），当前无读写路径、检索已走 ILIKE；迁移 diff 时勿带出 DROP，后续清理需单独评估 | 已记录 |
