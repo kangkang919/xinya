@@ -65,16 +65,90 @@ export async function getTodayCard(userId: string): Promise<TodayCard | null> {
     priorities.filter(p => p.mode === "weight" && p.active).map(p => [p.tag, p.multiplier])
   )
 
-  // 查找待复习题目（nextReviewAt <= now，按答错优先 > 久未复习优先）
   const now = new Date()
+
+  // ====== insert 优先级：独立查询路径，不受 50 道通用候选限制 ======
+  // 背景：原逻辑先取 50 道通用到期题再过滤 insert 标签，
+  // 当旧题（如 8月27日）超过 50 道时，insert 标签的较新到期题（如 9月3日）
+  // 被挤出候选池，导致优先级完全失效。
+  // 修复：有 insert 标签时，先独立查该标签的到期题，命中即返回。
+  if (insertTags.length > 0) {
+    const insertDueQuestions = await prisma.quizRecord.findMany({
+      where: {
+        userId,
+        nextReviewAt: { lte: now },
+        question: {
+          entry: {
+            tags: {
+              some: { name: { in: insertTags } },
+            },
+          },
+        },
+      },
+      orderBy: [
+        { correct: "asc" },
+        { nextReviewAt: "asc" },
+      ],
+      include: {
+        question: {
+          include: {
+            entry: { include: { tags: true } },
+          },
+        },
+      },
+      take: 50,
+    })
+
+    if (insertDueQuestions.length > 0) {
+      const randomIndex = selectByWeight(insertDueQuestions, weightMap)
+      return formatCard(insertDueQuestions[randomIndex])
+    }
+
+    // insert 标签无到期题 → 查其未答题（answeredAt=null）
+    const insertUnreviewed = await prisma.quizRecord.findMany({
+      where: {
+        userId,
+        answeredAt: null,
+        question: {
+          entry: {
+            tags: {
+              some: { name: { in: insertTags } },
+            },
+          },
+        },
+      },
+      orderBy: { nextReviewAt: "asc" },
+      include: {
+        question: {
+          include: {
+            entry: { include: { tags: true } },
+          },
+        },
+      },
+      take: 50,
+    })
+
+    if (insertUnreviewed.length > 0) {
+      const randomIndex = selectByWeight(insertUnreviewed, weightMap)
+      devLog("[Scheduler] Found insert-tag unreviewed record, entryId:", insertUnreviewed[randomIndex].entryId)
+      return formatCard(insertUnreviewed[randomIndex])
+    }
+
+    // insert 标签完全无题 → 降级走通用逻辑
+    devLog("[Scheduler] Insert tags have no due/unreviewed questions, falling back to general logic")
+  }
+
+  // ====== 通用逻辑（无 insert 标签 或 insert 降级） ======
+
+  // 查找待复习题目（nextReviewAt <= now，按答错优先 > 久未复习优先）
   const dueQuestions = await prisma.quizRecord.findMany({
     where: {
       userId,
       nextReviewAt: { lte: now },
     },
     orderBy: [
-      { correct: "asc" }, // 答错的优先（false < true）
-      { nextReviewAt: "asc" }, // 久未复习的优先
+      { correct: "asc" },
+      { nextReviewAt: "asc" },
     ],
     include: {
       question: {
@@ -85,24 +159,12 @@ export async function getTodayCard(userId: string): Promise<TodayCard | null> {
         },
       },
     },
-    take: 50, // 扩大候选池，便于优先级筛选
+    take: 50,
   })
 
   if (dueQuestions.length > 0) {
-    // 应用 insert 优先级：优先从指定标签中选取
-    let candidates = dueQuestions
-    if (insertTags.length > 0) {
-      const insertCandidates = dueQuestions.filter(q =>
-        q.question.entry.tags.some(t => insertTags.includes(t.name))
-      )
-      if (insertCandidates.length > 0) {
-        candidates = insertCandidates
-      }
-    }
-
-    // 应用 weight 优先级：调整随机权重
-    const randomIndex = selectByWeight(candidates, weightMap)
-    return formatCard(candidates[randomIndex])
+    const randomIndex = selectByWeight(dueQuestions, weightMap)
+    return formatCard(dueQuestions[randomIndex])
   }
 
   // 若无待复习题，优先查找已有题目但未答题的记录
@@ -125,21 +187,9 @@ export async function getTodayCard(userId: string): Promise<TodayCard | null> {
   })
 
   if (unreviewedRecords.length > 0) {
-    // 应用 insert 优先级
-    let candidates = unreviewedRecords
-    if (insertTags.length > 0) {
-      const insertCandidates = unreviewedRecords.filter(q =>
-        q.question.entry.tags.some(t => insertTags.includes(t.name))
-      )
-      if (insertCandidates.length > 0) {
-        candidates = insertCandidates
-      }
-    }
-
-    // 应用 weight 优先级
-    const randomIndex = selectByWeight(candidates, weightMap)
-    devLog("[Scheduler] Found unreviewed record, entryId:", candidates[randomIndex].entryId)
-    return formatCard(candidates[randomIndex])
+    const randomIndex = selectByWeight(unreviewedRecords, weightMap)
+    devLog("[Scheduler] Found unreviewed record, entryId:", unreviewedRecords[randomIndex].entryId)
+    return formatCard(unreviewedRecords[randomIndex])
   }
 
   // 最后才查找尚未出题的心得（需要在线生成题目）

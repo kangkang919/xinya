@@ -30,6 +30,10 @@ vi.mock("@/lib/prisma", () => ({
       findMany: vi.fn(),
       deleteMany: vi.fn(),
     },
+    quizPriority: {
+      findMany: vi.fn(),
+      update: vi.fn(),
+    },
   },
 }))
 
@@ -41,8 +45,15 @@ vi.mock("@/lib/template-questions", () => ({
   generateKeyPoints: vi.fn(() => "要点摘要"),
 }))
 
-import { submitAnswer } from "@/lib/review-scheduler"
+// Mock quiz-priority 模块
+vi.mock("@/lib/quiz-priority", () => ({
+  getQuizPriorities: vi.fn(),
+  autoDeactivateCompletedPriorities: vi.fn().mockResolvedValue(undefined),
+}))
+
+import { submitAnswer, getTodayCard } from "@/lib/review-scheduler"
 import { prisma } from "@/lib/prisma"
+import { getQuizPriorities } from "@/lib/quiz-priority"
 
 describe("submitAnswer", () => {
   beforeEach(() => {
@@ -237,5 +248,125 @@ describe("submitAnswer", () => {
     expect(updateCall.data.correct).toBe(false)
     expect(updateCall.data.streak).toBe(0)
     expect(updateCall.data.userAnswer).toEqual([1])
+  })
+})
+
+// ============ getTodayCard + insert 优先级独立查询 ============
+
+const mockSetting = { reviewEnabled: true, lastCardDate: null }
+const mockInsertTagQuestion = {
+  entryId: "e-ai",
+  question: {
+    id: "q-ai",
+    question: "AI安全问题",
+    type: "single",
+    options: ["A", "B"],
+    answer: [0],
+    explanation: "解析",
+    entry: { id: "e-ai", title: "AI安全心得", keyPoints: "", tags: [{ name: "AI安全" }] },
+  },
+}
+const mockGeneralQuestion = {
+  entryId: "e-general",
+  question: {
+    id: "q-general",
+    question: "通用问题",
+    type: "single",
+    options: ["A", "B"],
+    answer: [0],
+    explanation: "解析",
+    entry: { id: "e-general", title: "通用心得", keyPoints: "", tags: [{ name: "思辨" }] },
+  },
+}
+
+describe("getTodayCard - insert 优先级独立查询（09-09 修复）", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    ;(prisma.userSetting.findUnique as any).mockResolvedValue(mockSetting)
+    ;(prisma.userSetting.upsert as any).mockResolvedValue({})
+  })
+
+  it("用例1：insert 标签有到期题 → 独立查询命中，返回 insert 标签题", async () => {
+    ;(getQuizPriorities as any).mockResolvedValue([
+      { tag: "AI安全", mode: "insert", active: true },
+    ])
+    // insert 到期题查询返回 AI安全题
+    ;(prisma.quizRecord.findMany as any)
+      .mockResolvedValueOnce([mockInsertTagQuestion]) // insert due
+    // 通用查询不会被调用（insert 已命中直接返回）
+
+    const card = await getTodayCard("u1")
+
+    expect(card).not.toBeNull()
+    expect(card!.question).toBe("AI安全问题")
+    expect(card!.entryTitle).toBe("AI安全心得")
+    // 验证第一次 findMany 调用包含 insert 标签过滤
+    const firstCall = (prisma.quizRecord.findMany as any).mock.calls[0][0]
+    expect(firstCall.where.question.entry.tags.some.name.in).toEqual(["AI安全"])
+  })
+
+  it("用例2：insert 标签无到期题但有未答题 → 返回 insert 标签未答题", async () => {
+    ;(getQuizPriorities as any).mockResolvedValue([
+      { tag: "AI安全", mode: "insert", active: true },
+    ])
+    // insert 到期题 → 空
+    ;(prisma.quizRecord.findMany as any)
+      .mockResolvedValueOnce([]) // insert due = empty
+      .mockResolvedValueOnce([mockInsertTagQuestion]) // insert unreviewed
+
+    const card = await getTodayCard("u1")
+
+    expect(card).not.toBeNull()
+    expect(card!.question).toBe("AI安全问题")
+  })
+
+  it("用例3：insert 标签完全无题 → 降级走通用逻辑", async () => {
+    ;(getQuizPriorities as any).mockResolvedValue([
+      { tag: "AI安全", mode: "insert", active: true },
+    ])
+    // insert 到期题 → 空，insert 未答题 → 空
+    ;(prisma.quizRecord.findMany as any)
+      .mockResolvedValueOnce([]) // insert due = empty
+      .mockResolvedValueOnce([]) // insert unreviewed = empty
+      .mockResolvedValueOnce([mockGeneralQuestion]) // general due
+
+    const card = await getTodayCard("u1")
+
+    expect(card).not.toBeNull()
+    expect(card!.question).toBe("通用问题")
+  })
+
+  it("用例4：无 insert 标签 → 通用逻辑正常工作", async () => {
+    ;(getQuizPriorities as any).mockResolvedValue([])
+    ;(prisma.quizRecord.findMany as any)
+      .mockResolvedValueOnce([mockGeneralQuestion]) // general due
+
+    const card = await getTodayCard("u1")
+
+    expect(card).not.toBeNull()
+    expect(card!.question).toBe("通用问题")
+  })
+
+  it("用例5：insert 标签到期题不受 50 道通用候选挤压（核心修复场景）", async () => {
+    // 模拟：50+ 道旧题（8月27日）+ 13 道 AI安全题（9月3日）
+    // 修复前：取 50 道通用候选 → AI安全题被挤出 → insert 过滤 0 道
+    // 修复后：insert 独立查询 → 直接命中 AI安全题
+    ;(getQuizPriorities as any).mockResolvedValue([
+      { tag: "AI安全", mode: "insert", active: true },
+    ])
+
+    const oldQuestions = Array.from({ length: 50 }, (_, i) => ({
+      ...mockGeneralQuestion,
+      question: { ...mockGeneralQuestion.question, id: `q-old-${i}` },
+    }))
+
+    ;(prisma.quizRecord.findMany as any)
+      .mockResolvedValueOnce([mockInsertTagQuestion]) // insert due → 直接命中
+
+    const card = await getTodayCard("u1")
+
+    expect(card!.question).toBe("AI安全问题")
+    expect(card!.entryTitle).toBe("AI安全心得")
+    // 关键：insert 查询独立于通用 50 道候选，不受挤压
   })
 })
