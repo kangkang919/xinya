@@ -128,14 +128,19 @@ async function matchByTitle(
   excludeIds: Set<string>
 ): Promise<RetrievalItem[]> {
   if (!keywords.length) return []
+  // 搜索 title + keyPoints + content 三字段，与用户搜索行为一致
   const entries = await prisma.entry.findMany({
     where: {
       userId,
       isDraft: false,
-      OR: keywords.map(kw => ({ title: { contains: kw, mode: "insensitive" as const } })),
+      OR: keywords.flatMap(kw => [
+        { title: { contains: kw, mode: "insensitive" as const } },
+        { keyPoints: { contains: kw, mode: "insensitive" as const } },
+        { content: { contains: kw, mode: "insensitive" as const } },
+      ]),
     },
     select: {
-      id: true, title: true, keyPoints: true, recordTime: true,
+      id: true, title: true, keyPoints: true, content: true, recordTime: true,
       tags: { select: { name: true } },
     },
     orderBy: { recordTime: "desc" },
@@ -168,11 +173,16 @@ async function matchByContent(
   excludeIds: Set<string>
 ): Promise<RetrievalItem[]> {
   if (!keywords.length) return []
+  // 搜索 title + keyPoints + content 三字段，与用户搜索行为一致
   const rawEntries = await prisma.entry.findMany({
     where: {
       userId,
       isDraft: false,
-      OR: keywords.map(kw => ({ content: { contains: kw, mode: "insensitive" as const } })),
+      OR: keywords.flatMap(kw => [
+        { title: { contains: kw, mode: "insensitive" as const } },
+        { keyPoints: { contains: kw, mode: "insensitive" as const } },
+        { content: { contains: kw, mode: "insensitive" as const } },
+      ]),
     },
     select: {
       id: true, title: true, keyPoints: true, content: true, recordTime: true,
@@ -186,12 +196,13 @@ async function matchByContent(
   const scored = rawEntries
     .filter(e => !excludeIds.has(e.id))
     .map(e => {
-      const plain = stripHtml(e.content, 10000)
-      const lower = plain.toLowerCase()
+      // 合并三字段文本用于频率统计和 Latin token 过滤
+      const combinedText = [e.title, e.keyPoints || "", stripHtml(e.content, 10000)].join(" ")
+      const lower = combinedText.toLowerCase()
       const freq = keywords.reduce((sum, kw) => sum + (lower.split(kw.toLowerCase()).length - 1), 0)
-      return { e, freq, plain, lower }
+      return { e, freq, plain: stripHtml(e.content, 10000), lower }
     })
-    // 当提问含 Latin token 时，只保留内容中包含至少一个 Latin token 的条目
+    // 当提问含 Latin token 时，只保留包含至少一个 Latin token 的条目
     // 防止高频中文词（如"理解""干什么"）把精确英文匹配挤出前 5
     .filter(({ lower }) => latinTokens.length === 0 || latinTokens.some(t => lower.includes(t.toLowerCase())))
     .sort((a, b) => b.freq - a.freq || b.e.recordTime.getTime() - a.e.recordTime.getTime())
