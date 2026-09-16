@@ -1273,7 +1273,7 @@ pm2 save
 | 日期 | 变更内容 | 状态 |
 | :--- | :--- | :--- |
 | 2026-09-16 | 修复豆苗检索结果注入 LLM 缺失正文片段：buildRetrievalBlock 原来只注入 keyPoints（摘要），内容匹配命中的 excerpt（正文前 200 字）未传递给 LLM，导致关键词在正文中出现但摘要未提及时 LLM 误判为“未找到”；现 excerpt 随检索结果一并注入 | 已验收 |
-| 2026-09-16 | 修复内容匹配 Latin token 被高频中文词挤出：matchByContent 按关键词总频率排序时，"理解""干什么"等高频词匹配条目频率高于"Prisma"精确匹配，导致含 Prisma 的 4 篇心得被挤出前 5；改为当提问含 Latin token 时，内容匹配结果必须包含至少一个 Latin token，确保精确英文匹配不被淹没 | 已验收 |
+| 2026-09-16 | 修复检索字段覆盖不全：matchByTitle 原只搜 title、matchByContent 原只搜 content，导致关键词出现在 keyPoints 或标题时检索漏掉（如"用户故事地图"只在标题中）；统一扩展为 title+keyPoints+content 三字段 OR 搜索，与用户搜索行为对齐；同时 matchByContent 频率统计和 Latin token 过滤改为基于三字段合并文本 | 待验收 |
 | 2026-09-09 | 修复 insert 优先级候选池挤压缺陷：原逻辑先取 50 道通用到期题再过滤 insert 标签，当旧题超过 50 道时 insert 标签题被挤出候选池导致优先级完全失效；改为 insert 标签独立查询路径（先查该标签到期题→再查未答题→降级通用），不受 50 道限制 | 已验收 |
 | 2026-09-04 | 分层回复策略：L0 修复 small-talk 数字寒暄（88/886 等网络告别语，clean 正则保留数字，告别优先于长度检查）；L1 新增 follow-up.ts 追问识别模块（具体说说/为什么/嗯嗯等）；L3 改造检索无果回复为引导式（FALLBACK_NONE/FALLBACK_FOLLOWUP 替代冷拒绝） | 已验收 |
 | 2026-09-03 | F14.10 豆苗悬浮头像全页面可达：提取 DoumiaoFloatingButton 组件，萌芽/枝叶/年轮/根系四页统一放置；新增呼吸浮动 + 绿点脉冲动画；修复萌芽页实际为 app/(main)/page.tsx 而非 (sprout)/page.tsx 的路由认知问题 | 已验收 |
