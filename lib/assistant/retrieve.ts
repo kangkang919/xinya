@@ -36,7 +36,7 @@ const STOP_WORDS = [
 ]
 
 // 英文/数字 token（≥2 字符）：React、CSS、useMemo、zustand、AI
-function extractLatinTokens(s: string): string[] {
+export function extractLatinTokens(s: string): string[] {
   return (s.match(/[A-Za-z][A-Za-z0-9+.\-#]*/g) || []).filter(t => t.length >= 2)
 }
 
@@ -164,6 +164,7 @@ async function matchByTitle(
 async function matchByContent(
   userId: string,
   keywords: string[],
+  latinTokens: string[],
   excludeIds: Set<string>
 ): Promise<RetrievalItem[]> {
   if (!keywords.length) return []
@@ -188,8 +189,11 @@ async function matchByContent(
       const plain = stripHtml(e.content, 10000)
       const lower = plain.toLowerCase()
       const freq = keywords.reduce((sum, kw) => sum + (lower.split(kw.toLowerCase()).length - 1), 0)
-      return { e, freq, plain }
+      return { e, freq, plain, lower }
     })
+    // 当提问含 Latin token 时，只保留内容中包含至少一个 Latin token 的条目
+    // 防止高频中文词（如"理解""干什么"）把精确英文匹配挤出前 5
+    .filter(({ lower }) => latinTokens.length === 0 || latinTokens.some(t => lower.includes(t.toLowerCase())))
     .sort((a, b) => b.freq - a.freq || b.e.recordTime.getTime() - a.e.recordTime.getTime())
 
   const items: RetrievalItem[] = []
@@ -222,7 +226,7 @@ export async function retrieve(userId: string, question: string): Promise<Retrie
   // 二、三级并行执行
   const [titleItems, contentItems] = await Promise.all([
     keywords.length ? matchByTitle(userId, keywords, excludeIds) : Promise.resolve([]),
-    keywords.length ? matchByContent(userId, keywords, excludeIds) : Promise.resolve([]),
+    keywords.length ? matchByContent(userId, keywords, latinTokens, excludeIds) : Promise.resolve([]),
   ])
 
   // 合并：高 → 中 → 低
