@@ -1,9 +1,23 @@
 // 豆苗学习助手：三级检索（需求文档 §5.1/§5.2/§5.3）
-// 三条渠道独立并行：标签匹配(高) → 标题匹配(中) → 内容匹配(低)
+// 三条渠道独立并行：标签匹配 (高) → 标题匹配 (中) → 内容匹配 (低)
 // 跨渠道去重：同一篇心得只保留最高优先级的一次命中
 
 import { prisma } from "@/lib/prisma"
 import { stripHtml } from "@/lib/utils"
+import { Jieba, TfIdf } from "@node-rs/jieba"
+import { dict, idf } from "@node-rs/jieba/dict"
+
+// 初始化 jieba 单例（惰性加载，首次调用时初始化）
+let _jieba: Jieba | null = null
+let _tfIdf: TfIdf | null = null
+function getJieba(): Jieba {
+  if (!_jieba) _jieba = Jieba.withDict(dict)
+  return _jieba
+}
+function getTfIdf(): TfIdf {
+  if (!_tfIdf) _tfIdf = TfIdf.withDict(idf)
+  return _tfIdf
+}
 
 export interface RetrievalItem {
   entryId: string
@@ -26,45 +40,28 @@ const MAX_TAG = 5
 const MAX_TITLE = 3
 const MAX_CONTENT = 5
 
-// 疑问/寒暄/虚词停用词：从提问中剔除，避免作为检索关键词
-const STOP_WORDS = [
+// 停用词：从 jieba 提取结果中过滤掉
+const STOP_WORDS = new Set([
   "你好", "请问", "可以", "帮我", "一下", "关于", "什么", "哪些", "哪个",
   "怎么", "如何", "为什么", "为何", "多少", "怎样", "是不是", "有没有",
   "我", "你", "的", "了", "吗", "呢", "啊", "呀", "吧", "嘛", "是", "在",
   "和", "与", "跟", "过", "有", "没", "写", "记", "看", "说", "讲", "学",
   "心", "得", "篇", "条", "今天", "昨天", "最近", "感觉", "觉得", "知道",
-]
+])
 
 // 英文/数字 token（≥2 字符）：React、CSS、useMemo、zustand、AI
 export function extractLatinTokens(s: string): string[] {
   return (s.match(/[A-Za-z][A-Za-z0-9+.\-#]*/g) || []).filter(t => t.length >= 2)
 }
 
-// 中文连续段（剔除停用词后 ≥2 字的片段；>8 字截前 8 字，避免整句当关键词）
-function extractChineseSegs(s: string): string[] {
-  const cleaned = s
-    .replace(/[A-Za-z0-9+.\-#\s]/g, " ")
-    .split(/\s+/)
-    .map(seg => {
-      for (const w of STOP_WORDS) {
-        // 仅剔除位于段首/段尾的停用词，保留段内的（如「状态管理」）
-        seg = seg.replace(new RegExp(`^(?:${w})`, "g"), "").replace(new RegExp(`(?:${w})$`, "g"), "")
-      }
-      return seg
-    })
-    .join(" ")
-    .split(/\s+/)
-  const result: string[] = []
-  for (let seg of cleaned) {
-    seg = seg.trim()
-    if (seg.length >= 2) result.push(seg.length > 8 ? seg.slice(0, 8) : seg)
-  }
-  return result.slice(0, 4) // 最多取 4 个中文段
-}
-
-// 从提问中提取检索关键词
+// 从提问中提取检索关键词（使用 jieba TF-IDF）
 export function extractKeywords(question: string): string[] {
-  return [...extractLatinTokens(question), ...extractChineseSegs(question)]
+  const jieba = getJieba()
+  const tfIdf = getTfIdf()
+  const keywords = tfIdf.extractKeywords(jieba, question, 10)
+  return keywords
+    .map(k => k.keyword)
+    .filter(k => k.length >= 2 && !STOP_WORDS.has(k))
 }
 
 // ============ 一级：标签匹配（高优先级） ============
