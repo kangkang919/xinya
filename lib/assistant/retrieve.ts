@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma"
 import { stripHtml } from "@/lib/utils"
 import { Jieba, TfIdf } from "@node-rs/jieba"
 import { dict, idf } from "@node-rs/jieba/dict"
+import { reformulateQuery } from "./query-reformulate"
 
 // 初始化 jieba 单例（惰性加载，首次调用时初始化）
 let _jieba: Jieba | null = null
@@ -223,7 +224,6 @@ async function matchByContent(
 
 // ============ 主入口：三级检索 ============
 export async function retrieve(userId: string, question: string): Promise<RetrievalResult> {
-  const keywords = extractKeywords(question)
   const latinTokens = extractLatinTokens(question)
   const excludeIds = new Set<string>()
 
@@ -231,11 +231,28 @@ export async function retrieve(userId: string, question: string): Promise<Retrie
   const tagResult = await matchByTag(userId, question, latinTokens)
   for (const it of tagResult.items) excludeIds.add(it.entryId)
 
+  // 方案 C：LLM 提取精确搜索短语（与标签匹配并行）
+  const llmPhrases = await reformulateQuery(question)
+
+  // 优先用 LLM 短语搜索
+  let searchKeywords = llmPhrases.length > 0 ? llmPhrases : extractKeywords(question)
+
   // 二、三级并行执行
   const [titleItems, contentItems] = await Promise.all([
-    keywords.length ? matchByTitle(userId, keywords, excludeIds) : Promise.resolve([]),
-    keywords.length ? matchByContent(userId, keywords, latinTokens, excludeIds) : Promise.resolve([]),
+    searchKeywords.length ? matchByTitle(userId, searchKeywords, excludeIds) : Promise.resolve([]),
+    searchKeywords.length ? matchByContent(userId, searchKeywords, latinTokens, excludeIds) : Promise.resolve([]),
   ])
+
+  // 如果 LLM 短语搜索无结果，降级到 jieba 关键词
+  if (titleItems.length === 0 && contentItems.length === 0 && llmPhrases.length > 0) {
+    const jiebaKeywords = extractKeywords(question)
+    const [titleItems2, contentItems2] = await Promise.all([
+      jiebaKeywords.length ? matchByTitle(userId, jiebaKeywords, excludeIds) : Promise.resolve([]),
+      jiebaKeywords.length ? matchByContent(userId, jiebaKeywords, latinTokens, excludeIds) : Promise.resolve([]),
+    ])
+    titleItems.push(...titleItems2)
+    contentItems.push(...contentItems2)
+  }
 
   // 合并：高 → 中 → 低
   const items = [...tagResult.items, ...titleItems, ...contentItems]
