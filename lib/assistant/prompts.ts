@@ -75,6 +75,7 @@ export interface SearchItemLike {
   recordTime: Date
   priority: "high" | "medium" | "low"
   matchType: "tag" | "title" | "content"
+  excerpt?: string // 内容匹配时附带命中正文片段（≤200字）
 }
 
 export function buildRetrievalBlock(results: SearchItemLike[]): string {
@@ -83,7 +84,8 @@ export function buildRetrievalBlock(results: SearchItemLike[]): string {
   const lines = results.map((r, i) => {
     const tagStr = r.tags.length ? r.tags.map((t) => `#${t}`).join(" ") : "（无标签）"
     const dateStr = r.recordTime ? new Date(r.recordTime).toISOString().slice(0, 10) : ""
-    return `${i + 1}.【优先级：${prioMap[r.priority]}】《${r.title}》\n   标签：${tagStr}  记录时间：${dateStr}\n   摘要：${r.keyPoints || "（无要点，正文未提供）"}`
+    const excerptLine = r.excerpt ? `\n   正文片段：${r.excerpt}` : ""
+    return `${i + 1}.【优先级：${prioMap[r.priority]}】《${r.title}》\n   标签：${tagStr}  记录时间：${dateStr}\n   摘要：${r.keyPoints || "（无要点，正文未提供）"}${excerptLine}`
   })
   return `## 心得检索结果（仅以下内容可作为回答依据；共 ${results.length} 条）\n${lines.join("\n")}`
 }

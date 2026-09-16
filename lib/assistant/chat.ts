@@ -100,6 +100,7 @@ interface RecentItem {
   recordTime: Date
   priority: "high" | "medium" | "low"
   matchType: "tag" | "title" | "content"
+  excerpt?: string
 }
 
 async function appendRecentEntries(userId: string, excludeIds: Set<string>): Promise<RecentItem[]> {
