@@ -218,14 +218,14 @@ Phase 7: 产品交付     —— 部署、交付
 | F9.19 | 心得详情页右上角删除按钮（与编辑按钮同行）：复用列表页删除规范——二次确认弹窗（"确定要让这片叶子飘落吗？"）+ 删除成功提示"叶子已飘落 🍂"，删除后自动返回来源页 ✅ | P0 |
 | F9.20 | 学习画像重置（重新播种）：画像卡片标题行右侧"重新播种"按钮（仅有画像数据时显示），确认弹窗后 POST /api/review/reset：答题记录恢复初始态（不删除任何数据，题目缓存保留），清空 lastCardDate 使当天萌芽页可再次弹题，后续按正常调度逻辑出题 ✅ | P0 |
 | F9.21 | 题目生成兜底机制：每日定时任务自动运行 backfill，为所有缺失题目/AI总结的心得补生成；若补生成成功，发送邮件通知管理员（1243177461@qq.com），告知补全数量与失败详情 ✅ | P1 |
-| F9.22 | 题目重生机制：定时任务（每周三/六凌晨3:00）为已答对（correct=true）的心得从不同角度生成新测试题；旧题保留（学习画像历史数据不受影响），仅将 nextReviewAt 设到 100 年后使其不再弹出；新题创建新 QuizQuestion + QuizRecord（answeredAt=null, nextReviewAt=明天）；重生结果随邮件通知管理员 ✅ | P1 |
+| F9.22 | 题目重生机制：定时任务（每周三/六凌晨3:00）为已答对（correct=true）且无未答题（answeredAt=null）的心得从不同角度生成新测试题；旧题保留（学习画像历史数据不受影响），仅将 nextReviewAt 设到 100 年后使其不再弹出；新题创建新 QuizQuestion + QuizRecord（answeredAt=null, nextReviewAt=明天）；重生结果随邮件通知管理员；**去重机制：已有未答题的心得跳过重生，避免重复生成** ✅ | P1 |
 
 **F9.21 + F9.22 实现说明：**
 - 脚本位置：`scripts/daily-backfill.ts`
 - 运行命令：`npm run backfill`
 - 定时任务：服务器 crontab 每周三、周六凌晨 3:00 执行（`0 3 * * 3,6 cd /www/wwwroot/xinya && npm run backfill >> /tmp/xinya-backfill.log 2>&1`）
 - 邮件通知：无论结果如何均发送邮件至管理员邮箱——①有补全→补全详情 ②有重生→重生详情（新旧题对比）③自检正常→检查篇数 ④程序异常→故障代码和错误信息
-- 题目重生逻辑：查找答对过的心得 → DeepSeek 从不同角度出新题（失败降级模板）→ 旧题退休（nextReviewAt=100年后）→ 新题入库（answeredAt=null, nextReviewAt=明天）
+- 题目重生逻辑：查找答对过的心得 → **过滤已有未答题的心得（去重）** → DeepSeek 从不同角度出新题（失败降级模板）→ 旧题退休（nextReviewAt=100年后）→ 新题入库（answeredAt=null, nextReviewAt=明天）
 
 #### F9 完整出题与调度逻辑
 
@@ -258,10 +258,11 @@ Phase 7: 产品交付     —— 部署、交付
 **四、定时重生流程（F9.22）：**
 
 1. 查找所有有答对记录（correct=true）的心得
-2. 为每篇心得调 DeepSeek 从不同角度生成 1 道新题（传入旧题内容避免重复）
-3. 旧题的所有 QuizRecord → nextReviewAt 设为 100 年后（退休，不再弹出）
-4. 新题创建 QuizQuestion + QuizRecord（answeredAt=null, nextReviewAt=明天, streak=0）
-5. 邮件通知管理员重生结果
+2. **去重过滤：查询这些心得中是否已有未答题（answeredAt=null），有则跳过（说明上次重生后还没答过）**
+3. 为剩余心得调 DeepSeek 从不同角度生成 1 道新题（传入旧题内容避免重复）
+4. 旧题的所有 QuizRecord → nextReviewAt 设为 100 年后（退休，不再弹出）
+5. 新题创建 QuizQuestion + QuizRecord（answeredAt=null, nextReviewAt=明天, streak=0）
+6. 邮件通知管理员重生结果（含跳过数量）
 
 #### F9 数据模型
 
@@ -1273,6 +1274,7 @@ pm2 save
 | 日期 | 变更内容 | 状态 |
 | :--- | :--- | :--- |
 | 2026-09-16 | 修复豆苗检索结果注入 LLM 缺失正文片段：buildRetrievalBlock 原来只注入 keyPoints（摘要），内容匹配命中的 excerpt（正文前 200 字）未传递给 LLM，导致关键词在正文中出现但摘要未提及时 LLM 误判为“未找到”；现 excerpt 随检索结果一并注入 | 已验收 |
+| 2026-09-16 | F9.22 题目重生去重修复：原逻辑每次定时任务为所有历史答对过的心得重生，无去重导致同一篇心得被反复重生（如33篇全部重生）；修复：新增去重查询，过滤掉已有未答题（answeredAt=null）的心得，只对“所有题都已答完”的心得重生；涉及文件 scripts/daily-backfill.ts（runRegenerate 函数新增 entriesWithUnanswered 查询 + entriesToRegenerate 过滤） | 已修复 |
 | 2026-09-16 | 引入@node-rs/jieba 替换自研关键词提取：原 extractChineseSegs 无法正确处理连词（和/与/跟）导致多概念被截断（如"用户旅程地图和用户故事地图"→"用户旅程地图和用"）；改用 jieba TF-IDF 自动分词+关键词提取，同时解决 Prisma 高频中文词淹没问题；next.config.ts 新增 serverExternalPackages 配置 | 已验收 |
 | 2026-09-16 | A+C 方案上线：LLM 查询改写（query-reformulate.ts）提取精确搜索短语优先检索，失败降级 jieba 关键词；解决多词概念（如"用户故事地图"）被拆分为单词导致检索失效的问题 | 待验收 |
 | 2026-09-16 | P2 待评估：方案 B 语义搜索（向量相似度）——用 Embedding 模型将心得和提问转为向量，通过余弦相似度找语义相关条目，解决同义词/近义词检索问题；待 A+C 效果验证后决定是否引入 | 待评估 |

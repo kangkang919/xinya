@@ -253,11 +253,30 @@ async function runRegenerate() {
   }
 
   const answeredEntryIds = correctRecords.map(r => r.entryId)
-  console.log(`[Regenerate] 发现 ${answeredEntryIds.length} 篇心得有答对记录，全部进入重生`)
+
+  // 方案 A 去重：过滤掉已有未答题的心得（已重生但还没答的跳过）
+  const entriesWithUnanswered = await prisma.quizRecord.findMany({
+    where: {
+      entryId: { in: answeredEntryIds },
+      answeredAt: null,
+    },
+    select: { entryId: true },
+    distinct: ["entryId"],
+  })
+  const entriesWithUnansweredIds = new Set(entriesWithUnanswered.map(r => r.entryId))
+  const entriesToRegenerate = answeredEntryIds.filter(id => !entriesWithUnansweredIds.has(id))
+
+  const skippedCount = answeredEntryIds.length - entriesToRegenerate.length
+  console.log(`[Regenerate] 发现 ${answeredEntryIds.length} 篇心得有答对记录，其中 ${skippedCount} 篇已有未答题（跳过），${entriesToRegenerate.length} 篇需要重生`)
+
+  if (entriesToRegenerate.length === 0) {
+    console.log("[Regenerate] 所有已答对的心得都已有未答题，无需重生")
+    return { success: 0, failed: 0, results: [] as RegenerateResult[] }
+  }
 
   // 获取这些心得的详情和当前活跃题目
   const entries = await prisma.entry.findMany({
-    where: { id: { in: answeredEntryIds } },
+    where: { id: { in: entriesToRegenerate } },
     include: {
       quizQuestions: {
         orderBy: { createdAt: "desc" },
