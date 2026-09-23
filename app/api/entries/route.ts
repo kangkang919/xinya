@@ -219,17 +219,6 @@ export async function POST(req: NextRequest) {
     include: { tags: { select: { id: true, name: true } } },
   })
 
-  // 同步更新 searchVector（用于 PostgreSQL 全文搜索）
-  await prisma.$executeRawUnsafe(
-    `UPDATE "Entry" SET "searchVector" = 
-      setweight(to_tsvector('simple', coalesce($1, '')), 'A') ||
-      setweight(to_tsvector('simple', coalesce($2, '')), 'D')
-     WHERE "id" = $3`,
-    title.trim(),
-    stripHtml(content || "", 10000),
-    entry.id
-  )
-
   // 异步预生成题目（不阻塞响应）
   if (!isDraft && content) {
     generateAndSaveQuestions(userId, entry.id, title.trim(), content, "pre-generate").catch(e =>

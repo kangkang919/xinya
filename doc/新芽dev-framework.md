@@ -1287,6 +1287,7 @@ pm2 save
 | 2026-09-02 | 遗留记录：线上 DB Entry.searchVector 列与索引仍在但 schema 已无（F11 2026-08-27 重构时未 DROP），当前无读写路径、检索已走 ILIKE；迁移 diff 时勿带出 DROP，后续清理需单独评估 | 已清理（见 09-23） |
 | 2026-09-23 | `lib/deepseek.ts` 94/206 行 `any` 类型 lint 报错修复：新增 RawQuestion/RawResult 接口对 JSON.parse 结果收窄，替换两处 `(q: any)`；该文件 no-explicit-any 清零（其余 6 个文件预存 19 处 any 另记） | 已修复 |
 | 2026-09-23 | 清理线上 DB Entry.searchVector 遗留列+GIN 索引：新增迁移 20260923_drop_search_vector（DROP INDEX + DROP COLUMN）；执行前 pg_dump --data-only 备份 Entry 表（240 条）至服务器 ~/db-backup/；线上手动执行 SQL + prisma migrate resolve --applied；验证列/索引已消失、Entry 仍 240 条、ILIKE 搜索正常；迁移历史与 schema.prisma 恢复一致，消除未来 migrate diff 意外带出 DROP 的漂移风险 | 已验收 |
+| 2026-09-23 | 修复保存心得弹"网络异常"且重复点击产生重复文档：09-23 清理 searchVector 列时误判"无读写路径"，实际 POST /api/entries 与 PUT /api/entries/[id] 仍残留 UPDATE "Entry" SET "searchVector" 裸 SQL 写路径；列删除后每次保存先写库成功、再因列不存在抛 42703 → 接口 500 非 JSON 响应 → 前端 res.json() 抛异常进 catch 弹"网络异常"（数据已存但未跳转）；用户误判失败重复点击，新建页每次 POST 各建一篇 → 重复文档；修复：删除两处残留 $executeRawUnsafe 代码块（检索已走 ILIKE 不依赖该列）；验证：tsc 零错误、112 测试全过、路由冒烟 401 正常、线上 PM2 日志 42703 与根因吻合 | 已修复（待部署验收） |
 | 2026-09-02 | F14 豆苗「少量心得降级提示」未实现（当前 1 篇以上直接进 chat，无特殊提示），待 P2 开发 | 待开发（P2） |
 | 2026-09-02 | F14 验收修复：豆苗 tab 从底部导航移至根系页右下角悬浮头像（56px 圆形 + 在线绿点 + calc() 适配安全区域）；顶栏 sticky 固定；输入框 16px 防 iOS 放大；ANALYSIS_WORDS + LEARNING_WORDS 扩大关键词兜底；注入拾遗画像/本月洞察/统计概览到 AI prompt（stats.ts 新建）；AI 回复改用 react-markdown 渲染（globals.css 新增 .prose 样式） | 已验收 |
 | 2026-08-27 | F11 搜索重构：移除 PostgreSQL 全文搜索（tsvector/tsquery），改用 ILIKE 模糊匹配；搜索结果按相关度排序（置顶>标题匹配>内容匹配>时间倒序）；修复运算符优先级问题（@@ 高于 || 导致 tsvector 拼接错误） | 已验收 |
