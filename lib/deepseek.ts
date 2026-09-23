@@ -14,6 +14,20 @@ interface GeneratedResult {
   questions: GeneratedQuestion[]
 }
 
+// DeepSeek 返回 JSON 的宽松原始结构（parse 后先收窄再规范化，避免 any）
+interface RawQuestion {
+  question?: string
+  type?: string
+  options?: unknown
+  answer?: unknown
+  explanation?: string
+}
+
+interface RawResult {
+  keyPoints?: string
+  questions?: RawQuestion[]
+}
+
 export async function generateQuestions(
   entryTitle: string,
   entryContent: string,
@@ -90,10 +104,12 @@ export async function generateQuestions(
         continue
       }
 
-      const result = JSON.parse(jsonMatch[0])
-      const questions = (result.questions || []).map((q: any) => {
-        let type = ["single", "multiple", "truefalse"].includes(q.type) ? q.type : "single"
-        const answer = Array.isArray(q.answer) ? q.answer : [0]
+      const result = JSON.parse(jsonMatch[0]) as RawResult
+      const questions = (result.questions || []).map((q) => {
+        let type: GeneratedQuestion["type"] = ["single", "multiple", "truefalse"].includes(q.type || "")
+          ? (q.type as GeneratedQuestion["type"])
+          : "single"
+        const answer = Array.isArray(q.answer) ? (q.answer as number[]) : [0]
         // 题型与答案数量不一致时自动修正：多选但只有1个正确答案 → 降级为单选
         if (type === "multiple" && answer.length <= 1) {
           type = "single"
@@ -101,7 +117,7 @@ export async function generateQuestions(
         return {
           question: q.question?.substring(0, 100) || "", // 100字安全上限（仅防异常超长，不再30字硬截断致断句）
           type,
-          options: Array.isArray(q.options) ? q.options.slice(0, 4) : [],
+          options: Array.isArray(q.options) ? (q.options as string[]).slice(0, 4) : [],
           answer,
           explanation: q.explanation || "",
         }
@@ -202,12 +218,12 @@ export async function generateQuestionsWithAngle(
         continue
       }
 
-      const result = JSON.parse(jsonMatch[0])
-      const questions = (result.questions || []).map((q: any) => ({
+      const result = JSON.parse(jsonMatch[0]) as RawResult
+      const questions = (result.questions || []).map((q): GeneratedQuestion => ({
         question: q.question?.substring(0, 100) || "",
-        type: ["single", "multiple", "truefalse"].includes(q.type) ? q.type : "single",
-        options: Array.isArray(q.options) ? q.options.slice(0, 4) : [],
-        answer: Array.isArray(q.answer) ? q.answer : [0],
+        type: (["single", "multiple", "truefalse"].includes(q.type || "") ? q.type : "single") as GeneratedQuestion["type"],
+        options: Array.isArray(q.options) ? (q.options as string[]).slice(0, 4) : [],
+        answer: Array.isArray(q.answer) ? (q.answer as number[]) : [0],
         explanation: q.explanation || "",
       }))
 
