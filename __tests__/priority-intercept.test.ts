@@ -162,6 +162,30 @@ describe("detectPriorityConfirm - 取消意图", () => {
     const r = detectPriorityConfirm("取消插队", history, TAGS)
     expect(r.intercept).toBe(false)
   })
+
+  it("新对话首条消息「取消AI安全的插队」→ 无需历史上下文直接拦截", () => {
+    const r = detectPriorityConfirm("我需要取消 AI安全的插队", [], TAGS)
+    expect(r.intercept).toBe(true)
+    expect(r.tag).toBe("AI安全")
+    expect(r.mode).toBe("cancel")
+  })
+
+  it("新对话首条消息「关闭AI辅助开发的权重」→ 拦截为 cancel", () => {
+    const r = detectPriorityConfirm("关闭AI辅助开发的权重", [], TAGS)
+    expect(r.intercept).toBe(true)
+    expect(r.tag).toBe("AI辅助开发")
+    expect(r.mode).toBe("cancel")
+  })
+
+  it("防误伤：「取消了一篇AI安全心得」不含优先级话题词 → 不拦截", () => {
+    const r = detectPriorityConfirm("我取消了一篇AI安全心得", [], TAGS)
+    expect(r.intercept).toBe(false)
+  })
+
+  it("防误伤：新对话无标签名时不拦截", () => {
+    const r = detectPriorityConfirm("取消插队模式", [], TAGS)
+    expect(r.intercept).toBe(false)
+  })
 })
 
 describe("detectPriorityFollowUp - 配置追问（09-03 线上案例）", () => {

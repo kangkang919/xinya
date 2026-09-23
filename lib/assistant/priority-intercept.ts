@@ -19,12 +19,29 @@ const MODE_CHOICE_WORDS = /插队|权重|一口气|细水长流/
 const PRIORITY_CONTEXT_WORDS = /插队模式|权重模式|出题频次|出题优先/
 const QUESTION_WORDS = /怎么|如何|为什么|哪些|？|\?/
 const CANCEL_WORDS = /取消|关闭|停用|不要了|去掉|撤销/
+// 优先级话题词：取消意图需同时命中取消词+话题词，避免误伤（如"取消了一篇AI安全心得"）
+const PRIORITY_TOPIC_WORDS = /插队|权重|优先级|出题/
 // 配置追问核心词（生效时间/出题方式/剩余题数），不含「明天/开始」等易误伤词
 const FOLLOWUP_WORDS = /生效|起效|什么时候|啥时候|怎么出|如何出|多少道|还有几道|排队|插队开始/
 
 function modeFrom(text: string): "insert" | "weight" | null {
   if (/插队|一口气|集中/.test(text)) return "insert"
   if (/权重|细水长流/.test(text)) return "weight"
+  return null
+}
+
+/**
+ * 从当前消息/历史文本中提取标签名（规范化去空格匹配）
+ */
+function extractTag(q: string, recentText: string, tagNames: string[]): string | null {
+  for (const text of [q, recentText]) {
+    const normalized = text.replace(/\s/g, "")
+    for (const name of tagNames) {
+      if (normalized.includes(name.replace(/\s/g, ""))) {
+        return name
+      }
+    }
+  }
   return null
 }
 
@@ -40,24 +57,20 @@ export function detectPriorityConfirm(
   tagNames: string[],
 ): PriorityInterceptResult {
   const recentText = history.map(m => m.content).join("\n")
+
+  // 取消意图：当前消息同时含取消词+优先级话题词时，无需历史上下文直接拦截
+  // （新对话第一条消息说"取消AI安全的插队"也能命中）
+  if (CANCEL_WORDS.test(q) && PRIORITY_TOPIC_WORDS.test(q)) {
+    const tag = extractTag(q, recentText, tagNames)
+    if (tag) return { intercept: true, tag, mode: "cancel" }
+  }
+
   // 上下文里没有优先级讨论时不拦截，避免误伤普通对话
   if (!PRIORITY_CONTEXT_WORDS.test(recentText)) return { intercept: false }
 
-  // 取消意图：检测到取消关键词时，返回 cancel 模式
+  // 取消意图（有历史上下文）：检测到取消关键词时，返回 cancel 模式
   if (CANCEL_WORDS.test(q)) {
-    // 提取标签
-    const lastAssistant = [...history].reverse().find(m => m.role === "assistant")?.content ?? ""
-    let tag: string | null = null
-    for (const text of [lastAssistant, recentText]) {
-      const normalized = text.replace(/\s/g, "")
-      for (const name of tagNames) {
-        if (normalized.includes(name.replace(/\s/g, ""))) {
-          tag = name
-          break
-        }
-      }
-      if (tag) break
-    }
+    const tag = extractTag(q, recentText, tagNames)
     if (tag) return { intercept: true, tag, mode: "cancel" }
     return { intercept: false }
   }
@@ -67,19 +80,8 @@ export function detectPriorityConfirm(
   const isModeChoice = MODE_CHOICE_WORDS.test(q) && q.length <= 30 && !isQuestion
   if (!isSaveAsk && !isModeChoice) return { intercept: false }
 
-  // 标签：优先从豆苗上一轮回复提取，与标签表规范化（去空格）匹配
-  const lastAssistant = [...history].reverse().find(m => m.role === "assistant")?.content ?? ""
-  let tag: string | null = null
-  for (const text of [lastAssistant, recentText]) {
-    const normalized = text.replace(/\s/g, "")
-    for (const name of tagNames) {
-      if (normalized.includes(name.replace(/\s/g, ""))) {
-        tag = name
-        break
-      }
-    }
-    if (tag) break
-  }
+  // 标签：优先从当前消息/豆苗上一轮回复提取，与标签表规范化（去空格）匹配
+  const tag = extractTag(q, recentText, tagNames)
   if (!tag) return { intercept: false }
 
   // 模式：先看当前消息，再看历史中的用户消息，兜底插队
