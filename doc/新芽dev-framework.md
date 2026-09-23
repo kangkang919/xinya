@@ -1284,8 +1284,9 @@ pm2 save
 | 2026-09-04 | 分层回复策略：L0 修复 small-talk 数字寒暄（88/886 等网络告别语，clean 正则保留数字，告别优先于长度检查）；L1 新增 follow-up.ts 追问识别模块（具体说说/为什么/嗯嗯等）；L3 改造检索无果回复为引导式（FALLBACK_NONE/FALLBACK_FOLLOWUP 替代冷拒绝） | 已验收 |
 | 2026-09-03 | F14.10 豆苗悬浮头像全页面可达：提取 DoumiaoFloatingButton 组件，萌芽/枝叶/年轮/根系四页统一放置；新增呼吸浮动 + 绿点脉冲动画；修复萌芽页实际为 app/(main)/page.tsx 而非 (sprout)/page.tsx 的路由认知问题 | 已验收 |
 | 2026-09-02 | 新增 F14 豆苗学习助手：AI 聊天助手（DeepSeek，以本人非草稿心得为知识库），含 3 步人设向导/三级检索/记忆/消耗记录/清空历史；底部导航新增第 5 tab「豆苗」；迁移 20260902_add_assistant_models（线上账号无 shadow DB 权限，手写 SQL 应用 + migrate resolve）；新增 AssistantProfile/Message/Memory/Usage 四表与 User 关系字段（带删除注释）；端到端验证通过（寒暄/越界/安全词/标签检索/记忆/清空/消耗） | 已验收 |
-| 2026-09-02 | 遗留记录：线上 DB Entry.searchVector 列与索引仍在但 schema 已无（F11 2026-08-27 重构时未 DROP），当前无读写路径、检索已走 ILIKE；迁移 diff 时勿带出 DROP，后续清理需单独评估 | 已记录 |
+| 2026-09-02 | 遗留记录：线上 DB Entry.searchVector 列与索引仍在但 schema 已无（F11 2026-08-27 重构时未 DROP），当前无读写路径、检索已走 ILIKE；迁移 diff 时勿带出 DROP，后续清理需单独评估 | 已清理（见 09-23） |
 | 2026-09-23 | `lib/deepseek.ts` 94/206 行 `any` 类型 lint 报错修复：新增 RawQuestion/RawResult 接口对 JSON.parse 结果收窄，替换两处 `(q: any)`；该文件 no-explicit-any 清零（其余 6 个文件预存 19 处 any 另记） | 已修复 |
+| 2026-09-23 | 清理线上 DB Entry.searchVector 遗留列+GIN 索引：新增迁移 20260923_drop_search_vector（DROP INDEX + DROP COLUMN）；执行前 pg_dump --data-only 备份 Entry 表（240 条）至服务器 ~/db-backup/；线上手动执行 SQL + prisma migrate resolve --applied；验证列/索引已消失、Entry 仍 240 条、ILIKE 搜索正常；迁移历史与 schema.prisma 恢复一致，消除未来 migrate diff 意外带出 DROP 的漂移风险 | 已验收 |
 | 2026-09-02 | F14 豆苗「少量心得降级提示」未实现（当前 1 篇以上直接进 chat，无特殊提示），待 P2 开发 | 待开发（P2） |
 | 2026-09-02 | F14 验收修复：豆苗 tab 从底部导航移至根系页右下角悬浮头像（56px 圆形 + 在线绿点 + calc() 适配安全区域）；顶栏 sticky 固定；输入框 16px 防 iOS 放大；ANALYSIS_WORDS + LEARNING_WORDS 扩大关键词兜底；注入拾遗画像/本月洞察/统计概览到 AI prompt（stats.ts 新建）；AI 回复改用 react-markdown 渲染（globals.css 新增 .prose 样式） | 已验收 |
 | 2026-08-27 | F11 搜索重构：移除 PostgreSQL 全文搜索（tsvector/tsquery），改用 ILIKE 模糊匹配；搜索结果按相关度排序（置顶>标题匹配>内容匹配>时间倒序）；修复运算符优先级问题（@@ 高于 || 导致 tsvector 拼接错误） | 已验收 |
