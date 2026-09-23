@@ -6,7 +6,7 @@
 export interface PriorityInterceptResult {
   intercept: boolean
   tag?: string
-  mode?: "insert" | "weight"
+  mode?: "insert" | "weight" | "cancel"
 }
 
 export interface HistoryMsg {
@@ -18,7 +18,7 @@ const SAVE_PRIORITY_WORDS = /保存|实施|按你说的|确认|就这么|好的�
 const MODE_CHOICE_WORDS = /插队|权重|一口气|细水长流/
 const PRIORITY_CONTEXT_WORDS = /插队模式|权重模式|出题频次|出题优先/
 const QUESTION_WORDS = /怎么|如何|为什么|哪些|？|\?/
-const NEGATIVE_WORDS = /不想|不要|取消|别|不用/
+const CANCEL_WORDS = /取消|关闭|停用|不要了|去掉|撤销/
 // 配置追问核心词（生效时间/出题方式/剩余题数），不含「明天/开始」等易误伤词
 const FOLLOWUP_WORDS = /生效|起效|什么时候|啥时候|怎么出|如何出|多少道|还有几道|排队|插队开始/
 
@@ -42,7 +42,25 @@ export function detectPriorityConfirm(
   const recentText = history.map(m => m.content).join("\n")
   // 上下文里没有优先级讨论时不拦截，避免误伤普通对话
   if (!PRIORITY_CONTEXT_WORDS.test(recentText)) return { intercept: false }
-  if (NEGATIVE_WORDS.test(q)) return { intercept: false }
+
+  // 取消意图：检测到取消关键词时，返回 cancel 模式
+  if (CANCEL_WORDS.test(q)) {
+    // 提取标签
+    const lastAssistant = [...history].reverse().find(m => m.role === "assistant")?.content ?? ""
+    let tag: string | null = null
+    for (const text of [lastAssistant, recentText]) {
+      const normalized = text.replace(/\s/g, "")
+      for (const name of tagNames) {
+        if (normalized.includes(name.replace(/\s/g, ""))) {
+          tag = name
+          break
+        }
+      }
+      if (tag) break
+    }
+    if (tag) return { intercept: true, tag, mode: "cancel" }
+    return { intercept: false }
+  }
 
   const isQuestion = QUESTION_WORDS.test(q)
   const isSaveAsk = SAVE_PRIORITY_WORDS.test(q)

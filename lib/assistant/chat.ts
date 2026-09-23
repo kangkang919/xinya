@@ -155,24 +155,50 @@ export async function handleChat(userId: string, question: string): Promise<Chat
     await prisma.tag.findMany({ where: { userId }, select: { name: true } })
   ).map(t => t.name)
   const confirm = detectPriorityConfirm(q, historyAsc, tagNames)
-  if (confirm.intercept && confirm.tag && confirm.mode) {
+  if (confirm.intercept && confirm.tag) {
     const tag = confirm.tag
     const mode = confirm.mode
-
+  
+    // 取消模式：停用该标签的优先级配置
+    if (mode === "cancel") {
+      const existing = await prisma.quizPriority.findFirst({
+        where: { userId, tag, active: true },
+      })
+      if (existing) {
+        await prisma.quizPriority.update({
+          where: { id: existing.id },
+          data: { active: false },
+        })
+        const reply = `好的，已取消 **${tag}** 的优先级配置！\n\n- **${tag}** 的插队/权重模式已停用\n- 现在所有标签都回到默认随机出题的节奏\n- 出题规则本身（每天 1 次、每周凌晨更新）没动，放心～\n\n之后如果想重新给某个标签加优先级，随时告诉我～`
+        await saveMessage(userId, "user", q)
+        await saveMessage(userId, "assistant", reply)
+        return { reply, retrievedTag: null, source: "local" }
+      } else {
+        const reply = `**${tag}** 本来就没有活跃的优先级配置哦～\n\n当前所有标签都是默认随机出题的节奏，不需要额外取消。\n\n如果想给某个标签加优先级，随时告诉我～`
+        await saveMessage(userId, "user", q)
+        await saveMessage(userId, "assistant", reply)
+        return { reply, retrievedTag: null, source: "local" }
+      }
+    }
+  
     // 检查是否已存在相同标签的活跃配置
     const existing = await prisma.quizPriority.findFirst({
       where: { userId, tag, active: true },
     })
-
+  
     if (!existing) {
       await addQuizPriority(userId, {
         tag,
-        mode,
+        mode: mode as "insert" | "weight",
         multiplier: mode === "weight" ? 2.0 : undefined,
         until: mode === "insert" ? "all_answered" : undefined,
       })
-
-      const reply = `好的，已保存配置！\n\n**${tag}** 标签已设置为 **${mode === "insert" ? "插队模式" : "权重模式（2 倍）"}**\n${mode === "insert" ? "从明天开始，这个标签的题目会优先出现，直到所有未答题都答完为止。" : "这个标签的题目出现概率会提高到 2 倍。"}\n\n有新的心得或想调整配置，随时告诉我～`
+  
+      const modeLabel = mode === "insert" ? "插队模式" : "权重模式（2 倍）"
+      const modeDesc = mode === "insert"
+        ? "从明天开始，这个标签的题目会优先出现，直到所有未答题都答完为止。"
+        : "这个标签的题目出现概率会提高到 2 倍。"
+      const reply = `好的，已保存配置！\n\n**${tag}** 标签已设置为 **${modeLabel}**\n${modeDesc}\n\n有新的心得或想调整配置，随时告诉我～`
       await saveMessage(userId, "user", q)
       await saveMessage(userId, "assistant", reply)
       return { reply, retrievedTag: null, source: "local" }
@@ -180,9 +206,10 @@ export async function handleChat(userId: string, question: string): Promise<Chat
       // 已存在配置：按新选择更新模式
       await prisma.quizPriority.update({
         where: { id: existing.id },
-        data: { mode, multiplier: mode === "weight" ? 2.0 : existing.multiplier },
+        data: { mode: mode as "insert" | "weight", multiplier: mode === "weight" ? 2.0 : existing.multiplier },
       })
-      const reply = `好的，已更新配置！**${tag}** 标签切换为 **${mode === "insert" ? "插队模式" : "权重模式（2 倍）"}**，明天开始生效～`
+      const modeLabel = mode === "insert" ? "插队模式" : "权重模式（2 倍）"
+      const reply = `好的，已更新配置！**${tag}** 标签切换为 **${modeLabel}**，明天开始生效～`
       await saveMessage(userId, "user", q)
       await saveMessage(userId, "assistant", reply)
       return { reply, retrievedTag: null, source: "local" }

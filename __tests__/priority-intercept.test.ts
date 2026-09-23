@@ -96,11 +96,6 @@ describe("detectPriorityConfirm - 防误伤", () => {
     expect(r.intercept).toBe(false)
   })
 
-  it("否定表达不拦截", () => {
-    const r = detectPriorityConfirm("不要插队模式", historyWithAsk("我想增加出题频次"), TAGS)
-    expect(r.intercept).toBe(false)
-  })
-
   it("上下文标签与标签表空格不一致时仍能匹配（规范化）", () => {
     const history: HistoryMsg[] = [
       { role: "assistant", content: "AI 安全目前有 13 道未答题。选插队模式还是权重模式？" },
@@ -115,6 +110,56 @@ describe("detectPriorityConfirm - 防误伤", () => {
       { role: "assistant", content: "量子计算目前有 3 道未答题。选插队模式还是权重模式？" },
     ]
     const r = detectPriorityConfirm("插队模式", history, TAGS)
+    expect(r.intercept).toBe(false)
+  })
+})
+
+describe("detectPriorityConfirm - 取消意图", () => {
+  it("回复「取消插队」→ 拦截为 cancel + AI安全", () => {
+    const r = detectPriorityConfirm(
+      "我需要取消这个插队，回到默认随机出题",
+      historyWithAsk("我想增加 AI 安全相关的出题频次"),
+      TAGS,
+    )
+    expect(r.intercept).toBe(true)
+    expect(r.tag).toBe("AI安全")
+    expect(r.mode).toBe("cancel")
+  })
+
+  it("回复「关闭优先级」→ 拦截为 cancel", () => {
+    const r = detectPriorityConfirm(
+      "关闭 AI安全的优先级",
+      historyWithAsk("我想增加出题频次"),
+      TAGS,
+    )
+    expect(r.intercept).toBe(true)
+    expect(r.mode).toBe("cancel")
+  })
+
+  it("回复「停用插队模式」→ 拦截为 cancel", () => {
+    const r = detectPriorityConfirm(
+      "停用插队模式吧",
+      historyWithAsk("我想增加出题频次"),
+      TAGS,
+    )
+    expect(r.intercept).toBe(true)
+    expect(r.mode).toBe("cancel")
+  })
+
+  it("无优先级上下文时，取消表达不拦截", () => {
+    const r = detectPriorityConfirm(
+      "取消今天的安排",
+      [{ role: "user", content: "今天天气不错" }],
+      TAGS,
+    )
+    expect(r.intercept).toBe(false)
+  })
+
+  it("上下文未提及标签时，取消表达不拦截", () => {
+    const history: HistoryMsg[] = [
+      { role: "assistant", content: "量子计算目前有 3 道未答题。选插队模式还是权重模式？" },
+    ]
+    const r = detectPriorityConfirm("取消插队", history, TAGS)
     expect(r.intercept).toBe(false)
   })
 })
