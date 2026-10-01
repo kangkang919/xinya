@@ -41,7 +41,7 @@ export function generateRichTextStyles(selector: string, theme: RichTextTheme): 
     ${selector} b, ${selector} strong { font-weight: bold; }
     ${selector} i, ${selector} em { font-style: italic; }
     ${selector} u { text-decoration: underline; }
-    ${selector} pre { background: ${theme.codeBg}; border-radius: 8px; padding: 12px 16px; margin: 8px 0 12px; font-family: 'SF Mono','Fira Code','Cascadia Code',monospace; font-size: 13px; line-height: 1.6; white-space: pre; overflow-x: auto; tab-size: 4; color: ${theme.codeColor}; scrollbar-width: thin; scrollbar-color: rgba(128,128,128,0.45) transparent; }
+    ${selector} pre { background: ${theme.codeBg}; border-radius: 8px; padding: 12px 16px; margin: 8px 0 12px; font-family: 'Sarasa Mono SC','Noto Sans Mono CJK SC','SF Mono','Fira Code','Cascadia Code',monospace; font-size: 13px; line-height: 1.6; white-space: pre; overflow-x: auto; tab-size: 4; color: ${theme.codeColor}; scrollbar-width: thin; scrollbar-color: rgba(128,128,128,0.45) transparent; }
 ${selector} pre + p { margin-top: 6px; }
 ${selector} pre::-webkit-scrollbar { height: 6px; }
 ${selector} pre::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.45); border-radius: 3px; }
@@ -65,7 +65,7 @@ export function getEditorRichTextStyles(): string {
     .tiptap ul { list-style: disc; padding-left: 1.5em; margin: 0.5em 0; }
     .tiptap ol { list-style: decimal; padding-left: 1.5em; margin: 0.5em 0; }
     .tiptap li { margin: 0.2em 0; }
-    .tiptap pre { background: var(--ed-code-bg); border-radius: 8px; padding: 12px 16px; margin: 8px 0 12px; font-family: 'SF Mono','Fira Code','Cascadia Code',monospace; font-size: 13px; line-height: 1.6; white-space: pre; overflow-x: auto; tab-size: 4; color: var(--ed-code-color); scrollbar-width: thin; scrollbar-color: rgba(128,128,128,0.45) transparent; }
+    .tiptap pre { background: var(--ed-code-bg); border-radius: 8px; padding: 12px 16px; margin: 8px 0 12px; font-family: 'Sarasa Mono SC','Noto Sans Mono CJK SC','SF Mono','Fira Code','Cascadia Code',monospace; font-size: 13px; line-height: 1.6; white-space: pre; overflow-x: auto; tab-size: 4; color: var(--ed-code-color); scrollbar-width: thin; scrollbar-color: rgba(128,128,128,0.45) transparent; }
 .tiptap pre + p { margin-top: 6px; }
 .tiptap pre::-webkit-scrollbar { height: 6px; }
 .tiptap pre::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.45); border-radius: 3px; }
