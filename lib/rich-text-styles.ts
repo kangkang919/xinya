@@ -46,6 +46,7 @@ ${selector} pre + p { margin-top: 6px; }
 ${selector} pre::-webkit-scrollbar { height: 6px; }
 ${selector} pre::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.45); border-radius: 3px; }
 ${selector} pre::-webkit-scrollbar-track { background: transparent; }
+    ${selector} pre code { font-family: inherit; }
     ${selector} hr { border: none; border-top: 1px solid ${theme.borderColor}; margin: 16px 0; }
     ${selector} blockquote { border-left: 3px solid ${theme.quoteBorderColor}; padding-left: 12px; margin: 8px 0; color: ${theme.quoteTextColor}; }
     ${selector} h2 { font-size: 1.25em; font-weight: bold; margin: 12px 0 4px; }
@@ -70,6 +71,7 @@ export function getEditorRichTextStyles(): string {
 .tiptap pre::-webkit-scrollbar { height: 6px; }
 .tiptap pre::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.45); border-radius: 3px; }
 .tiptap pre::-webkit-scrollbar-track { background: transparent; }
+.tiptap pre code { font-family: inherit; }
     .tiptap hr { border: none; border-top: 1px solid var(--ed-border); margin: 16px 0; }
     .tiptap blockquote { border-left: 3px solid var(--ed-quote-border); padding-left: 12px; margin: 8px 0; color: var(--ed-quote-color); }
     .tiptap h2 { font-size: 1.25em; font-weight: bold; margin: 12px 0 4px; }
