@@ -1128,6 +1128,7 @@ Step 7: pm2 start ecosystem.config.js
 | 无回收站 | 删除后不可恢复 |
 | 离线草稿 | 已移除草稿功能，离线仅提示 |
 | 域名备案中 | shuxiangnote.top 已上线（https://shuxiangnote.top） | 已解决 |
+| 代码块 CJK 等宽字体（移动端） | PC 端已安装 Sarasa Mono SC 本地字体，ASCII 艺术表格竖线对齐正常；移动端无此字体，回退到系统默认字体导致竖线不对齐。解决方案：将更纱黑体作为 Web Font 部署到服务器（@font-face + public/fonts/），所有设备自动加载。代价：首访增加约 3~5MB 字体下载 | 待开发 P1 |
 
 ---
 
@@ -1273,6 +1274,7 @@ pm2 save
 
 | 日期 | 变更内容 | 状态 |
 | :--- | :--- | :--- |
+| 2026-09-30 | 代码块横向滚动条遮字修复（方案B）：原 `pre { overflow-x: auto; margin: 8px 0 }` 叠加段落上边距清零，超长长行（哈希/JWT）出现横向滚动条后贴死块底、后文段落仅隔 8px 紧贴块底，滚动条与文字同带相叠削字头；修复：pre 下外边距 8→12px + 新增邻接规则 `pre + p { margin-top: 6px }`（只作用于代码块与紧邻段落）+ 6px 细滚动条定制（WebKit ::-webkit-scrollbar + Firefox scrollbar-width）；共享模块 rich-text-styles.ts 一处修改，编辑器/查看页/分享面板/分享链接页四处统一；配套内容清理：全库 24 篇心得 33 处代码块后空段落残留 `</pre><p></p>` 一次性清除（先备份 doc/backup-entry-cleanup-20260930.csv，replace 后三重校验：总字符差 231=33×7、复扫 0 命中、抽查正文逐字完好） | 已验收 |
 | 2026-09-16 | 修复豆苗检索结果注入 LLM 缺失正文片段：buildRetrievalBlock 原来只注入 keyPoints（摘要），内容匹配命中的 excerpt（正文前 200 字）未传递给 LLM，导致关键词在正文中出现但摘要未提及时 LLM 误判为“未找到”；现 excerpt 随检索结果一并注入 | 已验收 |
 | 2026-09-16 | F9.22 题目重生去重修复：原逻辑每次定时任务为所有历史答对过的心得重生，无去重导致同一篇心得被反复重生（如33篇全部重生）；修复：新增去重查询，过滤掉已有未答题（answeredAt=null）的心得，只对“所有题都已答完”的心得重生；涉及文件 scripts/daily-backfill.ts（runRegenerate 函数新增 entriesWithUnanswered 查询 + entriesToRegenerate 过滤） | 已验收 |
 | 2026-09-16 | 引入@node-rs/jieba 替换自研关键词提取：原 extractChineseSegs 无法正确处理连词（和/与/跟）导致多概念被截断（如"用户旅程地图和用户故事地图"→"用户旅程地图和用"）；改用 jieba TF-IDF 自动分词+关键词提取，同时解决 Prisma 高频中文词淹没问题；next.config.ts 新增 serverExternalPackages 配置 | 已验收 |
@@ -1392,6 +1394,7 @@ pm2 save
 | 2026-08-26 | **F1 编辑器底层迁移至 Tiptap**：废弃手工 contentEditable + document.execCommand + 手动 DOM 操作实现，迁移至 Tiptap v3（基于 ProseMirror 框架）。彻底解决光标丢失、按钮失效、标题切换异常等顽固 bug。新增依赖：@tiptap/react @tiptap/starter-kit @tiptap/extension-underline @tiptap/extension-text-style @tiptap/extension-color @tiptap/extension-placeholder 等；重写文件：Editor.tsx（useEditor + EditorContent 替代 contentEditable）、EditorToolbar.tsx（Tiptap chain commands + isActive 按钮激活态高亮）；简化：export-utils.ts（Tiptap 输出标准语义 HTML，turndown 转换更准确）；旧内容兼容：`<font color>` 加载时自动转为 `<span style="color">`。数据库 schema 不变 | 已验收 |
 | 2026-08-26 | F13 知识关联：新增 EntryLink 表（4 种关系类型：串行/总分/关联/启发，双向唯一约束，级联删除）；新增 API：GET/POST /api/entries/[id]/links、DELETE /api/links/[id]、GET /api/entries/graph；心得详情页顶部导航栏新增「联想」按钮（紫色）+ 搜索弹窗（LinkSearchModal）+ 正文下方关联列表面板（LinkPanel）；根系页新增「知识图谱」卡片入口 + 全屏图谱可视化页面（reagraph WebGL 渲染，动态导入）；新增依赖 reagraph；新增文件：components/LinkPanel.tsx、components/LinkSearchModal.tsx、components/GraphViewer.tsx、app/(main)/root/graph/page.tsx | 已废弃 |
 | 2026-08-27 | F13 简化重构：①清空 EntryLink 表 38 条历史数据（4 种关系类型废弃，统一为 related）；②删除知识图谱可视化（GraphViewer.tsx、root/graph/page.tsx、api/entries/graph/route.ts）；③卸载 reagraph 依赖；④根系页移除「知识图谱」卡片；⑤LinkSearchModal 移除 4 种关系类型选择，简化为搜索+备注+确认；⑥LinkPanel 移除按类型分组，改为扁平列表（出向→/入向←）；⑦详情页「联想」改名为「关联」；⑧API POST 不再要求 relationType 参数，固定写 related。设计理念：标签层级即知识结构（知识树=枝叶页），无需单独图谱页面 | 已验收 |
+| 2026-10-01 | 代码块 CJK 等宽字体修复（PC 端）：①lib/rich-text-styles.ts 两处 `pre` 的 font-family 新增 `'Sarasa Mono SC','Noto Sans Mono CJK SC'` 前缀；②新增 `pre code { font-family: inherit; }` 规则，修复 Tailwind base 层 `code, kbd, samp, pre { font-family: var(--default-mono-font-family) }` 覆盖导致 `<code>` 元素未继承 Sarasa Mono SC 的问题（实际渲染为 Menlo + PingFang SC）；③用户 Mac 本地安装更纱黑体（brew install --cask font-sarasa-gothic）；④移动端仍不对齐，已记录到 §7.8 已知限制，方案 B（Web Font 部署）列为 P1 待开发 | 已验收 |
 
 ---
 
