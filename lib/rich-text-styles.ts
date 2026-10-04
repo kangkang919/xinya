@@ -32,12 +32,12 @@ export interface RichTextTheme {
  */
 export function generateRichTextStyles(selector: string, theme: RichTextTheme): string {
   return `
-    ${selector} p { margin: 0; line-height: 1.625; }
-    ${selector} p:empty { min-height: 1.625em; }
+    ${selector} p { margin: 0 0 6px 0; line-height: 1.8; }
+    ${selector} p:empty { min-height: 1.8em; }
     ${selector} > * + * { margin-top: 0; }
-    ${selector} ul { list-style: disc; padding-left: 1.5em; margin: 0.5em 0; }
-    ${selector} ol { list-style: decimal; padding-left: 1.5em; margin: 0.5em 0; }
-    ${selector} li { margin: 0.2em 0; }
+    ${selector} ul { list-style: disc; padding-left: 24px; margin: 6px 0; }
+    ${selector} ol { list-style: decimal; padding-left: 24px; margin: 6px 0; }
+    ${selector} li { margin: 0 0 6px 0; line-height: 1.7; }
     ${selector} b, ${selector} strong { font-weight: bold; }
     ${selector} i, ${selector} em { font-style: italic; }
     ${selector} u { text-decoration: underline; }
@@ -48,8 +48,8 @@ ${selector} pre::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.45); b
 ${selector} pre::-webkit-scrollbar-track { background: transparent; }
     ${selector} pre code { font-family: inherit; }
     ${selector} hr { border: none; border-top: 1px solid ${theme.borderColor}; margin: 16px 0; }
-    ${selector} blockquote { border-left: 3px solid ${theme.quoteBorderColor}; padding-left: 12px; margin: 8px 0; color: ${theme.quoteTextColor}; }
-    ${selector} h2 { font-size: 1.25em; font-weight: bold; margin: 12px 0 4px; }
+    ${selector} blockquote { border-left: 3px solid ${theme.quoteBorderColor}; padding: 6px 6px; margin: 6px 0; color: ${theme.quoteTextColor}; }
+    ${selector} h2 { font-size: 1.25em; font-weight: bold; margin: 20px 0 8px; }
     ${selector} s, ${selector} strike, ${selector} del { text-decoration: line-through; }
   `.trim()
 }
@@ -60,12 +60,12 @@ ${selector} pre::-webkit-scrollbar-track { background: transparent; }
  */
 export function getEditorRichTextStyles(): string {
   return `
-    .tiptap p { margin: 0; line-height: 1.625; }
-    .tiptap p:empty { min-height: 1.625em; }
+    .tiptap p { margin: 0 0 6px 0; line-height: 1.8; }
+    .tiptap p:empty { min-height: 1.8em; }
     .tiptap > * + * { margin-top: 0; }
-    .tiptap ul { list-style: disc; padding-left: 1.5em; margin: 0.5em 0; }
-    .tiptap ol { list-style: decimal; padding-left: 1.5em; margin: 0.5em 0; }
-    .tiptap li { margin: 0.2em 0; }
+    .tiptap ul { list-style: disc; padding-left: 24px; margin: 6px 0; }
+    .tiptap ol { list-style: decimal; padding-left: 24px; margin: 6px 0; }
+    .tiptap li { margin: 0 0 6px 0; line-height: 1.7; }
     .tiptap pre { background: var(--ed-code-bg); border-radius: 8px; padding: 12px 16px; margin: 8px 0 12px; font-family: 'Sarasa Mono SC','Noto Sans Mono CJK SC','SF Mono','Fira Code','Cascadia Code',monospace; font-size: 13px; line-height: 1.6; white-space: pre; overflow-x: auto; tab-size: 4; color: var(--ed-code-color); scrollbar-width: thin; scrollbar-color: rgba(128,128,128,0.45) transparent; }
 .tiptap pre + p { margin-top: 6px; }
 .tiptap pre::-webkit-scrollbar { height: 6px; }
@@ -73,8 +73,8 @@ export function getEditorRichTextStyles(): string {
 .tiptap pre::-webkit-scrollbar-track { background: transparent; }
 .tiptap pre code { font-family: inherit; }
     .tiptap hr { border: none; border-top: 1px solid var(--ed-border); margin: 16px 0; }
-    .tiptap blockquote { border-left: 3px solid var(--ed-quote-border); padding-left: 12px; margin: 8px 0; color: var(--ed-quote-color); }
-    .tiptap h2 { font-size: 1.25em; font-weight: bold; margin: 12px 0 4px; }
+    .tiptap blockquote { border-left: 3px solid var(--ed-quote-border); padding: 6px 6px; margin: 6px 0; color: var(--ed-quote-color); }
+    .tiptap h2 { font-size: 1.25em; font-weight: bold; margin: 20px 0 8px; }
     .tiptap s { text-decoration: line-through; }
     .tiptap p.is-editor-empty:first-child::before { content: attr(data-placeholder); float: left; color: #bbb; pointer-events: none; height: 0; }
   `.trim()
