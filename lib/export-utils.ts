@@ -33,7 +33,7 @@ export function toMarkdown(entries: ExportEntry[]): string {
       hour: '2-digit', minute: '2-digit'
     })
     const mdContent = cleanMarkdown(turndownService.turndown(e.content || '').trim())
-    return `## ${e.title}\n\n${tags}\n\n${date}\n\n${mdContent}\n\n---`
+    return `标题：${e.title}\n\n标签：${tags}\n\n日期：${date}\n\n${mdContent}\n\n---`
   }).join('\n\n')
 }
 
